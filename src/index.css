@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radio-dot-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(17,20,24)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3ccircle cx=%278%27 cy=%278%27 r=%273%27/%3e%3c/svg%3e');
+  --select-button-svg: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(96,117,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e');
+}
+
+body {
+  font-family: Inter, "Noto Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.form-input {
+  background-image: var(--select-button-svg);
+  background-position: right 15px center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+}
+
+input[type="radio"] {
+  background-image: var(--radio-dot-svg);
+  background-size: 16px;
+  background-position: center;
+}
+
+input[type="radio"]:checked {
+  background-color: #111418;
+  border-color: #111418;
+}
+
+/* Remove black outline from all form elements */
+input, select, textarea, button {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+input:focus, select:focus, textarea:focus, button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Global Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar-corner {
+  background: #f1f5f9;
+}
+
+/* Dark Mode Scrollbar Styling */
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border: 1px solid #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.dark ::-webkit-scrollbar-corner {
+  background: #1f2937;
+}
+
+/* Firefox Scrollbar Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.dark * {
+  scrollbar-color: #4b5563 #1f2937;
+}
+
+/* Quiz Navigation Styles - NO HOVER EFFECTS */
+.question-box {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e5e7eb;
+  background-color: #f9fafb;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* COMPLETELY DISABLE ALL HOVER/FOCUS/ACTIVE EFFECTS */
+.question-box:hover,
+.question-box:focus,
+.question-box:active,
+.question-box:focus-visible,
+.question-box:focus-within {
+  border-color: #e5e7eb !important;
+  background-color: #f9fafb !important;
+  color: #374151 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Current question - same colors as unanswered, only arrow indicator */
+.question-box.current {
+  border-color: #e5e7eb;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.question-box.current:hover,
+.question-box.current:focus,
+.question-box.current:active,
+.question-box.current:focus-visible {
+  border-color: #e5e7eb !important;
+  background-color: #f9fafb !important;
+  color: #374151 !important;
+}
+
+/* Answered questions - blue background */
+.question-box.answered {
+  border-color: #3b82f6;
+  background-color: #3b82f6;
+  color: white;
+}
+
+.question-box.answered:hover,
+.question-box.answered:focus,
+.question-box.answered:active,
+.question-box.answered:focus-visible {
+  border-color: #3b82f6 !important;
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Flagged questions - only apply to unanswered, non-current questions */
+.question-box.flagged:not(.answered):not(.current) {
+  border-color: #e5e7eb;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+/* Flagged + Answered combination - Higher specificity */
+.question-box.answered.flagged {
+  border-color: #3b82f6 !important;
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Flagged + Current combination - same as current, just adds flag */
+.question-box.current.flagged {
+  border-color: #e5e7eb;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+/* Dark mode styles */
+.dark .question-box {
+  border-color: #4b5563;
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+.dark .question-box:hover,
+.dark .question-box:focus,
+.dark .question-box:active,
+.dark .question-box:focus-visible,
+.dark .question-box:focus-within {
+  border-color: #4b5563 !important;
+  background-color: #374151 !important;
+  color: #d1d5db !important;
+  transform: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.dark .question-box.current {
+  border-color: #4b5563;
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+.dark .question-box.current:hover,
+.dark .question-box.current:focus,
+.dark .question-box.current:active,
+.dark .question-box.current:focus-visible {
+  border-color: #4b5563 !important;
+  background-color: #374151 !important;
+  color: #d1d5db !important;
+}
+
+.dark .question-box.answered {
+  border-color: #2563eb;
+  background-color: #2563eb;
+  color: white;
+}
+
+.dark .question-box.answered:hover,
+.dark .question-box.answered:focus,
+.dark .question-box.answered:active,
+.dark .question-box.answered:focus-visible {
+  border-color: #2563eb !important;
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.dark .question-box.flagged:not(.answered):not(.current) {
+  border-color: #4b5563;
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+.dark .question-box.answered.flagged {
+  border-color: #2563eb !important;
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.dark .question-box.current.flagged {
+  border-color: #4b5563;
+  background-color: #374151;
+  color: #d1d5db;
+} 

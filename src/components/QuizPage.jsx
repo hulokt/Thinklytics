@@ -185,6 +185,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     } else {
       // Start new quiz - normalize all questions
       const normalizedQuestions = questions.map(normalizeQuestion);
+
+      // Determine next quiz number based on completed and in-progress quizzes
+      const completedCount = Array.isArray(quizHistory) ? quizHistory.length : 0;
+      const inProgressCount = Array.isArray(inProgressQuizzes) ? inProgressQuizzes.length : 0;
+      const nextQuizNumber = completedCount + inProgressCount + 1;
+
       const newQuizData = {
         id: Date.now(),
         questions: normalizedQuestions.map(q => ({ ...q, userAnswer: null, isCorrect: null, flagged: false })),
@@ -197,8 +203,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           questionType: normalizedQuestions[0]?.questionType || 'Mixed'
         },
         startTime: new Date().toISOString(),
-        lastUpdated: new Date().toISOString()
-        // Do NOT assign quizNumber here; only assign on completion
+        lastUpdated: new Date().toISOString(),
+        quizNumber: nextQuizNumber
       };
       setQuizData(newQuizData);
     }
@@ -322,7 +328,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         };
       });
 
-      // 2. Update the in-progress quiz in the DB with the latest answers and stats
+      // 2. Remove the quiz from in-progress storage
       const inProgressArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
       const updatedQuizData = {
         ...quizData,
@@ -332,18 +338,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         lastUpdated: new Date().toISOString(),
         timeSpent: elapsedTime
       };
-      const inProgressIndex = inProgressArray.findIndex(q => q.id === quizData.id);
-      let updatedInProgress = [...inProgressArray];
-      if (inProgressIndex >= 0) {
-        updatedInProgress[inProgressIndex] = updatedQuizData;
-      }
-      await upsertInProgressQuizzes(updatedInProgress);
-      await refreshInProgressQuizzes();
-
-      // 3. Remove the quiz from in-progress by id
-      const refreshedInProgress = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
-      const finalInProgress = refreshedInProgress.filter(q => q.id !== quizData.id);
-      await upsertInProgressQuizzes(finalInProgress);
+      const remainingInProgress = inProgressArray.filter(q => q.id !== quizData.id);
+      await upsertInProgressQuizzes(remainingInProgress);
       await refreshInProgressQuizzes();
 
       // 4. Get current quiz history and deduplicate by id

@@ -225,7 +225,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     if (!editingId || !originalFormData) return false;
     
     // Compare all form fields
-    const fieldsToCompare = ['section', 'domain', 'questionType', 'passageText', 'questionText', 'correctAnswer', 'explanation', 'difficulty'];
+    const fieldsToCompare = ['section', 'domain', 'questionType', 'passageText', 'passageImage', 'questionText', 'correctAnswer', 'explanation', 'difficulty'];
     
     for (let field of fieldsToCompare) {
       if (formData[field] !== originalFormData[field]) {
@@ -333,6 +333,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       domain: domains[Math.floor(Math.random() * domains.length)],
       questionType: questionTypes[Math.floor(Math.random() * questionTypes.length)],
       passageText: samplePassages[randomSection][passageIndex],
+      passageImage: null,
       questionText: sampleQuestions[randomSection][passageIndex],
       answerChoices: {
         A: answerSet[0],
@@ -424,7 +425,11 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     const preview = question.questionText ? 
       `${question.questionText.substring(0, 80)}${question.questionText.length > 80 ? '...' : ''}` :
       'No question text';
-    return `${question.section} - ${question.domain} | ${preview}`;
+    
+    // Add image indicator if question has an image
+    const imageIndicator = question.passageImage ? ' 📷' : '';
+    
+    return `${question.section} - ${question.domain} | ${preview}${imageIndicator}`;
   });
 
   const handleQuestionSelect = (questionText, index) => {
@@ -986,7 +991,12 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
           const file = item.getAsFile();
           const reader = new FileReader();
           reader.onload = (event) => {
-            setFormData(prev => ({ ...prev, passageImage: event.target.result, passageText: '' }));
+            // Keep existing text and add image
+            setFormData(prev => ({ 
+              ...prev, 
+              passageImage: event.target.result,
+              // Don't clear passageText - allow both text and image
+            }));
           };
           reader.readAsDataURL(file);
           e.preventDefault();
@@ -1012,7 +1022,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     setExportSuccess(false);
 
     try {
-      console.log('Starting new, optimized PDF generation...');
+      console.log('Starting optimized PDF generation...');
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1062,6 +1072,14 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
           img.src = src;
         });
       };
+
+      // --- TEXT HEIGHT CALCULATOR ---
+      
+      const calculateTextHeight = (text, fontSize, lineHeight = 1.2) => {
+        if (!text) return 0;
+        const lines = pdf.splitTextToSize(text, contentWidth);
+        return lines.length * fontSize * lineHeight;
+      };
       
       // --- RENDER QUESTIONS ---
 
@@ -1071,44 +1089,50 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
         // --- 1. Calculate height of all question elements ---
 
-        // Header
-        questionElements.push({ type: 'header', height: 12 });
+        // Header (fixed height)
+        const headerHeight = 12;
+        questionElements.push({ type: 'header', height: headerHeight });
         
         // Passage Image
+        let imageHeight = 0;
         if (question.passageImage) {
           try {
             const img = await loadImage(question.passageImage);
             const aspectRatio = img.width / img.height;
-            const imgWidth = contentWidth * 0.8; // Use 80% of content width
-            const imgHeight = imgWidth / aspectRatio;
-            questionElements.push({ type: 'image', img: img, x: margin + (contentWidth * 0.1), width: imgWidth, height: imgHeight });
+            const imgWidth = Math.min(contentWidth * 0.8, 120); // Max width 120mm
+            imageHeight = imgWidth / aspectRatio;
+            questionElements.push({ type: 'image', img: img, x: margin + (contentWidth * 0.1), width: imgWidth, height: imageHeight });
           } catch(e) {
             questionElements.push({ type: 'text', text: '[Image failed to load]', style: 'italic', size: 10, color: '#EF4444' });
           }
         }
         
         // Passage Text
+        const passageHeight = calculateTextHeight(question.passageText, 11, 1.3);
         if (question.passageText) {
-          const lines = pdf.splitTextToSize(question.passageText, contentWidth);
-          questionElements.push({ type: 'text', text: lines, style: 'normal', size: 11, spacing: 5 });
+          questionElements.push({ type: 'text', text: question.passageText, style: 'normal', size: 11, spacing: 5, height: passageHeight });
         }
         
         // Question Text
-        const questionLines = pdf.splitTextToSize(question.questionText, contentWidth);
-        questionElements.push({ type: 'text', text: questionLines, style: 'bold', size: 11.5, spacing: 6 });
+        const questionHeight = calculateTextHeight(question.questionText, 11.5, 1.4);
+        questionElements.push({ type: 'text', text: question.questionText, style: 'bold', size: 11.5, spacing: 6, height: questionHeight });
         
         // Answer Choices
         const choices = ['A', 'B', 'C', 'D'].map(choice => {
-          return { choice, text: question.answerChoices[choice] };
+          const choiceText = question.answerChoices[choice];
+          const choiceHeight = calculateTextHeight(choiceText, 11, 1.2);
+          return { choice, text: choiceText, height: Math.max(12, choiceHeight + 8) };
         });
-        questionElements.push({ type: 'choices', choices: choices, height: 4 * 14 });
+        const totalChoicesHeight = choices.reduce((sum, choice) => sum + choice.height + 3, 0);
+        questionElements.push({ type: 'choices', choices: choices, height: totalChoicesHeight });
 
-        // Calculate total height
+        // Calculate total height more accurately
         const totalHeight = questionElements.reduce((sum, el) => {
-            if (el.type === 'text') return sum + el.text.length * (el.size * 0.35) + (el.spacing || 0) + 5;
+            if (el.type === 'text') return sum + (el.height || 0) + (el.spacing || 0);
             if (el.type === 'image') return sum + el.height + 10;
-            return sum + (el.height || 0) + 5;
-        }, 0);
+            if (el.type === 'choices') return sum + el.height + 5;
+            return sum + (el.height || 0);
+        }, 0) + 15; // Add extra spacing between questions
 
         // --- 2. Check if it fits and add new page if needed ---
         if (!checkFit(totalHeight)) {
@@ -1158,8 +1182,9 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
             pdf.setFont(FONT, el.style || 'normal');
             pdf.setFontSize(el.size || 11);
             pdf.setTextColor(el.color || TEXT_COLOR);
-            pdf.text(el.text, margin, currentY);
-            currentY += el.text.length * (el.size * 0.35) + el.spacing;
+            const lines = pdf.splitTextToSize(el.text, contentWidth);
+            pdf.text(lines, margin, currentY);
+            currentY += el.height + (el.spacing || 0);
           }
 
           if (el.type === 'choices') {
@@ -1168,7 +1193,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
               const choiceY = currentY;
               const choiceText = `${item.text}`;
               const lines = pdf.splitTextToSize(choiceText, contentWidth - 20);
-              const boxHeight = Math.max(12, lines.length * 4.5 + 4);
+              const boxHeight = item.height;
               
               // Draw box
               pdf.setDrawColor(BORDER_COLOR);
@@ -1198,8 +1223,9 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
             }
           }
         }
-        currentY = Math.max(currentY, questionStartY + totalHeight);
-        currentY += 10; // Space between questions
+        
+        // Ensure proper spacing between questions
+        currentY += 10;
       }
 
       // --- RENDER ANSWER KEY ---
@@ -1522,25 +1548,49 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">
                   Passage Text <span className="text-red-500">*</span>
                 </label>
-                {formData.passageImage ? (
-                  <div className="mb-2">
-                    <img src={formData.passageImage} alt="Passage" className="max-h-48 rounded shadow border mb-2" />
-                    <button type="button" onClick={handleRemovePassageImage} className="text-xs text-red-600 hover:underline">Remove Image</button>
+                
+                {/* Show image if present */}
+                {formData.passageImage && (
+                  <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Passage Image</span>
+                      <button 
+                        type="button" 
+                        onClick={handleRemovePassageImage} 
+                        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:underline"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                    <img 
+                      src={formData.passageImage} 
+                      alt="Passage" 
+                      className="max-h-48 w-auto rounded shadow-sm border border-gray-200 dark:border-gray-600" 
+                    />
                   </div>
-                ) : (
-                  <textarea
-                    value={formData.passageText}
-                    onChange={(e) => handleInputChange('passageText', e.target.value)}
-                    onPaste={handlePassagePaste}
-                    placeholder="Enter the reading passage or problem context... (or paste an image)"
-                    rows={3}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 resize-vertical text-base sm:text-sm transition-colors duration-300 ${
-                      validationErrors.passageText 
-                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' 
-                        : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-                    }`}
-                  />
                 )}
+                
+                {/* Text input - always show, even with image */}
+                <textarea
+                  value={formData.passageText}
+                  onChange={(e) => handleInputChange('passageText', e.target.value)}
+                  onPaste={handlePassagePaste}
+                  placeholder={formData.passageImage 
+                    ? "Add text to accompany the image above... (or paste another image)" 
+                    : "Enter the reading passage or problem context... (or paste an image)"
+                  }
+                  rows={formData.passageImage ? 2 : 3}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 resize-vertical text-base sm:text-sm transition-colors duration-300 ${
+                    validationErrors.passageText 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' 
+                      : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  }`}
+                />
+                
+                {/* Help text */}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  💡 You can paste images (Ctrl+V) and add text to create rich passages with both visual and textual content.
+                </p>
               </div>
 
               {/* Question Text - Compact */}
@@ -1662,6 +1712,7 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
                         domain: '',
                         questionType: '',
                         passageText: '',
+                        passageImage: null,
                         questionText: '',
                         answerChoices: { A: '', B: '', C: '', D: '' },
                         correctAnswer: 'A',
@@ -1705,6 +1756,7 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
                           domain: '',
                           questionType: '',
                           passageText: '',
+                          passageImage: null,
                           questionText: '',
                           answerChoices: { A: '', B: '', C: '', D: '' },
                           correctAnswer: 'A',

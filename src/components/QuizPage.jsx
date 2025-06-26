@@ -192,12 +192,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       const currentElapsedTime = elapsedTimeRef.current;
       const currentShowResults = showResultsRef.current;
       const currentIsFinishing = isFinishingRef.current;
+      const isAlreadyCompleted = currentQuizData?.status === QUIZ_STATUS.COMPLETED;
       
       // Save if we have quiz data and user has made any progress (answered questions or spent time)
       const hasProgress = currentQuizData && 
         currentQuizData.questions && 
         !currentShowResults && 
         !currentIsFinishing && 
+        !isAlreadyCompleted && 
         (Object.keys(currentUserAnswers).length > 0 || currentElapsedTime > 0);
       
       if (hasProgress) {
@@ -292,9 +294,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       return;
     }
 
-    // For new quizzes, wait for loading to complete
-    if (allQuizzesLoading) {
-      console.log('⏳ Waiting for data to load before initializing quiz...');
+    // For new quizzes, wait for loading to complete and quizManager to be available
+    if (allQuizzesLoading || !quizManager) {
+      console.log('⏳ Waiting for data to load or QuizManager to be available...', {
+        allQuizzesLoading,
+        quizManagerAvailable: !!quizManager
+      });
       return;
     }
 
@@ -333,8 +338,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     isFinishing,
     showResults,
     onBack,
-    allQuizzesLoading
-    // Removed quizManager from dependencies to prevent infinite loop
+    allQuizzesLoading,
+    quizManager // Add quizManager to dependencies
   ]);
 
   // Track unsaved changes - only when user makes changes from the current state
@@ -395,7 +400,17 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   };
 
   const handleFinishQuiz = async () => {
-    if (!quizData || !quizData.questions || isFinishing) return;
+    console.log('🔴 handleFinishQuiz called!');
+    console.log('🔍 Checking quizData:', !!quizData);
+    console.log('🔍 Checking quizData.questions:', !!quizData?.questions);
+    console.log('🔍 Checking isFinishing:', isFinishing);
+    
+    if (!quizData || !quizData.questions || isFinishing) {
+      console.log('❌ Early return - missing data or already finishing');
+      return;
+    }
+    
+    console.log('✅ Passed initial checks, proceeding with quiz completion...');
     
     console.log('🏁 ========== FINISH QUIZ START ==========');
     console.log('📊 Quiz data before finishing:', {
@@ -433,12 +448,19 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
       // 2. Use QuizManager to finish the quiz
       console.log('⏱️ Finishing quiz with elapsed time:', elapsedTime);
+      console.log('📝 QuizManager available:', !!quizManager);
+      
+      if (!quizManager) {
+        throw new Error('QuizManager not available');
+      }
+      
       const completedQuiz = await quizManager.finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime);
       
       console.log('✅ Quiz completed successfully:', {
         quizId: completedQuiz.id,
         quizNumber: completedQuiz.quizNumber,
-        score: completedQuiz.score
+        score: completedQuiz.score,
+        status: completedQuiz.status
       });
 
       /* 🌟 Update Calendar Event */
@@ -508,10 +530,42 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       await upsertQuestionAnswers(updatedAnswers);
       
       console.log('🏁 ========== FINISH QUIZ COMPLETED SUCCESSFULLY ==========');
-      onBack();
+      
+      // Clear any stored resume data
+      localStorage.removeItem('satlog:resumeQuizId');
+      
+      // Show success message
+      alert(`Quiz completed successfully! Your score: ${completedQuiz.score}%`);
+      
+      // Log the final quiz state for debugging
+      console.log('📊 Final completed quiz state:', {
+        id: completedQuiz.id,
+        quizNumber: completedQuiz.quizNumber,
+        status: completedQuiz.status,
+        score: completedQuiz.score,
+        totalQuestions: completedQuiz.totalQuestions,
+        correctAnswers: completedQuiz.correctAnswers
+      });
+      
+      // Update local state & refs so unmount cleanup sees the COMPLETED status
+      setQuizData(completedQuiz);
+      quizDataRef.current = completedQuiz;
+      
+      // Navigate back to selector with a small delay to ensure all data is saved
+      setTimeout(() => {
+        console.log('🔄 Navigating back to selector...');
+        onBack();
+      }, 500);
+      
     } catch (error) {
       console.error('❌ ========== FINISH QUIZ FAILED ==========');
       console.error('Error details:', error);
+      console.error('Error stack:', error.stack);
+      
+      // Show user-friendly error message
+      alert('There was an error completing the quiz. Please try again.');
+      
+      // Still navigate back to prevent getting stuck
       onBack();
     } finally {
       setIsFinishing(false);

@@ -124,21 +124,64 @@ export class QuizManager {
       updatedQuizzes = [...quizzes, { ...quizData, lastUpdated: new Date().toISOString() }];
     }
 
+    console.log('💾 About to save updated quizzes array...');
+    console.log('📊 Current allQuizzes before save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    console.log('📊 Updated quizzes to save:', updatedQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    
+    const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
+    console.log('💾 Save result:', saveSuccess);
+    
     this.allQuizzes = updatedQuizzes;
-    await this.upsertAllQuizzes(updatedQuizzes);
+    console.log('📊 Local allQuizzes after save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    
+    // Refresh global state so UI updates immediately
+    if (typeof this.refreshAllQuizzes === 'function') {
+      await this.refreshAllQuizzes();
+    }
+    
+    console.log('✅ Quiz completion saved successfully');
+    
+    return quizData;
   }
 
   // Finish a quiz (complete it and move to completed status)
   async finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime = 0) {
+    console.log('🏁 QuizManager.finishQuiz called with:', {
+      quizId: quizData?.id,
+      quizNumber: quizData?.quizNumber,
+      questionsCount: syncedQuestions?.length,
+      userAnswersCount: Object.keys(userAnswers || {}).length,
+      elapsedTime
+    });
+
+    if (!quizData || !syncedQuestions || syncedQuestions.length === 0) {
+      throw new Error('Invalid quiz data or questions provided to finishQuiz');
+    }
+
     const correctCount = syncedQuestions.filter(q => q.isCorrect).length;
     const totalQuestions = syncedQuestions.length;
     const score = Math.round((correctCount / totalQuestions) * 100);
 
+    console.log('📊 Quiz statistics calculated:', {
+      correctCount,
+      totalQuestions,
+      score
+    });
+
+    // 🚧 Sanitize questions to avoid oversized JSON (strip large base64 images)
+    const MAX_IMAGE_CHARS = 4000; // keep small preview only
+    const sanitizedQuestions = syncedQuestions.map(q => {
+      if (q.passageImage && q.passageImage.length > MAX_IMAGE_CHARS) {
+        return { ...q, passageImage: q.passageImage.slice(0, MAX_IMAGE_CHARS) + '/*truncated*/' };
+      }
+      return q;
+    });
+
     const completedQuiz = {
       ...quizData,
-      questions: syncedQuestions,
+      questions: sanitizedQuestions,
       userAnswers,
-      flaggedQuestions: Array.from(flaggedQuestions),
+      flaggedQuestions: Array.from(flaggedQuestions || []),
       endTime: new Date().toISOString(),
       timeSpent: elapsedTime || quizData.timeSpent || 0,
       score,
@@ -149,21 +192,49 @@ export class QuizManager {
       lastUpdated: new Date().toISOString()
     };
 
+    console.log('📦 Completed quiz data prepared:', {
+      quizId: completedQuiz.id,
+      quizNumber: completedQuiz.quizNumber,
+      status: completedQuiz.status,
+      score: completedQuiz.score
+    });
+
     // Check if the quiz exists in the array
     const existingIndex = this.allQuizzes.findIndex(quiz => quiz.id === quizData.id);
+    console.log('🔍 Quiz search result:', {
+      existingIndex,
+      allQuizzesCount: this.allQuizzes.length,
+      quizExists: existingIndex >= 0
+    });
     
     let updatedQuizzes;
     if (existingIndex >= 0) {
       // Update existing quiz
       updatedQuizzes = [...this.allQuizzes];
       updatedQuizzes[existingIndex] = completedQuiz;
+      console.log('✅ Updated existing quiz at index:', existingIndex);
     } else {
       // Add new quiz (this happens when quiz was never auto-saved)
       updatedQuizzes = [...this.allQuizzes, completedQuiz];
+      console.log('➕ Added new quiz to array');
     }
 
-    await this.upsertAllQuizzes(updatedQuizzes);
+    console.log('💾 About to save updated quizzes array...');
+    console.log('📊 Current allQuizzes before save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    console.log('📊 Updated quizzes to save:', updatedQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    
+    const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
+    console.log('💾 Save result:', saveSuccess);
+    
     this.allQuizzes = updatedQuizzes;
+    console.log('📊 Local allQuizzes after save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
+    
+    // Refresh global state so UI reflects completed status
+    if (typeof this.refreshAllQuizzes === 'function') {
+      await this.refreshAllQuizzes();
+    }
+    
+    console.log('✅ Quiz completion saved successfully');
     
     return completedQuiz;
   }

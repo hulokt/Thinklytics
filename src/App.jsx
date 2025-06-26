@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { useQuestions, useCalendarEvents } from './hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
+import { supabase } from './lib/supabaseClient';
 
 // Main App Component wrapped with Auth Provider and Dark Mode Provider
 function App() {
@@ -27,6 +28,120 @@ function App() {
         </Router>
       </AuthProvider>
     </DarkModeProvider>
+  );
+}
+
+// Auth Callback Handler Component
+function AuthCallback() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [status, setStatus] = useState('Processing...');
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      try {
+        // Get the URL parameters
+        const urlParams = new URLSearchParams(location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+
+        if (error) {
+          setError(errorDescription || error);
+          setStatus('Authentication failed');
+          return;
+        }
+
+        if (code) {
+          setStatus('Finalizing authentication...');
+
+          // 1) Check if Supabase already stored a session (magic-link auto-loads tokens)
+          const {
+            data: { session: existingSession },
+          } = await supabase.auth.getSession();
+
+          if (existingSession?.user) {
+            // Session already present – skip exchange step
+            setStatus('Email confirmed! Redirecting...');
+            setTimeout(() => navigate('/questions', { replace: true }), 1500);
+            return;
+          }
+
+          // 2) Try exchanging the code for a session (OAuth/PKCE)
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          // Some email confirmations return an error "invalid request: both auth code and code verifier should be non-empty"
+          // even though a session is silently created. So if we get that specific error, attempt to fetch session again.
+          if (exchangeError) {
+            console.warn('Auth exchange returned error:', exchangeError.message);
+
+            const {
+              data: { session: retrySession },
+            } = await supabase.auth.getSession();
+
+            if (retrySession?.user) {
+              setStatus('Email confirmed! Redirecting...');
+              setTimeout(() => navigate('/questions', { replace: true }), 1500);
+              return;
+            }
+
+            setError(exchangeError.message);
+            setStatus('Authentication failed');
+            return;
+          }
+
+          if (data?.user) {
+            setStatus('Email confirmed! Redirecting...');
+            setTimeout(() => navigate('/questions', { replace: true }), 1500);
+          }
+        } else {
+          setError('No authentication code found');
+          setStatus('Authentication failed');
+        }
+      } catch (err) {
+        console.error('Auth callback exception:', err);
+        setError(err.message);
+        setStatus('Authentication failed');
+      }
+    };
+
+    handleAuthCallback();
+  }, [location, navigate]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
+        <div className="text-center">
+          {error ? (
+            <>
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Authentication Failed</h2>
+              <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Processing Authentication</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{status}</p>
+            </>
+          )}
+          
+          <button
+            onClick={() => navigate('/home')}
+            className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -359,12 +474,18 @@ function AppContent() {
     navigate('/quiz');
   };
 
-  // Navigation helpers
-  const handlePageChange = (page) => {
-    navigate(page);
+  // Clear quiz state after completion
+  const clearQuizState = () => {
     setCurrentQuiz(null);
     setIsResumingQuiz(false);
     setResumingQuizData(null);
+    localStorage.removeItem('satlog:resumeQuizId');
+  };
+
+  // Navigation helpers
+  const handlePageChange = (page) => {
+    navigate(page);
+    clearQuizState();
   };
 
   const handleLogoClick = () => {
@@ -417,6 +538,9 @@ function AppContent() {
           />
         </PublicRoute>
       } />
+
+      {/* Auth Callback Route */}
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Protected Routes */}
       <Route path="/questions" element={
@@ -490,7 +614,10 @@ function AppContent() {
             <div className="h-screen overflow-hidden">
               <QuizPage
                 questions={currentQuiz}
-                onBack={() => navigate('/selector')}
+                onBack={() => {
+                  clearQuizState();
+                  navigate('/selector');
+                }}
                 isResuming={isResumingQuiz}
                 initialQuizData={resumingQuizData}
               />

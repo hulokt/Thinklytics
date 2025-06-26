@@ -125,12 +125,14 @@ export function useUserData<K extends DataType>(
 
   const upsertData = useCallback(async (newData: DataTypeMap[K]): Promise<boolean> => {
     if (!user || isSavingRef.current || isCircuitBreakerOpen()) {
+      // debug alert removed
       return false
     }
 
     // Throttle save requests
     const now = Date.now()
     if (now - lastRequestTimeRef.current < MIN_REQUEST_INTERVAL) {
+      // debug alert removed
       await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL))
     }
     
@@ -139,6 +141,7 @@ export function useUserData<K extends DataType>(
 
     try {
       setError(null)
+      // debug alert removed
       
       const { data: result, error: saveError } = await supabase.rpc('upsert_user_data', {
         p_user_id: user.id,
@@ -147,15 +150,18 @@ export function useUserData<K extends DataType>(
       })
 
       if (saveError) {
+        // debug alert removed
         throw new Error(`Supabase error: ${saveError.message}`)
       }
 
+      // debug alert removed
       setData(newData)
       closeCircuitBreaker() // Close circuit breaker on success
       return true
       
     } catch (err: any) {
-      console.error(`Error saving ${dataType}:`, err)
+      console.error(`❌ Error saving ${dataType}:`, err)
+      // debug alert removed
       consecutiveFailuresRef.current++
       
       // Open circuit breaker if too many consecutive failures

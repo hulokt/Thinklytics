@@ -74,12 +74,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('📝 Attempting signup for:', email)
       
+      // Using Vite's injected BASE_URL to respect subfolder deployments (e.g., "/SatLog/")
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+      const redirectUrl = `${window.location.origin}${basePath}/auth/callback`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           ...options,
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: redirectUrl
         }
       })
       

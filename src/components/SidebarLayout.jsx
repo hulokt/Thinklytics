@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Sidebar, SidebarBody, SidebarProvider } from "./ui/sidebar";
 import { 
   IconFileText, 
@@ -22,6 +23,8 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   const [userData, setUserData] = useState({ name: 'User', email: '' });
   const { user } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const loadUserData = () => {
@@ -39,35 +42,35 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   const links = [
     {
       label: "Question Logger",
-      page: "question-logger",
+      href: "/questions",
       icon: (
         <IconFileText className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Quiz",
-      page: "question-selector",
+      href: "/selector",
       icon: (
         <IconPlayCircle className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Quiz History",
-      page: "quiz-history",
+      href: "/history",
       icon: (
         <IconHistory className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Analytics",
-      page: "analytics",
+      href: "/analytics",
       icon: (
         <IconBarChart className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Calendar",
-      page: "calendar",
+      href: "/calendar",
       icon: (
         <CalendarIcon className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
       ),
@@ -85,20 +88,20 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
         <Sidebar open={open} setOpen={setOpen}>
           <SidebarBody className="justify-between gap-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-              {open ? <Logo onLogout={onLogout} /> : <LogoIcon onLogout={onLogout} />}
+              {open ? <Logo onHomeClick={onHomeClick} /> : <LogoIcon onHomeClick={onHomeClick} />}
               <div className="mt-8 flex flex-col gap-2">
                 {links.map((link, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
-                      onPageChange(link.page);
+                      navigate(link.href);
                       // Close mobile sidebar after navigation
                       if (window.innerWidth < 768) {
                         setOpen(false);
                       }
                     }}
                     className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md transition-colors duration-300 ${
-                      currentPage === link.page
+                      location.pathname === link.href
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                     }`}
@@ -148,14 +151,14 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
               {/* Profile/Rank Button */}
               <button
                 onClick={() => {
-                  onProfileClick();
+                  navigate('/profile');
                   // Close mobile sidebar after navigation
                   if (window.innerWidth < 768) {
                     setOpen(false);
                   }
                 }}
                 className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 ${
-                  currentPage === 'profile'
+                  location.pathname === '/profile'
                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                 }`}
@@ -181,14 +184,14 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
               {/* User Account Button */}
               <button
                 onClick={() => {
-                  onAccountClick();
+                  navigate('/account');
                   // Close mobile sidebar after navigation
                   if (window.innerWidth < 768) {
                     setOpen(false);
                   }
                 }}
                 className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 ${
-                  currentPage === 'account'
+                  location.pathname === '/account'
                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                 }`}
@@ -230,13 +233,13 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   );
 }
 
-export const Logo = ({ onLogout }) => {
+export const Logo = ({ onHomeClick }) => {
   const handleClick = () => {
-    console.log('🏠 Logo (expanded) clicked! Calling onLogout...');
-    if (onLogout) {
-      onLogout();
+    console.log('🏠 Logo (expanded) clicked! Calling onHomeClick...');
+    if (onHomeClick) {
+      onHomeClick();
     } else {
-      console.error('🏠 onLogout is not defined!');
+      console.error('🏠 onHomeClick is not defined!');
     }
   };
 
@@ -266,13 +269,13 @@ export const Logo = ({ onLogout }) => {
   );
 };
 
-export const LogoIcon = ({ onLogout }) => {
+export const LogoIcon = ({ onHomeClick }) => {
   const handleClick = () => {
-    console.log('🏠 LogoIcon (collapsed) clicked! Calling onLogout...');
-    if (onLogout) {
-      onLogout();
+    console.log('🏠 LogoIcon (collapsed) clicked! Calling onHomeClick...');
+    if (onHomeClick) {
+      onHomeClick();
     } else {
-      console.error('🏠 onLogout is not defined!');
+      console.error('🏠 onHomeClick is not defined!');
     }
   };
 

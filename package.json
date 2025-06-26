@@ -32,6 +32,7 @@
     "react-calendar": "^4.4.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^7.6.2",
     "tailwind-merge": "^2.6.0",
     "three": "^0.177.0",
     "uuid": "^11.1.0"

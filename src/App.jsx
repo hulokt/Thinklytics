@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { SidebarLayout } from './components/SidebarLayout';
 import Homepage from './components/Homepage';
 import LoginPage from './components/LoginPage';
@@ -21,16 +22,56 @@ function App() {
   return (
     <DarkModeProvider>
       <AuthProvider>
-        <AppContent />
+        <Router basename="/SatLog">
+          <AppContent />
+        </Router>
       </AuthProvider>
     </DarkModeProvider>
   );
 }
 
+// Protected Route Component
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return user ? children : <Navigate to="/login" replace />;
+}
+
+// Public Route Component (allows both authenticated and unauthenticated users)
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Allow both authenticated and unauthenticated users to access public routes
+  return children;
+}
+
 // App Content Component that uses Auth Context
 function AppContent() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
-  const [currentPage, setCurrentPage] = useState('loading');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isResumingQuiz, setIsResumingQuiz] = useState(false);
   const [resumingQuizData, setResumingQuizData] = useState(null);
@@ -55,17 +96,8 @@ function AppContent() {
   // Ensure questions is always an array
   const questions = Array.isArray(questionsData) ? questionsData : [];
 
-
-
   // Handle authentication state changes
   useEffect(() => {
-    if (authLoading) {
-      setCurrentPage('loading');
-      return;
-    }
-
-    // Restore last page if exists (only after auth resolved)
-    const savedPage = localStorage.getItem('satlog:lastPage');
     const savedResumeId = localStorage.getItem('satlog:resumeQuizId');
 
     if (user && savedResumeId) {
@@ -76,43 +108,14 @@ function AppContent() {
         setCurrentQuiz(existing.questions);
         setIsResumingQuiz(true);
         setResumingQuizData(existing);
-        setCurrentPage('quiz');
+        navigate('/quiz');
         return;
       } else {
         // Clear stale resume id
         localStorage.removeItem('satlog:resumeQuizId');
       }
     }
-
-    if (user && savedPage && savedPage !== 'quiz') {
-      setCurrentPage(savedPage);
-      return;
-    }
-
-    if (user) {
-      console.log('✅ User authenticated:', user.email);
-      // If we just authenticated and are on a public page, move to question-logger; otherwise keep current
-      setCurrentPage(prev => {
-        if (['homepage', 'login', 'signup', 'loading'].includes(prev)) {
-          return 'question-logger';
-        }
-        return prev;
-      });
-    } else {
-      console.log('❌ User not authenticated, checking current page...');
-      // If user momentarily null, avoid kicking the user off an active private page (like quiz)
-      setCurrentPage(prevPage => {
-        if (['login', 'signup', 'homepage'].includes(prevPage)) {
-          return prevPage; // stay on allowed public pages
-        }
-        if (prevPage === 'loading') {
-          return 'homepage';
-        }
-        // Keep current page unchanged to wait for auth recovery
-        return prevPage;
-      });
-    }
-  }, [user, authLoading]);
+  }, [user, quizManager, navigate]);
 
   // Log data loading status
   useEffect(() => {
@@ -137,15 +140,14 @@ function AppContent() {
       
       if (error) {
         console.error('❌ Login failed:', error);
-        // Throw error to be handled by the form, don't redirect
         throw new Error(error.message || 'Invalid email or password. Please check your credentials and try again.');
       }
       
       console.log('✅ Login successful:', loggedInUser?.email);
+      navigate('/questions');
       return { success: true };
     } catch (error) {
       console.error('❌ Login exception:', error);
-      // Throw error to be handled by the form, don't redirect
       throw new Error(error.message || 'Invalid email or password. Please check your credentials and try again.');
     }
   };
@@ -167,21 +169,25 @@ function AppContent() {
       
       if (error) {
         console.error('❌ Signup failed:', error);
-        // Throw error to be handled by the form, don't redirect
         throw new Error(error.message || 'Signup failed. Please try again.');
       }
       
       console.log('✅ Signup successful:', newUser?.email);
       
-      // For development, auto-confirm and sign in
-      if (newUser && !error) {
+      // Check if user was created but needs email confirmation
+      if (newUser && !newUser.email_confirmed_at) {
+        console.log('📧 Email confirmation required for:', newUser.email);
+        return { success: true, requiresConfirmation: true };
+      }
+      
+      // For development, auto-confirm and sign in if email is already confirmed
+      if (newUser && newUser.email_confirmed_at) {
         await handleLogin({ email, password });
       }
       
       return { success: true };
     } catch (error) {
       console.error('❌ Signup exception:', error);
-      // Throw error to be handled by the form, don't redirect
       throw new Error(error.message || 'Signup failed. Please try again.');
     }
   };
@@ -190,83 +196,36 @@ function AppContent() {
     try {
       console.log('🚪 Logging out...');
       
+      // Clear local state first
+      setCurrentQuiz(null);
+      setIsResumingQuiz(false);
+      setResumingQuizData(null);
+      
       const { error } = await signOut();
       
       if (error) {
         console.error('❌ Logout failed:', error);
-        // Don't show alert for logout errors, just continue
       }
       
-      // Clear local state regardless of error
-      setCurrentPage('homepage');
-      setCurrentQuiz(null);
-      setIsResumingQuiz(false);
-      setResumingQuizData(null);
+      // Navigate to home after logout is complete
+      navigate('/home');
       
       console.log('✅ Logout completed');
     } catch (error) {
       console.error('❌ Logout exception:', error);
-      // Still clear state even if logout had an error
-      setCurrentPage('homepage');
+      // Clear local state regardless of error
       setCurrentQuiz(null);
       setIsResumingQuiz(false);
       setResumingQuizData(null);
+      navigate('/home');
     }
   };
-
-  const handleGetStarted = () => {
-    if (user) {
-      setCurrentPage('question-logger');
-    } else {
-      setCurrentPage('signup');
-    }
-  };
-
-  const handleGoToLogin = () => {
-    if (user) {
-      setCurrentPage('question-logger');
-    } else {
-      setCurrentPage('login');
-    }
-  };
-
-  const handleBackToHome = () => {
-    if (user) {
-      setCurrentPage('question-logger');
-    } else {
-      setCurrentPage('homepage');
-    }
-  };
-
-  const handleLogoClick = () => {
-    console.log('🔗 Logo clicked! Current user:', user?.email || 'No user');
-    console.log('🔗 Current page:', currentPage);
-    
-    if (user) {
-      console.log('🔗 User is logged in, navigating to question-logger');
-      setCurrentPage('question-logger');
-    } else {
-      console.log('🔗 No user, navigating to homepage');
-      setCurrentPage('homepage');
-    }
-  };
-
-  const handleSwitchToLogin = () => setCurrentPage('login');
-  const handleSwitchToSignup = () => setCurrentPage('signup');
-  const handleAccountClick = () => setCurrentPage('account');
-  const handleProfileClick = () => setCurrentPage('profile');
-  const handleBackFromAccount = () => setCurrentPage('question-logger');
-  const handleBackFromProfile = () => setCurrentPage('question-logger');
 
   const handleAddQuestion = async (newQuestion) => {
     if (!questions) return;
     
-    // Allow newQuestion to be either a single question object or an array of questions
     const newQuestionsArray = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
-
-    // Map each question to ensure it has a unique id
     const questionsWithIds = newQuestionsArray.map(q => ({ ...q, id: Date.now() + Math.random() }));
-
     const updatedQuestions = [...questions, ...questionsWithIds];
     await upsertQuestions(updatedQuestions);
   };
@@ -289,7 +248,7 @@ function AppContent() {
     setCurrentQuiz(selectedQuestions);
     setIsResumingQuiz(false);
     setResumingQuizData(null);
-    setCurrentPage('quiz');
+    navigate('/quiz');
   };
 
   const handleStartQuizFromCalendar = async (event) => {
@@ -298,11 +257,7 @@ function AppContent() {
 
       console.log('📅 Calendar start/resume triggered:', event);
 
-      // --------------------------------------------------
-      // 1) PLANNED QUIZ → Start new in-progress quiz with SAME quizNumber
-      // --------------------------------------------------
       if (event.status === 'planned') {
-        // Allow start only on the scheduled date (if provided)
         const plannedDate = event.plannedDate || event.metadata?.plannedDate;
         if (plannedDate) {
           const todayStr = new Date().toISOString().split('T')[0];
@@ -313,7 +268,6 @@ function AppContent() {
           }
         }
 
-        // Try to locate the existing planned-quiz record first (by id or quizNumber)
         const eventQuizNumber = event.quizNumber ?? event.metadata?.quizNumber;
         let plannedRecord = null;
         if (event.quizId) {
@@ -323,7 +277,6 @@ function AppContent() {
           plannedRecord = quizManager?.findQuizByNumber(eventQuizNumber);
         }
 
-        // If still not found, refresh quizzes once and retry
         if (!plannedRecord) {
           await quizManager.refreshQuizzes();
           if (event.quizId) plannedRecord = quizManager.findQuizById(event.quizId);
@@ -331,15 +284,13 @@ function AppContent() {
         }
 
         const builderTemplate = quizManager.createNewQuiz(event.questions || []);
-
-        // Determine quizNumber we must keep
         const lockedQuizNumber = plannedRecord?.quizNumber || event.metadata?.quizNumber || event.quizNumber || builderTemplate.quizNumber;
 
         const inProgressQuiz = {
-          ...(plannedRecord || builderTemplate), // start with existing planned or template
-          ...builderTemplate,                   // ensure we get all fresh builder fields
-          id: plannedRecord ? plannedRecord.id : builderTemplate.id, // keep same id if we had one
-          quizNumber: lockedQuizNumber,         // override numbering
+          ...(plannedRecord || builderTemplate),
+          ...builderTemplate,
+          id: plannedRecord ? plannedRecord.id : builderTemplate.id,
+          quizNumber: lockedQuizNumber,
           status: QUIZ_STATUS.IN_PROGRESS,
           startTime: new Date().toISOString(),
           plannedDate: plannedDate || null,
@@ -352,23 +303,18 @@ function AppContent() {
           await quizManager.addQuiz(inProgressQuiz);
         }
 
-        // Update the calendar event to reflect its new in-progress status (do NOT delete)
         const updatedEvents = (calendarEvents || []).map(ev =>
           ev.id === event.id ? { ...ev, status: 'in-progress' } : ev
         );
         await upsertCalendarEvents(updatedEvents);
 
-        // Launch QuizPage (treat as resuming so it uses the quiz record we just saved)
         setCurrentQuiz(inProgressQuiz.questions);
         setIsResumingQuiz(true);
         setResumingQuizData(inProgressQuiz);
-        setCurrentPage('quiz');
+        navigate('/quiz');
         return;
       }
 
-      // --------------------------------------------------
-      // 2) IN-PROGRESS QUIZ → Resume existing quiz
-      // --------------------------------------------------
       if (event.status === 'in-progress') {
         const eventQuizNumber2 = event.quizNumber ?? event.metadata?.quizNumber;
         let existingQuiz = null;
@@ -377,7 +323,7 @@ function AppContent() {
         if (!existingQuiz && eventQuizNumber2) existingQuiz = quizManager.findQuizByNumber(eventQuizNumber2);
 
         if (!existingQuiz && event.metadata && event.metadata.questions) {
-          existingQuiz = event.metadata; // Fallback to quiz data embedded in calendar item
+          existingQuiz = event.metadata;
         }
 
         if (!existingQuiz) {
@@ -390,20 +336,17 @@ function AppContent() {
           setCurrentQuiz(existingQuiz.questions);
           setIsResumingQuiz(true);
           setResumingQuizData(existingQuiz);
-          setCurrentPage('quiz');
+          navigate('/quiz');
           return;
         }
       }
 
-      // --------------------------------------------------
-      // 3) FALLBACK – behave like quick ad-hoc start from builder
-      // --------------------------------------------------
       console.warn('⚠️ Fallback path triggered for calendar start – treating as ad-hoc quiz');
       const adHocQuestions = event.questions || [];
       setCurrentQuiz(adHocQuestions);
       setIsResumingQuiz(false);
       setResumingQuizData(null);
-      setCurrentPage('quiz');
+      navigate('/quiz');
     } catch (err) {
       console.error('❌ Failed to start calendar quiz:', err);
     }
@@ -413,175 +356,239 @@ function AppContent() {
     setCurrentQuiz(quizData.questions);
     setIsResumingQuiz(true);
     setResumingQuizData(quizData);
-    setCurrentPage('quiz');
+    navigate('/quiz');
   };
 
-  const handleQuizBack = () => {
-    setCurrentPage('question-selector');
-    setCurrentQuiz(null);
-    setIsResumingQuiz(false);
-    setResumingQuizData(null);
-  };
-
+  // Navigation helpers
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    navigate(page);
     setCurrentQuiz(null);
     setIsResumingQuiz(false);
     setResumingQuizData(null);
   };
 
-  // Persist current page on change
-  useEffect(() => {
-    if (currentPage && currentPage !== 'loading') {
-      localStorage.setItem('satlog:lastPage', currentPage);
+  const handleLogoClick = () => {
+    if (user) {
+      navigate('/questions');
+    } else {
+      navigate('/home');
     }
-  }, [currentPage]);
+  };
 
   // When entering quiz page store resume id, clear on leave/finish
   useEffect(() => {
-    if (currentPage === 'quiz' && resumingQuizData) {
+    if (location.pathname === '/quiz' && resumingQuizData) {
       localStorage.setItem('satlog:resumeQuizId', String(resumingQuizData.id));
-    } else if (currentPage !== 'quiz') {
+    } else if (location.pathname !== '/quiz') {
       localStorage.removeItem('satlog:resumeQuizId');
     }
-  }, [currentPage, resumingQuizData]);
-
-  // Loading screen
-  if (currentPage === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Pre-login pages
-  if (!user) {
-    switch (currentPage) {
-      case 'homepage':
-        return <Homepage onGetStarted={handleGetStarted} onLogin={handleGoToLogin} />;
-      case 'login':
-        return (
-          <LoginPage 
-            onLogin={handleLogin} 
-            onSwitchToSignup={handleSwitchToSignup}
-            onBack={handleBackToHome} 
-          />
-        );
-      case 'signup':
-        return (
-          <SignupPage 
-            onSignup={handleSignup} 
-            onSwitchToLogin={handleSwitchToLogin}
-            onBack={handleBackToHome} 
-          />
-        );
-      default:
-        return <Homepage onGetStarted={handleGetStarted} onLogin={handleGoToLogin} />;
-    }
-  }
-
-  // Account page (outside sidebar)
-  if (currentPage === 'account') {
-    return <AccountPage onBack={handleBackFromAccount} />;
-  }
-
-  // Quiz page (full screen)
-  if (currentPage === 'quiz') {
-    return (
-      <SidebarLayout 
-        currentPage={currentPage} 
-        onPageChange={handlePageChange} 
-        onLogout={handleLogout}
-        onAccountClick={handleAccountClick}
-        onProfileClick={handleProfileClick}
-        onHomeClick={handleLogoClick}
-      >
-        <div className="h-screen overflow-hidden">
-          <QuizPage
-            questions={currentQuiz}
-            onBack={handleQuizBack}
-            isResuming={isResumingQuiz}
-            initialQuizData={resumingQuizData}
-          />
-        </div>
-      </SidebarLayout>
-    );
-  }
-
-  // Main app pages
-  const renderPageContent = () => {
-    switch (currentPage) {
-      case 'question-logger':
-        return (
-          <QuestionLogger
-            questions={questions || []}
-            onAddQuestion={handleAddQuestion}
-            onUpdateQuestion={handleUpdateQuestion}
-            onDeleteQuestion={handleDeleteQuestion}
-          />
-        );
-      case 'question-selector':
-        return (
-          <QuestionSelector
-            questions={questions || []}
-            onStartQuiz={handleStartQuiz}
-            onResumeQuiz={handleResumeQuiz}
-            inProgressQuizzes={inProgressQuizzes || []}
-          />
-        );
-      case 'quiz-history':
-        return (
-          <QuizHistory
-            onBack={() => handlePageChange('question-selector')}
-            onResumeQuiz={handleResumeQuiz}
-          />
-        );
-      case 'analytics':
-        return <AnalyticsPage questions={questions || []} />;
-      case 'profile':
-        return <Profile onBack={() => handlePageChange('question-logger')} />;
-      case 'calendar':
-        return <CalendarPage onStartQuiz={handleStartQuizFromCalendar} />;
-      default:
-        return (
-          <QuestionLogger
-            questions={questions || []}
-            onAddQuestion={handleAddQuestion}
-            onUpdateQuestion={handleUpdateQuestion}
-            onDeleteQuestion={handleDeleteQuestion}
-          />
-        );
-    }
-  };
+  }, [location.pathname, resumingQuizData]);
 
   return (
-    <div className="h-screen bg-gray-100 overflow-hidden">
-      <SidebarLayout 
-        currentPage={currentPage} 
-        onPageChange={handlePageChange} 
-        onLogout={handleLogout}
-        onAccountClick={handleAccountClick}
-        onProfileClick={handleProfileClick}
-        onHomeClick={handleLogoClick}
-      >
-        {(questionsLoading || allQuizzesLoading) ? (
-          <div className="flex items-center justify-center h-full min-h-0">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-lg text-gray-600">Loading questions...</p>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      
+      <Route path="/home" element={
+        <PublicRoute>
+          <Homepage 
+            onGetStarted={() => navigate('/signup')} 
+            onLogin={() => navigate('/login')} 
+          />
+        </PublicRoute>
+      } />
+      
+      <Route path="/login" element={
+        <PublicRoute>
+          <LoginPage 
+            onLogin={handleLogin} 
+            onSwitchToSignup={() => navigate('/signup')}
+            onBack={() => navigate('/home')} 
+          />
+        </PublicRoute>
+      } />
+      
+      <Route path="/signup" element={
+        <PublicRoute>
+          <SignupPage 
+            onSignup={handleSignup} 
+            onSwitchToLogin={() => navigate('/login')}
+            onBack={() => navigate('/home')} 
+          />
+        </PublicRoute>
+      } />
+
+      {/* Protected Routes */}
+      <Route path="/questions" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="questions" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            {(questionsLoading || allQuizzesLoading) ? (
+              <div className="flex items-center justify-center h-full min-h-0">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg text-gray-600">Loading questions...</p>
+                </div>
+              </div>
+            ) : (
+              <QuestionLogger
+                questions={questions || []}
+                onAddQuestion={handleAddQuestion}
+                onUpdateQuestion={handleUpdateQuestion}
+                onDeleteQuestion={handleDeleteQuestion}
+              />
+            )}
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/selector" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="selector" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            {(questionsLoading || allQuizzesLoading) ? (
+              <div className="flex items-center justify-center h-full min-h-0">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg text-gray-600">Loading questions...</p>
+                </div>
+              </div>
+            ) : (
+              <QuestionSelector
+                questions={questions || []}
+                onStartQuiz={handleStartQuiz}
+                onResumeQuiz={handleResumeQuiz}
+                inProgressQuizzes={inProgressQuizzes || []}
+              />
+            )}
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/quiz" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="quiz" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            <div className="h-screen overflow-hidden">
+              <QuizPage
+                questions={currentQuiz}
+                onBack={() => navigate('/selector')}
+                isResuming={isResumingQuiz}
+                initialQuizData={resumingQuizData}
+              />
             </div>
-          </div>
-        ) : (
-          <div className="h-full min-h-0 overflow-hidden">
-            {renderPageContent()}
-          </div>
-        )}
-      </SidebarLayout>
-    </div>
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/history" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="history" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            {(questionsLoading || allQuizzesLoading) ? (
+              <div className="flex items-center justify-center h-full min-h-0">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg text-gray-600">Loading...</p>
+                </div>
+              </div>
+            ) : (
+              <QuizHistory
+                onBack={() => navigate('/selector')}
+                onResumeQuiz={handleResumeQuiz}
+              />
+            )}
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/analytics" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="analytics" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            {questionsLoading ? (
+              <div className="flex items-center justify-center h-full min-h-0">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg text-gray-600">Loading...</p>
+                </div>
+              </div>
+            ) : (
+              <AnalyticsPage questions={questions || []} />
+            )}
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/calendar" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="calendar" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            <CalendarPage onStartQuiz={handleStartQuizFromCalendar} />
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <SidebarLayout 
+            currentPage="profile" 
+            onPageChange={handlePageChange} 
+            onLogout={handleLogout}
+            onAccountClick={() => navigate('/account')}
+            onProfileClick={() => navigate('/profile')}
+            onHomeClick={handleLogoClick}
+          >
+            <Profile onBack={() => navigate('/questions')} />
+          </SidebarLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/account" element={
+        <ProtectedRoute>
+          <AccountPage onBack={() => navigate('/questions')} />
+        </ProtectedRoute>
+      } />
+
+      {/* Redirect any unknown routes */}
+      <Route path="*" element={<Navigate to={user ? "/questions" : "/home"} replace />} />
+    </Routes>
   );
 }
 

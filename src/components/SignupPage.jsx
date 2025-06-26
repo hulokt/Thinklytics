@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, User, Lock } from 'lucide-react';
+import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, User, Lock, CheckCircle, Mail as MailIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
@@ -15,6 +15,8 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupError, setSignupError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -91,14 +93,166 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
     setSignupError(''); // Clear any previous signup errors
     
     try {
-      await onSignup(formData);
+      const result = await onSignup(formData);
+      
+      // Check if signup was successful but email confirmation is required
+      if (result && result.success) {
+        setUserEmail(formData.email);
+        setEmailSent(true);
+      }
     } catch (error) {
       console.error('Signup error:', error);
-      setSignupError(error.message || 'Signup failed. Please try again.');
+      
+      // Check if this is an email confirmation required error
+      if (error.message && error.message.includes('confirmation link')) {
+        setUserEmail(formData.email);
+        setEmailSent(true);
+      } else {
+        setSignupError(error.message || 'Signup failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Success UI Component
+  const EmailConfirmationSuccess = () => (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-md w-full"
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+        <div className="text-center mb-8">
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
+          >
+            <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+          </motion.div>
+          
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-2xl font-bold text-gray-900 dark:text-white mb-3 transition-colors duration-300"
+          >
+            Check Your Email!
+          </motion.h2>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-gray-600 dark:text-gray-400 transition-colors duration-300"
+          >
+            We've sent a confirmation link to:
+          </motion.p>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+          >
+            <p className="text-blue-700 dark:text-blue-300 font-medium text-sm break-all">
+              {userEmail}
+            </p>
+          </motion.div>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="space-y-4"
+        >
+          <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+            <MailIcon className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-green-700 dark:text-green-300">
+              <p className="font-medium mb-1">Next Steps:</p>
+              <ul className="space-y-1 text-xs">
+                <li>• Check your email inbox (and spam folder)</li>
+                <li>• Click the confirmation link in the email</li>
+                <li>• Return here to sign in to your account</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-3">
+            <button
+              onClick={() => {
+                setEmailSent(false);
+                setSignupError('');
+                setErrors({});
+              }}
+              className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+            >
+              Try Different Email
+            </button>
+            
+            <button
+              onClick={onSwitchToLogin}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-6 text-center"
+        >
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Didn't receive the email? Check your spam folder or contact support.
+          </p>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+
+  // If email was sent, show success UI
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">
+        {/* Header */}
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-lg border-b border-gray-200/50 dark:border-gray-700/50 relative overflow-hidden transition-colors duration-300">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-blue-500 to-indigo-500"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <button
+                onClick={onBack}
+                className="flex items-center space-x-3"
+              >
+                <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Redomind</h1>
+              </button>
+              <button
+                onClick={onBack}
+                className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm font-medium">Back to Home</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <EmailConfirmationSuccess />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">

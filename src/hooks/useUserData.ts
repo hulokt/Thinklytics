@@ -17,6 +17,8 @@ type DataTypeMap = {
   [DATA_TYPES.QUIZ_HISTORY]: any[]
   [DATA_TYPES.IN_PROGRESS_QUIZZES]: any[]
   [DATA_TYPES.QUESTION_ANSWERS]: Record<string, any>
+  [DATA_TYPES.ALL_QUIZZES]: any[] // New unified quiz array
+  [DATA_TYPES.CALENDAR_EVENTS]: any[]
 }
 
 
@@ -57,7 +59,11 @@ export function useUserData<K extends DataType>(
   }
 
   const loadData = useCallback(async (): Promise<void> => {
-    if (!user || isLoadingRef.current || isCircuitBreakerOpen()) return
+    if (!user || isLoadingRef.current || isCircuitBreakerOpen()) {
+      // Ensure we don't leave UI in a perpetual loading state
+      setLoading(false);
+      return;
+    }
     
     // Throttle requests
     const now = Date.now()
@@ -231,6 +237,7 @@ function getDefaultData(dataType: DataType): any {
     case DATA_TYPES.QUESTIONS:
     case DATA_TYPES.QUIZ_HISTORY:
     case DATA_TYPES.IN_PROGRESS_QUIZZES:
+    case DATA_TYPES.ALL_QUIZZES:
       return []
     case DATA_TYPES.QUESTION_ANSWERS:
       return {}
@@ -243,4 +250,6 @@ function getDefaultData(dataType: DataType): any {
 export const useQuestions = () => useUserData(DATA_TYPES.QUESTIONS)
 export const useQuizHistory = () => useUserData(DATA_TYPES.QUIZ_HISTORY)
 export const useInProgressQuizzes = () => useUserData(DATA_TYPES.IN_PROGRESS_QUIZZES)
-export const useQuestionAnswers = () => useUserData(DATA_TYPES.QUESTION_ANSWERS) 
+export const useQuestionAnswers = () => useUserData(DATA_TYPES.QUESTION_ANSWERS)
+export const useAllQuizzes = () => useUserData(DATA_TYPES.ALL_QUIZZES)
+export const useCalendarEvents = () => useUserData(DATA_TYPES.CALENDAR_EVENTS) 

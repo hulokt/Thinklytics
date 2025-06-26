@@ -5,7 +5,9 @@ import {
   BarChart3, 
   ArrowLeft, 
   User,
-  LogOut
+  LogOut,
+  Trophy,
+  Star
 } from 'lucide-react';
 
 export const IconFileText = ({ className, ...props }) => (
@@ -34,4 +36,12 @@ export const IconUser = ({ className, ...props }) => (
 
 export const IconLogout = ({ className, ...props }) => (
   <LogOut className={className} {...props} />
+);
+
+export const IconTrophy = ({ className, ...props }) => (
+  <Trophy className={className} {...props} />
+);
+
+export const IconStar = ({ className, ...props }) => (
+  <Star className={className} {...props} />
 ); 

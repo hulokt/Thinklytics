@@ -4,14 +4,17 @@ import Homepage from './components/Homepage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import AccountPage from './components/AccountPage';
+import Profile from './components/Profile';
 import QuestionLogger from './components/QuestionLogger';
 import QuestionSelector from './components/QuestionSelector';
 import QuizPage from './components/QuizPage';
 import QuizHistory from './components/QuizHistory';
 import AnalyticsPage from './components/AnalyticsPage';
+import CalendarPage from './components/CalendarPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
-import { useQuestions, useInProgressQuizzes } from './hooks/useUserData';
+import { useQuestions, useCalendarEvents } from './hooks/useUserData';
+import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 
 // Main App Component wrapped with Auth Provider and Dark Mode Provider
 function App() {
@@ -39,14 +42,20 @@ function AppContent() {
     loading: questionsLoading 
   } = useQuestions();
   
+  // Use new QuizManager
   const { 
-    data: inProgressQuizzes, 
-    upsertData: upsertInProgressQuizzes, 
-    loading: inProgressLoading 
-  } = useInProgressQuizzes();
+    quizManager, 
+    allQuizzesLoading,
+    inProgressQuizzes 
+  } = useQuizManager();
+
+  // Calendar data (for planned quizzes)
+  const { data: calendarEvents, upsertData: upsertCalendarEvents } = useCalendarEvents();
 
   // Ensure questions is always an array
   const questions = Array.isArray(questionsData) ? questionsData : [];
+
+
 
   // Handle authentication state changes
   useEffect(() => {
@@ -55,23 +64,52 @@ function AppContent() {
       return;
     }
 
+    // Restore last page if exists (only after auth resolved)
+    const savedPage = localStorage.getItem('satlog:lastPage');
+    const savedResumeId = localStorage.getItem('satlog:resumeQuizId');
+
+    if (user && savedResumeId) {
+      // Try resume quiz automatically
+      const idNum = parseInt(savedResumeId, 10);
+      const existing = quizManager?.findQuizById(idNum);
+      if (existing) {
+        setCurrentQuiz(existing.questions);
+        setIsResumingQuiz(true);
+        setResumingQuizData(existing);
+        setCurrentPage('quiz');
+        return;
+      } else {
+        // Clear stale resume id
+        localStorage.removeItem('satlog:resumeQuizId');
+      }
+    }
+
+    if (user && savedPage && savedPage !== 'quiz') {
+      setCurrentPage(savedPage);
+      return;
+    }
+
     if (user) {
       console.log('✅ User authenticated:', user.email);
-      setCurrentPage('question-logger');
+      // If we just authenticated and are on a public page, move to question-logger; otherwise keep current
+      setCurrentPage(prev => {
+        if (['homepage', 'login', 'signup', 'loading'].includes(prev)) {
+          return 'question-logger';
+        }
+        return prev;
+      });
     } else {
       console.log('❌ User not authenticated, checking current page...');
-      // Use a function to get the current page state to ensure we have the latest value
+      // If user momentarily null, avoid kicking the user off an active private page (like quiz)
       setCurrentPage(prevPage => {
-        console.log('🔍 Current page state:', prevPage);
-        // Only redirect to homepage if we're not already on login/signup pages
-        // This prevents redirecting away from login page when login fails
-        if (!['login', 'signup'].includes(prevPage)) {
-          console.log('🔄 Redirecting to homepage from:', prevPage);
-          return 'homepage';
-        } else {
-          console.log('🚫 Staying on current page:', prevPage);
-          return prevPage; // Stay on current page
+        if (['login', 'signup', 'homepage'].includes(prevPage)) {
+          return prevPage; // stay on allowed public pages
         }
+        if (prevPage === 'loading') {
+          return 'homepage';
+        }
+        // Keep current page unchanged to wait for auth recovery
+        return prevPage;
       });
     }
   }, [user, authLoading]);
@@ -83,10 +121,10 @@ function AppContent() {
         questions: questions?.length || 0,
         inProgress: inProgressQuizzes?.length || 0,
         questionsLoading,
-        inProgressLoading
+        allQuizzesLoading
       });
     }
-  }, [user, questions, inProgressQuizzes, questionsLoading, inProgressLoading]);
+  }, [user, questions, inProgressQuizzes, questionsLoading, allQuizzesLoading]);
 
   const handleLogin = async (formData = null) => {
     try {
@@ -216,13 +254,20 @@ function AppContent() {
   const handleSwitchToLogin = () => setCurrentPage('login');
   const handleSwitchToSignup = () => setCurrentPage('signup');
   const handleAccountClick = () => setCurrentPage('account');
+  const handleProfileClick = () => setCurrentPage('profile');
   const handleBackFromAccount = () => setCurrentPage('question-logger');
+  const handleBackFromProfile = () => setCurrentPage('question-logger');
 
   const handleAddQuestion = async (newQuestion) => {
     if (!questions) return;
     
-    const questionWithId = { ...newQuestion, id: Date.now() };
-    const updatedQuestions = [...questions, questionWithId];
+    // Allow newQuestion to be either a single question object or an array of questions
+    const newQuestionsArray = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
+
+    // Map each question to ensure it has a unique id
+    const questionsWithIds = newQuestionsArray.map(q => ({ ...q, id: Date.now() + Math.random() }));
+
+    const updatedQuestions = [...questions, ...questionsWithIds];
     await upsertQuestions(updatedQuestions);
   };
 
@@ -247,6 +292,123 @@ function AppContent() {
     setCurrentPage('quiz');
   };
 
+  const handleStartQuizFromCalendar = async (event) => {
+    try {
+      if (!event) return;
+
+      console.log('📅 Calendar start/resume triggered:', event);
+
+      // --------------------------------------------------
+      // 1) PLANNED QUIZ → Start new in-progress quiz with SAME quizNumber
+      // --------------------------------------------------
+      if (event.status === 'planned') {
+        // Allow start only on the scheduled date (if provided)
+        const plannedDate = event.plannedDate || event.metadata?.plannedDate;
+        if (plannedDate) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const plannedStr = new Date(plannedDate).toISOString().split('T')[0];
+          if (todayStr !== plannedStr) {
+            alert(`This quiz is scheduled for ${new Date(plannedDate).toLocaleDateString()}. You can only start it on that date.`);
+            return;
+          }
+        }
+
+        // Try to locate the existing planned-quiz record first (by id or quizNumber)
+        const eventQuizNumber = event.quizNumber ?? event.metadata?.quizNumber;
+        let plannedRecord = null;
+        if (event.quizId) {
+          plannedRecord = quizManager?.findQuizById(event.quizId);
+        }
+        if (!plannedRecord && eventQuizNumber) {
+          plannedRecord = quizManager?.findQuizByNumber(eventQuizNumber);
+        }
+
+        // If still not found, refresh quizzes once and retry
+        if (!plannedRecord) {
+          await quizManager.refreshQuizzes();
+          if (event.quizId) plannedRecord = quizManager.findQuizById(event.quizId);
+          if (!plannedRecord && eventQuizNumber) plannedRecord = quizManager.findQuizByNumber(eventQuizNumber);
+        }
+
+        const builderTemplate = quizManager.createNewQuiz(event.questions || []);
+
+        // Determine quizNumber we must keep
+        const lockedQuizNumber = plannedRecord?.quizNumber || event.metadata?.quizNumber || event.quizNumber || builderTemplate.quizNumber;
+
+        const inProgressQuiz = {
+          ...(plannedRecord || builderTemplate), // start with existing planned or template
+          ...builderTemplate,                   // ensure we get all fresh builder fields
+          id: plannedRecord ? plannedRecord.id : builderTemplate.id, // keep same id if we had one
+          quizNumber: lockedQuizNumber,         // override numbering
+          status: QUIZ_STATUS.IN_PROGRESS,
+          startTime: new Date().toISOString(),
+          plannedDate: plannedDate || null,
+          lastUpdated: new Date().toISOString()
+        };
+
+        if (plannedRecord) {
+          await quizManager.updateQuiz(plannedRecord.id, inProgressQuiz);
+        } else {
+          await quizManager.addQuiz(inProgressQuiz);
+        }
+
+        // Update the calendar event to reflect its new in-progress status (do NOT delete)
+        const updatedEvents = (calendarEvents || []).map(ev =>
+          ev.id === event.id ? { ...ev, status: 'in-progress' } : ev
+        );
+        await upsertCalendarEvents(updatedEvents);
+
+        // Launch QuizPage (treat as resuming so it uses the quiz record we just saved)
+        setCurrentQuiz(inProgressQuiz.questions);
+        setIsResumingQuiz(true);
+        setResumingQuizData(inProgressQuiz);
+        setCurrentPage('quiz');
+        return;
+      }
+
+      // --------------------------------------------------
+      // 2) IN-PROGRESS QUIZ → Resume existing quiz
+      // --------------------------------------------------
+      if (event.status === 'in-progress') {
+        const eventQuizNumber2 = event.quizNumber ?? event.metadata?.quizNumber;
+        let existingQuiz = null;
+
+        if (event.quizId) existingQuiz = quizManager.findQuizById(event.quizId);
+        if (!existingQuiz && eventQuizNumber2) existingQuiz = quizManager.findQuizByNumber(eventQuizNumber2);
+
+        if (!existingQuiz && event.metadata && event.metadata.questions) {
+          existingQuiz = event.metadata; // Fallback to quiz data embedded in calendar item
+        }
+
+        if (!existingQuiz) {
+          await quizManager.refreshQuizzes();
+          if (event.quizId) existingQuiz = quizManager.findQuizById(event.quizId);
+          if (!existingQuiz && eventQuizNumber2) existingQuiz = quizManager.findQuizByNumber(eventQuizNumber2);
+        }
+
+        if (existingQuiz) {
+          setCurrentQuiz(existingQuiz.questions);
+          setIsResumingQuiz(true);
+          setResumingQuizData(existingQuiz);
+          setCurrentPage('quiz');
+          return;
+        }
+      }
+
+      // --------------------------------------------------
+      // 3) FALLBACK – behave like quick ad-hoc start from builder
+      // --------------------------------------------------
+      console.warn('⚠️ Fallback path triggered for calendar start – treating as ad-hoc quiz');
+      const adHocQuestions = event.questions || [];
+      setCurrentQuiz(adHocQuestions);
+      setIsResumingQuiz(false);
+      setResumingQuizData(null);
+      setCurrentPage('quiz');
+    } catch (err) {
+      console.error('❌ Failed to start calendar quiz:', err);
+    }
+  };
+
   const handleResumeQuiz = (quizData) => {
     setCurrentQuiz(quizData.questions);
     setIsResumingQuiz(true);
@@ -267,6 +429,22 @@ function AppContent() {
     setIsResumingQuiz(false);
     setResumingQuizData(null);
   };
+
+  // Persist current page on change
+  useEffect(() => {
+    if (currentPage && currentPage !== 'loading') {
+      localStorage.setItem('satlog:lastPage', currentPage);
+    }
+  }, [currentPage]);
+
+  // When entering quiz page store resume id, clear on leave/finish
+  useEffect(() => {
+    if (currentPage === 'quiz' && resumingQuizData) {
+      localStorage.setItem('satlog:resumeQuizId', String(resumingQuizData.id));
+    } else if (currentPage !== 'quiz') {
+      localStorage.removeItem('satlog:resumeQuizId');
+    }
+  }, [currentPage, resumingQuizData]);
 
   // Loading screen
   if (currentPage === 'loading') {
@@ -319,6 +497,7 @@ function AppContent() {
         onPageChange={handlePageChange} 
         onLogout={handleLogout}
         onAccountClick={handleAccountClick}
+        onProfileClick={handleProfileClick}
         onHomeClick={handleLogoClick}
       >
         <div className="h-screen overflow-hidden">
@@ -363,6 +542,10 @@ function AppContent() {
         );
       case 'analytics':
         return <AnalyticsPage questions={questions || []} />;
+      case 'profile':
+        return <Profile onBack={() => handlePageChange('question-logger')} />;
+      case 'calendar':
+        return <CalendarPage onStartQuiz={handleStartQuizFromCalendar} />;
       default:
         return (
           <QuestionLogger
@@ -382,17 +565,20 @@ function AppContent() {
         onPageChange={handlePageChange} 
         onLogout={handleLogout}
         onAccountClick={handleAccountClick}
+        onProfileClick={handleProfileClick}
         onHomeClick={handleLogoClick}
       >
-        {(questionsLoading || inProgressLoading) ? (
-          <div className="flex items-center justify-center h-full">
+        {(questionsLoading || allQuizzesLoading) ? (
+          <div className="flex items-center justify-center h-full min-h-0">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
               <p className="text-lg text-gray-600">Loading questions...</p>
             </div>
           </div>
         ) : (
-          renderPageContent()
+          <div className="h-full min-h-0 overflow-hidden">
+            {renderPageContent()}
+          </div>
         )}
       </SidebarLayout>
     </div>

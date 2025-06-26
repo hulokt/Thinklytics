@@ -37,6 +37,24 @@ const AnimatedList = ({
   const [topGradientOpacity, setTopGradientOpacity] = useState(0);
   const [bottomGradientOpacity, setBottomGradientOpacity] = useState(1);
   const [isFocused, setIsFocused] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10); // Start with 10 items on mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Reset visible count when items change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [items]);
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -46,6 +64,18 @@ const AnimatedList = ({
       scrollHeight <= clientHeight ? 0 : Math.min(bottomDistance / 50, 1)
     );
   };
+
+  const loadMoreItems = () => {
+    setVisibleCount(prev => Math.min(prev + 10, items.length));
+  };
+
+  const showAllItems = () => {
+    setVisibleCount(items.length);
+  };
+
+  // Get items to display based on mobile/desktop and visible count
+  const itemsToShow = isMobile ? items.slice(0, visibleCount) : items;
+  const hasMoreItems = isMobile && visibleCount < items.length;
 
   useEffect(() => {
     if (!enableArrowNavigation || !isFocused) return;
@@ -106,7 +136,7 @@ const AnimatedList = ({
         onMouseLeave={() => setIsFocused(false)}
         tabIndex={0}
       >
-        {items.map((item, index) => (
+        {itemsToShow.map((item, index) => (
           <AnimatedItem
             key={index}
             delay={0.1}
@@ -124,6 +154,24 @@ const AnimatedList = ({
             </div>
           </AnimatedItem>
         ))}
+        
+        {/* Load More Button for Mobile */}
+        {hasMoreItems && (
+          <div className="flex flex-col gap-2 mt-4 p-2">
+            <button
+              onClick={loadMoreItems}
+              className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 text-sm"
+            >
+              Load More Questions ({Math.min(10, items.length - visibleCount)} more)
+            </button>
+            <button
+              onClick={showAllItems}
+              className="w-full px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors duration-200 text-xs"
+            >
+              Show All ({items.length} total)
+            </button>
+          </div>
+        )}
       </div>
       {showGradients && (
         <>

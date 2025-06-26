@@ -14,7 +14,7 @@ const InfoTooltip = ({ content, className = '' }) => {
       </button>
       
       {isVisible && (
-        <div className="absolute z-50 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl -top-2 left-6 transform">
+        <div className="absolute z-50 w-60 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl -top-2 left-6 transform">
           <div className="relative">
             {/* Arrow pointing to the icon */}
             <div className="absolute -left-2 top-2 w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-gray-900"></div>

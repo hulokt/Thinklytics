@@ -38,6 +38,24 @@ const AnimatedQuestionList = ({
   const [keyboardNav, setKeyboardNav] = useState(false);
   const [topGradientOpacity, setTopGradientOpacity] = useState(0);
   const [bottomGradientOpacity, setBottomGradientOpacity] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(10); // Start with 10 questions on mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Reset visible count when questions change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [questions]);
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -47,6 +65,18 @@ const AnimatedQuestionList = ({
       scrollHeight <= clientHeight ? 0 : Math.min(bottomDistance / 50, 1)
     );
   };
+
+  const loadMoreQuestions = () => {
+    setVisibleCount(prev => Math.min(prev + 10, questions.length));
+  };
+
+  const showAllQuestions = () => {
+    setVisibleCount(questions.length);
+  };
+
+  // Get questions to display based on mobile/desktop and visible count
+  const questionsToShow = isMobile ? questions.slice(0, visibleCount) : questions;
+  const hasMoreQuestions = isMobile && visibleCount < questions.length;
 
   useEffect(() => {
     if (!enableArrowNavigation) return;
@@ -185,7 +215,25 @@ const AnimatedQuestionList = ({
           scrollbarWidth: displayScrollbar ? 'thin' : 'none'
         }}
       >
-        {questions.map((question, index) => renderQuestion(question, index))}
+        {questionsToShow.map((question, index) => renderQuestion(question, index))}
+        
+        {/* Load More Button for Mobile */}
+        {hasMoreQuestions && (
+          <div className="flex flex-col gap-2 mt-4 p-2">
+            <button
+              onClick={loadMoreQuestions}
+              className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 text-sm"
+            >
+              Load More Questions ({Math.min(10, questions.length - visibleCount)} more)
+            </button>
+            <button
+              onClick={showAllQuestions}
+              className="w-full px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors duration-200 text-xs"
+            >
+              Show All ({questions.length} total)
+            </button>
+          </div>
+        )}
       </div>
       
       {showGradients && (

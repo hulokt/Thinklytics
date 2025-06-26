@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useQuizHistory, useQuestionAnswers } from '../hooks/useUserData';
+import { useQuestionAnswers } from '../hooks/useUserData';
+import { useQuizManager } from './QuizManager';
 import { User, Mail, Calendar, Shield, Edit2, Save, X, ArrowLeft } from 'lucide-react';
 
 const AccountPage = ({ onBack }) => {
   const { user, signOut } = useAuth();
-  const { data: quizHistory } = useQuizHistory();
+  const { completedQuizzes } = useQuizManager();
   const { data: questionAnswers } = useQuestionAnswers();
   
   const [userData, setUserData] = useState({
@@ -34,28 +35,27 @@ const AccountPage = ({ onBack }) => {
 
   // Calculate real statistics
   useEffect(() => {
-    if (quizHistory && questionAnswers !== undefined) {
-      const quizHistoryArray = Array.isArray(quizHistory) ? quizHistory : [];
+    if (completedQuizzes !== undefined && questionAnswers !== undefined) {
+      const completedArray = Array.isArray(completedQuizzes) ? completedQuizzes : [];
       const questionAnswersObj = questionAnswers && typeof questionAnswers === 'object' ? questionAnswers : {};
-      
-      // Count completed quizzes
-      const completedQuizzes = quizHistoryArray.filter(quiz => !quiz.isInProgress);
-      
-      // Calculate average score
-      const avgScore = completedQuizzes.length > 0 
-        ? Math.round(completedQuizzes.reduce((sum, quiz) => sum + (quiz.score || 0), 0) / completedQuizzes.length)
+
+      // Calculate average score from completed quizzes
+      const avgScore = completedArray.length > 0
+        ? Math.round(
+            completedArray.reduce((sum, quiz) => sum + (quiz.score || 0), 0) / completedArray.length
+          )
         : 0;
-      
-      // Count unique questions that have been answered
+
+      // Count questions answered (keys in questionAnswers)
       const questionsAnswered = Object.keys(questionAnswersObj).length;
-      
+
       setStats({
         questionsLogged: questionsAnswered,
-        quizzesCompleted: completedQuizzes.length,
-        averageScore: avgScore
+        quizzesCompleted: completedArray.length,
+        averageScore: avgScore,
       });
     }
-  }, [quizHistory, questionAnswers]);
+  }, [completedQuizzes, questionAnswers]);
 
   const handleEdit = () => {
     setTempData({ ...userData });
@@ -175,15 +175,15 @@ const AccountPage = ({ onBack }) => {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
             
-            <div className="flex items-center space-x-6 relative z-10">
-              <div className="w-24 h-24 bg-gradient-to-br from-white/20 to-white/10 rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm border border-white/20">
-                <User className="w-12 h-12 text-white" />
+            <div className="flex flex-col sm:flex-row items-center sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 relative z-10 text-center sm:text-left">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-white/20 to-white/10 rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm border border-white/20 flex-shrink-0">
+                <User className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
               </div>
-              <div>
-                <h2 className="text-3xl font-bold mb-2">{userData.name}</h2>
-                <p className="text-blue-100 text-lg">{userData.email}</p>
-                <div className="mt-3 inline-flex items-center px-4 py-2 rounded-full text-sm bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-sm border border-white/20 shadow-md">
-                  <Shield className="w-4 h-4 mr-2" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2 truncate">{userData.name}</h2>
+                <p className="text-blue-100 text-base sm:text-lg truncate">{userData.email}</p>
+                <div className="mt-3 inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-sm border border-white/20 shadow-md">
+                  <Shield className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   User Account
                 </div>
               </div>

@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useQuizHistory, useInProgressQuizzes, useQuestionAnswers } from '../hooks/useUserData';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuestionAnswers, useCalendarEvents } from '../hooks/useUserData';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuizManager, QUIZ_STATUS } from './QuizManager';
+import { awardPoints, handleHighScore } from '../lib/userPoints';
+import PointsAnimation from './PointsAnimation';
 
 const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = null }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -14,18 +17,86 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const [startTime, setStartTime] = useState(Date.now());
   const [showReviewPage, setShowReviewPage] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [quizInitialized, setQuizInitialized] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
 
-  // Get user for display name
+  // Use refs to capture current values for cleanup function
+  const quizDataRef = useRef(null);
+  const userAnswersRef = useRef({});
+  const currentQuestionIndexRef = useRef(0);
+  const flaggedQuestionsRef = useRef(new Set());
+  const elapsedTimeRef = useRef(0);
+  const showResultsRef = useRef(false);
+  const isFinishingRef = useRef(false);
+  const hasUnsavedChangesRef = useRef(false);
+
+  // Update refs when state changes
+  useEffect(() => {
+    quizDataRef.current = quizData;
+  }, [quizData]);
+
+  useEffect(() => {
+    userAnswersRef.current = userAnswers;
+  }, [userAnswers]);
+
+  useEffect(() => {
+    currentQuestionIndexRef.current = currentQuestionIndex;
+  }, [currentQuestionIndex]);
+
+  useEffect(() => {
+    flaggedQuestionsRef.current = flaggedQuestions;
+  }, [flaggedQuestions]);
+
+  useEffect(() => {
+    elapsedTimeRef.current = elapsedTime;
+  }, [elapsedTime]);
+
+  useEffect(() => {
+    showResultsRef.current = showResults;
+  }, [showResults]);
+
+  useEffect(() => {
+    isFinishingRef.current = isFinishing;
+  }, [isFinishing]);
+
+  useEffect(() => {
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
+
+  // Get user for display name and points
   const { user } = useAuth();
 
-  // Supabase hooks
-  const { data: quizHistory, upsertData: upsertQuizHistory } = useQuizHistory();
-  const { 
-    data: inProgressQuizzes, 
-    upsertData: upsertInProgressQuizzes, 
-    refreshData: refreshInProgressQuizzes 
-  } = useInProgressQuizzes();
+  // Use new QuizManager
+  const { quizManager, allQuizzesLoading } = useQuizManager();
   const { data: questionAnswers, upsertData: upsertQuestionAnswers } = useQuestionAnswers();
+  const { data: calendarEvents, upsertData: saveCalendarEvents, refreshData: refreshCalendarEvents } = useCalendarEvents();
+
+  // Debug helper to avoid noisy logs elsewhere
+  const dbgQ = (...args) => console.log('[QuizPage]', ...args);
+
+  // Award points and show animation
+  const awardPointsAndAnimate = async (actionType, additionalData = {}) => {
+    if (!user?.id) return;
+    
+    try {
+      const result = await awardPoints(user.id, actionType, additionalData);
+      if (result.success && result.pointsAwarded !== 0) {
+        setPointsAnimation({
+          show: true,
+          points: result.pointsAwarded,
+          action: actionType
+        });
+      }
+    } catch (error) {
+      console.error('Error awarding points:', error);
+    }
+  };
+
+  // Handle points animation completion
+  const handlePointsAnimationComplete = () => {
+    setPointsAnimation({ show: false, points: 0, action: '' });
+  };
 
   // Get user display name
   const getUserDisplayName = () => {
@@ -50,35 +121,47 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return 'User';
   };
 
-  // Initialize start time based on whether resuming or starting new
+  // Initialize start time – paused quizzes resume from stored timeSpent only
   useEffect(() => {
     if (isResuming && initialQuizData) {
-      // Use saved elapsed time if available, otherwise calculate from start time
-      if (initialQuizData.timeSpent !== undefined) {
-        setElapsedTime(initialQuizData.timeSpent);
-        // Set start time to simulate continuous counting from where we left off
-        const now = Date.now();
-        setStartTime(now - (initialQuizData.timeSpent * 1000));
-      } else if (initialQuizData.startTime) {
-        // Fallback to original calculation
-        const originalStartTime = new Date(initialQuizData.startTime).getTime();
-        const now = Date.now();
-        const calculatedElapsed = Math.floor((now - originalStartTime) / 1000);
-        setElapsedTime(calculatedElapsed);
-        setStartTime(originalStartTime);
-      } else {
-        // No timing data available, start fresh
-        const now = Date.now();
-        setStartTime(now);
-        setElapsedTime(0);
-      }
+      const previouslySpent = initialQuizData.timeSpent || 0; // seconds already spent before leaving
+      const now = Date.now();
+      // Treat the quiz as "paused" while user was away: start counting from now
+      setStartTime(now - previouslySpent * 1000);
+      setElapsedTime(previouslySpent);
     } else {
-      // New quiz - start fresh
+      // Fresh quiz starts now
       const now = Date.now();
       setStartTime(now);
       setElapsedTime(0);
     }
   }, [isResuming, initialQuizData]);
+
+  /* ---------------------------------------------
+      🔄  Persist timer – fixes reset on tab switch
+  ----------------------------------------------*/
+  // Load persisted startTime on mount if same quizId
+  useEffect(() => {
+    if (!quizData) return;
+
+    const key = `satlog:quiz:${quizData.id}:startTime`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const storedStart = parseInt(stored, 10);
+      if (!isNaN(storedStart)) {
+        setStartTime(storedStart);
+        const now = Date.now();
+        setElapsedTime(Math.floor((now - storedStart)/1000));
+      }
+    }
+  }, [quizData]);
+
+  // Save startTime whenever it is set
+  useEffect(() => {
+    if (quizData && startTime) {
+      localStorage.setItem(`satlog:quiz:${quizData.id}:startTime`, String(startTime));
+    }
+  }, [quizData, startTime]);
 
   // Timer effect - pause when showing results or component unmounts
   useEffect(() => {
@@ -90,49 +173,61 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       const now = Date.now();
       const calculatedElapsed = Math.floor((now - startTime) / 1000);
       setElapsedTime(calculatedElapsed);
+      // Keep quizData.timeSpent updated for persistence/resume accuracy
+      setQuizData(prev => prev ? { ...prev, timeSpent: calculatedElapsed } : prev);
     }, 1000);
 
     return () => clearInterval(timer);
   }, [startTime, showResults]);
 
-  // Save progress and pause timer when component unmounts (user exits quiz)
+  // Only save when user navigates away (component unmounts)
   useEffect(() => {
     return () => {
       // This cleanup function runs when component unmounts
-      if (quizData && quizData.questions && !showResults) {
+      // Use refs to capture current values without dependencies
+      const currentQuizData = quizDataRef.current;
+      const currentUserAnswers = userAnswersRef.current;
+      const currentQuestionIdx = currentQuestionIndexRef.current;
+      const currentFlaggedQuestions = flaggedQuestionsRef.current;
+      const currentElapsedTime = elapsedTimeRef.current;
+      const currentShowResults = showResultsRef.current;
+      const currentIsFinishing = isFinishingRef.current;
+      
+      // Save if we have quiz data and user has made any progress (answered questions or spent time)
+      const hasProgress = currentQuizData && 
+        currentQuizData.questions && 
+        !currentShowResults && 
+        !currentIsFinishing && 
+        (Object.keys(currentUserAnswers).length > 0 || currentElapsedTime > 0);
+      
+      if (hasProgress) {
+        console.log('🚪 Saving quiz progress on exit...', {
+          quizId: currentQuizData.id,
+          answeredCount: Object.keys(currentUserAnswers).length,
+          timeSpent: currentElapsedTime
+        });
+        
         const updatedQuizData = {
-          ...quizData,
-          userAnswers,
-          currentQuestionIndex,
-          flaggedQuestions: Array.from(flaggedQuestions),
+          ...currentQuizData,
+          userAnswers: currentUserAnswers,
+          currentQuestionIndex: currentQuestionIdx,
+          flaggedQuestions: Array.from(currentFlaggedQuestions),
           lastUpdated: new Date().toISOString(),
-          timeSpent: elapsedTime // Save current elapsed time
+          timeSpent: currentElapsedTime
         };
         
         // Save immediately when unmounting
-        const saveOnExit = async () => {
-          try {
-            const inProgressArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
-            const existingIndex = inProgressArray.findIndex(q => q.id === updatedQuizData.id);
-            
-            let updatedInProgress;
-            if (existingIndex >= 0) {
-              updatedInProgress = [...inProgressArray];
-              updatedInProgress[existingIndex] = updatedQuizData;
-            } else {
-              updatedInProgress = [...inProgressArray, updatedQuizData];
-            }
-            
-            await upsertInProgressQuizzes(updatedInProgress);
-          } catch (error) {
-            console.error('Error saving progress on exit:', error);
-          }
-        };
-        
-        saveOnExit();
+        quizManager.saveQuiz(updatedQuizData).catch(error => {
+          console.error('Error saving progress on exit:', error);
+        });
+
+        // Remove persisted startTime so elapsed clock doesn't keep growing while away
+        if (currentQuizData?.id) {
+          localStorage.removeItem(`satlog:quiz:${currentQuizData.id}:startTime`);
+        }
       }
     };
-  }, [quizData, userAnswers, currentQuestionIndex, flaggedQuestions, elapsedTime, showResults, inProgressQuizzes, upsertInProgressQuizzes]);
+  }, []); // Empty dependency array to prevent re-runs
 
   // Format time as MM:SS
   const formatTime = (seconds) => {
@@ -168,96 +263,95 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return question;
   };
 
+  // Reset quizInitialized when starting a new quiz session
+  useEffect(() => {
+    // Reset initialization state when questions change or resuming state changes
+    setQuizInitialized(false);
+    setHasUnsavedChanges(false); // Reset unsaved changes state
+  }, [questions, isResuming, initialQuizData]);
+
   // Initialize quiz data
   useEffect(() => {
-    if (!questions || questions.length === 0) {
-      console.error('No questions provided to QuizPage');
-      onBack();
+    // Only run if not initialized
+    if (quizInitialized) {
       return;
     }
 
+    // If resuming, we can proceed even if loading (we have the data)
     if (isResuming && initialQuizData) {
+      console.log('🔄 Resuming existing quiz:', {
+        quizId: initialQuizData.id,
+        quizNumber: initialQuizData.quizNumber
+      });
       // Resume existing quiz
       setQuizData(initialQuizData);
       setUserAnswers(initialQuizData.userAnswers || {});
       setCurrentQuestionIndex(initialQuizData.currentQuestionIndex || 0);
       setFlaggedQuestions(new Set(initialQuizData.flaggedQuestions || []));
-    } else {
-      // Start new quiz - normalize all questions
-      const normalizedQuestions = questions.map(normalizeQuestion);
-
-      // Determine next quiz number based on completed and in-progress quizzes
-      const completedCount = Array.isArray(quizHistory) ? quizHistory.length : 0;
-      const inProgressCount = Array.isArray(inProgressQuizzes) ? inProgressQuizzes.length : 0;
-      const nextQuizNumber = completedCount + inProgressCount + 1;
-
-      const newQuizData = {
-        id: Date.now(),
-        questions: normalizedQuestions.map(q => ({ ...q, userAnswer: null, isCorrect: null, flagged: false })),
-        userAnswers: {},
-        currentQuestionIndex: 0,
-        flaggedQuestions: [],
-        categories: {
-          section: normalizedQuestions[0]?.section || 'Mixed',
-          domain: normalizedQuestions[0]?.domain || 'Mixed',
-          questionType: normalizedQuestions[0]?.questionType || 'Mixed'
-        },
-        startTime: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        quizNumber: nextQuizNumber
-      };
-      setQuizData(newQuizData);
+      setQuizInitialized(true);
+      return;
     }
-  }, [questions, isResuming, initialQuizData, onBack]);
 
-  // Auto-save progress with debouncing
-  const saveProgress = useCallback(async () => {
-    if (quizData && quizData.questions) {
-      const updatedQuizData = {
-        ...quizData,
-        userAnswers,
-        currentQuestionIndex,
-        flaggedQuestions: Array.from(flaggedQuestions),
-        lastUpdated: new Date().toISOString()
-      };
+    // For new quizzes, wait for loading to complete
+    if (allQuizzesLoading) {
+      console.log('⏳ Waiting for data to load before initializing quiz...');
+      return;
+    }
+
+    if (!questions || questions.length === 0) {
+      console.error('❌ No questions provided to QuizPage');
+      onBack();
+      return;
+    }
+
+    // Additional safety check: don't initialize if we're finishing or showing results
+    if (isFinishing || showResults) {
+      return;
+    }
+
+    console.log('🆕 Starting new quiz');
+    // Start new quiz - normalize all questions
+    const normalizedQuestions = questions.map(normalizeQuestion);
+
+    // Use QuizManager to create new quiz with proper numbering
+    const newQuizData = quizManager.createNewQuiz(normalizedQuestions);
+    
+    console.log('📦 New quiz data created:', {
+      quizId: newQuizData.id,
+      quizNumber: newQuizData.quizNumber,
+      questionsCount: newQuizData.questions.length,
+      startTime: newQuizData.startTime
+    });
+    
+    setQuizData(newQuizData);
+    setQuizInitialized(true); // Mark as initialized
+  }, [
+    questions,
+    isResuming,
+    initialQuizData,
+    quizInitialized,
+    isFinishing,
+    showResults,
+    onBack,
+    allQuizzesLoading
+    // Removed quizManager from dependencies to prevent infinite loop
+  ]);
+
+  // Track unsaved changes - only when user makes changes from the current state
+  useEffect(() => {
+    if (quizData && Object.keys(userAnswers).length > 0) {
+      // Only set as unsaved if we're not just resuming with existing answers
+      // or if the user has made changes beyond what was already saved
+      const originalAnswers = quizData.userAnswers || {};
+      const hasNewChanges = Object.keys(userAnswers).some(key => 
+        userAnswers[key] !== originalAnswers[key]
+      );
       
-      try {
-        const inProgressArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
-        const existingIndex = inProgressArray.findIndex(q => q.id === updatedQuizData.id);
-        
-        let updatedInProgress;
-        if (existingIndex >= 0) {
-          updatedInProgress = [...inProgressArray];
-          updatedInProgress[existingIndex] = updatedQuizData;
-        } else {
-          updatedInProgress = [...inProgressArray, updatedQuizData];
-        }
-        
-        await upsertInProgressQuizzes(updatedInProgress);
-        await refreshInProgressQuizzes();
-      } catch (error) {
-        console.error('Error saving progress:', error);
+      if (hasNewChanges) {
+        setHasUnsavedChanges(true);
       }
     }
-  }, [quizData, userAnswers, currentQuestionIndex, flaggedQuestions, inProgressQuizzes, upsertInProgressQuizzes, refreshInProgressQuizzes]);
-
-  // Debounced auto-save - only save every 5 seconds or when user navigates
-  useEffect(() => {
-    if (quizData && quizData.questions) {
-      const timer = setTimeout(() => {
-        saveProgress();
-      }, 5000); // Save every 5 seconds instead of immediately
-      
-      return () => clearTimeout(timer);
-    }
-  }, [userAnswers, flaggedQuestions]); // Only trigger on answer/flag changes
-
-  // Save immediately when navigating between questions
-  useEffect(() => {
-    if (quizData && quizData.questions && currentQuestionIndex >= 0) {
-      saveProgress();
-    }
-  }, [currentQuestionIndex]);
+  }, [userAnswers, quizData]);
 
   const currentQuestion = quizData?.questions?.[currentQuestionIndex];
 
@@ -302,6 +396,15 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   const handleFinishQuiz = async () => {
     if (!quizData || !quizData.questions || isFinishing) return;
+    
+    console.log('🏁 ========== FINISH QUIZ START ==========');
+    console.log('📊 Quiz data before finishing:', {
+      quizId: quizData.id,
+      quizNumber: quizData.quizNumber,
+      questionsCount: quizData.questions.length,
+      answeredCount: Object.keys(userAnswers).length
+    });
+    
     setIsFinishing(true);
     try {
       // 1. Sync all answers from userAnswers to quizData.questions and recalculate isCorrect
@@ -328,49 +431,57 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         };
       });
 
-      // 2. Remove the quiz from in-progress storage
-      const inProgressArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
-      const updatedQuizData = {
-        ...quizData,
-        questions: syncedQuestions,
-        userAnswers,
-        flaggedQuestions: Array.from(flaggedQuestions),
-        lastUpdated: new Date().toISOString(),
-        timeSpent: elapsedTime
-      };
-      const remainingInProgress = inProgressArray.filter(q => q.id !== quizData.id);
-      await upsertInProgressQuizzes(remainingInProgress);
-      await refreshInProgressQuizzes();
+      // 2. Use QuizManager to finish the quiz
+      console.log('⏱️ Finishing quiz with elapsed time:', elapsedTime);
+      const completedQuiz = await quizManager.finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime);
+      
+      console.log('✅ Quiz completed successfully:', {
+        quizId: completedQuiz.id,
+        quizNumber: completedQuiz.quizNumber,
+        score: completedQuiz.score
+      });
 
-      // 4. Get current quiz history and deduplicate by id
-      let currentHistoryArray = Array.isArray(quizHistory) ? quizHistory : [];
-      // Remove any existing quiz with the same id
-      currentHistoryArray = currentHistoryArray.filter(q => q.id !== quizData.id);
-      // Add the new completed quiz
-      const correctCount = syncedQuestions.filter(q => q.isCorrect).length;
-      const completedQuiz = {
-        ...quizData,
-        questions: syncedQuestions,
-        endTime: new Date().toISOString(),
-        timeSpent: elapsedTime,
-        score: Math.round((correctCount / syncedQuestions.length) * 100),
-        totalQuestions: syncedQuestions.length,
-        correctAnswers: correctCount,
-        flaggedQuestions: Array.from(flaggedQuestions),
-        isInProgress: false,
-        date: new Date().toISOString(),
-        userAnswers: userAnswers
-      };
-      // Add to history
-      currentHistoryArray.push(completedQuiz);
-      // 5. Renumber all completed quizzes sequentially
-      const renumberedHistory = currentHistoryArray
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .map((quiz, idx) => ({ ...quiz, quizNumber: idx + 1 }));
-      await upsertQuizHistory(renumberedHistory);
+      /* 🌟 Update Calendar Event */
+      try {
+        // 🔄 Refresh calendar events to avoid overwriting newer entries added elsewhere
+        if (typeof refreshCalendarEvents === 'function') {
+          await refreshCalendarEvents();
+          // Small delay to ensure state update completes
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Use the refreshed calendarEvents state 
+        const freshEvents = Array.isArray(calendarEvents) ? [...calendarEvents] : [];
+        let updatedEvents = [...freshEvents];
+        dbgQ('calendar pre-patch length', updatedEvents.length);
+        const idx = updatedEvents.findIndex(ev => ev.quizId === completedQuiz.id);
+        if (idx >= 0) {
+          updatedEvents[idx] = { ...updatedEvents[idx], status: 'completed' };
+        } else {
+          updatedEvents.push({ id: Date.now(), date: completedQuiz.date.split('T')[0], type: 'quiz', status: 'completed', title: `Quiz #${completedQuiz.quizNumber}`, quizId: completedQuiz.id });
+        }
+        dbgQ('calendar post-patch length', updatedEvents.length, 'Snapshot', updatedEvents.map(e=>({id:e.id,status:e.status})));
+        await saveCalendarEvents(updatedEvents);
+        dbgQ('calendar saved');
+      } catch (err) {
+        console.error('Error updating calendar events after quiz completion:', err);
+      }
 
+      // 3. Award points for completing the quiz
+      await awardPointsAndAnimate('COMPLETE_QUIZ', { score: completedQuiz.score });
+      
+      // 4. Award bonus points for high score if applicable
+      if (completedQuiz.score >= 90) {
+        // Increment the local high score counter
+        handleHighScore();
+        
+        // Small delay to show the completion animation first
+        setTimeout(() => {
+          awardPointsAndAnimate('HIGH_SCORE_BONUS', { score: completedQuiz.score });
+        }, 1000);
+      }
 
-      // 6. Update question answers
+      // 5. Update question answers for analytics
       const currentAnswers = questionAnswers || {};
       const updatedAnswers = { ...currentAnswers };
       syncedQuestions.forEach(question => {
@@ -378,9 +489,13 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           if (!updatedAnswers[question.id]) {
             updatedAnswers[question.id] = [];
           }
+          
+          // Remove existing answer for this quiz
           updatedAnswers[question.id] = updatedAnswers[question.id].filter(
             answer => answer.quizId !== completedQuiz.id
           );
+          
+          // Add new answer
           updatedAnswers[question.id].push({
             quizId: completedQuiz.id,
             answer: question.userAnswer,
@@ -389,13 +504,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           });
         }
       });
+      
       await upsertQuestionAnswers(updatedAnswers);
-      // 7. Final check: ensure in-progress quiz is removed from UI and DB
-      await refreshInProgressQuizzes();
-      // 8. Now update UI
+      
+      console.log('🏁 ========== FINISH QUIZ COMPLETED SUCCESSFULLY ==========');
       onBack();
     } catch (error) {
-      console.error('❌ Error finishing quiz:', error);
+      console.error('❌ ========== FINISH QUIZ FAILED ==========');
+      console.error('Error details:', error);
       onBack();
     } finally {
       setIsFinishing(false);
@@ -410,6 +526,58 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     } else {
       return 'gray'; // Not reached
     }
+  };
+
+  // Handle browser close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      const currentQuizData = quizDataRef.current;
+      const currentUserAnswers = userAnswersRef.current;
+      const currentElapsedTime = elapsedTimeRef.current;
+      const currentShowResults = showResultsRef.current;
+      const currentIsFinishing = isFinishingRef.current;
+      
+      // Save if we have quiz data and user has made any progress
+      const hasProgress = currentQuizData && 
+        currentQuizData.questions && 
+        !currentShowResults && 
+        !currentIsFinishing && 
+        (Object.keys(currentUserAnswers).length > 0 || currentElapsedTime > 0);
+      
+      if (hasProgress) {
+        console.log('🌐 Browser closing - saving quiz progress...');
+        
+        const updatedQuizData = {
+          ...currentQuizData,
+          userAnswers: currentUserAnswers,
+          currentQuestionIndex: currentQuestionIndexRef.current,
+          flaggedQuestions: Array.from(flaggedQuestionsRef.current),
+          lastUpdated: new Date().toISOString(),
+          timeSpent: currentElapsedTime
+        };
+        
+        // Use synchronous storage or send a beacon request
+        // For now, we'll just log it since we can't do async operations in beforeunload
+        console.log('📦 Quiz data to save:', updatedQuizData);
+        
+        // Show a warning to the user
+        event.preventDefault();
+        event.returnValue = 'You have unsaved quiz progress. Are you sure you want to leave?';
+        return event.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Helper to always merge and save calendar events safely
+  const mergeAndSaveCalendarEvents = async (newOrUpdatedEvents) => {
+    // Just save the provided array directly - it should already be the complete merged array
+    await saveCalendarEvents(newOrUpdatedEvents);
   };
 
   if (!quizData || !quizData.questions || !currentQuestion) {
@@ -511,63 +679,72 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return (
       <div className="bg-gray-100 dark:bg-gray-900 flex flex-col h-screen overflow-hidden transition-colors duration-300">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex justify-between items-center flex-shrink-0 relative transition-colors duration-300">
-          <div className="flex items-center">
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Section 1: Reading and Writing Module 1</h1>
-              <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center transition-colors duration-300">
-                Directions <span className="material-icons text-sm">arrow_drop_down</span>
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex-shrink-0 relative transition-colors duration-300">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+            {/* Left side - Quiz info */}
+            <div className="flex items-center sm:flex-1">
+              <div>
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Quiz {quizData?.quizNumber ?? 'N/A'}</h1>
+                <button className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center transition-colors duration-300">
+                  Directions <span className="material-icons text-sm">arrow_drop_down</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Center - Timer (on mobile, shows at top-right, on desktop in center) */}
+            <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto sm:flex-1 sm:flex sm:justify-center text-center">
+              <div>
+                <div className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
+                  {formatTime(elapsedTime)}
+                </div>
+                <button
+                  onClick={() => setIsStopwatchHidden(!isStopwatchHidden)}
+                  className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
+                >
+                  {isStopwatchHidden ? 'Show' : 'Hide'}
+                </button>
+              </div>
+            </div>
+            
+            {/* Right side - Tools (hidden on mobile) */}
+            <div className="hidden sm:flex items-center space-x-4 sm:flex-1 sm:justify-end">
+              <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
+                <span className="material-icons mr-1">edit</span> Annotate
+              </button>
+              <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
+                <span className="material-icons mr-1">more_vert</span> More
               </button>
             </div>
-          </div>
-          <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
-            <div className={`text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
-              {formatTime(elapsedTime)}
-            </div>
-            <button 
-              onClick={() => setIsStopwatchHidden(!isStopwatchHidden)}
-              className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
-            >
-              {isStopwatchHidden ? 'Show' : 'Hide'}
-            </button>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-              <span className="material-icons mr-1">edit</span> Annotate
-            </button>
-            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-              <span className="material-icons mr-1">more_vert</span> More
-            </button>
           </div>
         </header>
 
         {/* Review Content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-800 transition-colors duration-300">
           {/* Check Your Work Section */}
-          <div className="text-center py-8">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2 transition-colors duration-300">Check Your Work</h2>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1 transition-colors duration-300">
+          <div className="text-center py-4 sm:py-6 px-3 sm:px-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2 transition-colors duration-300">Check Your Work</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1 transition-colors duration-300">
               On test day, you won't be able to move on to the next module until time expires.
             </p>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 transition-colors duration-300">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6 transition-colors duration-300">
               For these practice questions, you can click <strong>Next</strong> when you're ready to move on.
             </p>
             
             {/* Separation Line */}
-            <div className="w-full border-t border-gray-300 dark:border-gray-600 mb-8 transition-colors duration-300"></div>
+            <div className="w-full border-t border-gray-300 dark:border-gray-600 mb-4 sm:mb-6 transition-colors duration-300"></div>
           </div>
 
           {/* Question Grid Section */}
-          <div className="flex-1 flex justify-center px-8 pb-8">
-            <div className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-6 w-full max-w-4xl transition-colors duration-300">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Section 1: Reading and Writing Module 1</h3>
-                <div className="flex items-center space-x-6">
-                  <div className="flex items-center text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
+          <div className="flex-1 flex justify-center px-3 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            <div className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-6 lg:p-8 w-full max-w-5xl transition-colors duration-300">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Section 1: Reading and Writing Module 1</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                  <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                     <span className="w-3 h-3 border-2 border-dashed border-gray-400 dark:border-gray-500 mr-2 transition-colors duration-300"></span>
                     <span>Unanswered</span>
                   </div>
-                  <div className="flex items-center text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                  <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                     <span className="material-icons text-base mr-1 text-red-500">bookmark</span>
                     <span>For Review</span>
                   </div>
@@ -575,7 +752,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </div>
 
               {/* Progress Bar */}
-              <div className="flex w-full mb-6">
+              <div className="flex w-full mb-4 sm:mb-6">
                 {quizData.questions.map((_, index) => (
                   <div 
                     key={index}
@@ -590,8 +767,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 ))}
                 </div>
                 
-              {/* Question Grid */}
-              <div className="grid grid-cols-10 gap-2 mb-6 justify-items-center">
+              {/* Question Grid - Responsive columns */}
+              <div className="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3 mb-4 sm:mb-6 justify-items-center">
                 {quizData.questions.map((question, index) => {
                   const isAnswered = userAnswers[question.id];
                   const isCurrent = index === currentQuestionIndex;
@@ -604,22 +781,22 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         setCurrentQuestionIndex(index);
                         setShowReviewPage(false);
                       }}
-                      className={`relative p-2 text-center rounded cursor-pointer border-2 transition-all w-12 h-12 flex items-center justify-center ${
+                      className={`relative p-1.5 sm:p-2 text-center rounded cursor-pointer border-2 transition-all w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center ${
                         isAnswered 
                           ? 'bg-blue-500 border-blue-500 text-white' 
                           : 'border-dashed border-gray-400 dark:border-gray-500 text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-600'
                       } ${isCurrent ? 'ring-2 ring-black dark:ring-white' : ''}`}
                     >
-                      <span className="font-medium text-sm">
+                      <span className="font-medium text-xs sm:text-sm">
                         {index + 1}
                       </span>
                       {isCurrent && (
-                        <span className="material-icons absolute -top-6 left-1/2 transform -translate-x-1/2 text-black dark:text-white text-lg transition-colors duration-300">
+                        <span className="material-icons absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-black dark:text-white text-base sm:text-lg transition-colors duration-300">
                           location_on
                         </span>
                       )}
                       {isFlagged && (
-                        <span className="material-icons absolute top-1 right-1 text-red-500 text-xs">
+                        <span className="material-icons absolute top-0.5 sm:top-1 right-0.5 sm:right-1 text-red-500 text-xs">
                           flag
                         </span>
                       )}
@@ -631,34 +808,37 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex justify-between items-center flex-shrink-0 transition-colors duration-300">
-          <div className="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">Welcome, {getUserDisplayName()}</div>
-          <div className="flex items-center space-x-2">
-          <button
+        {/* Bottom Bar - Review Page */}
+        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center flex-shrink-0 transition-colors duration-300 gap-4 sm:gap-0">
+          <div className="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 text-center sm:text-left">
+            Ready to submit your quiz?
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <button
               onClick={() => setShowReviewPage(false)}
-              className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
-          >
-              Back
-          </button>
-          <button
+              className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300 w-full sm:w-auto"
+            >
+              Back to Questions
+            </button>
+            <button
               onClick={handleFinishQuiz}
               disabled={isFinishing}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-8 py-3 rounded-lg text-sm font-medium transition-colors duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto ${
                 isFinishing 
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-green-600 text-white hover:bg-green-700'
               }`}
-          >
+            >
               {isFinishing ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Finishing...</span>
                 </div>
               ) : (
                 'Finish Quiz'
               )}
-          </button>
+            </button>
           </div>
         </div>
 
@@ -671,12 +851,21 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             />
           ))}
         </div>
+
+        {/* Points Animation */}
+        {pointsAnimation.show && (
+          <PointsAnimation
+            pointsAwarded={pointsAnimation.points}
+            actionType={pointsAnimation.action}
+            onComplete={handlePointsAnimationComplete}
+          />
+        )}
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden">
+    <div className="bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden pb-20 sm:pb-0">
       <style>{`
         .progress-bar-segment {
           height: 6px;
@@ -935,66 +1124,78 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       `}</style>
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex justify-between items-center flex-shrink-0 relative transition-colors duration-300">
-        <div className="flex items-center">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Quiz {quizData?.quizNumber ?? 'N/A'}</h1>
-            <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center transition-colors duration-300">
-              Directions <span className="material-icons text-sm">arrow_drop_down</span>
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex-shrink-0 relative transition-colors duration-300">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          {/* Left side - Quiz info */}
+          <div className="flex items-center sm:flex-1">
+            <div>
+              <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Quiz {quizData?.quizNumber ?? 'N/A'}</h1>
+              <button className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center transition-colors duration-300">
+                Directions <span className="material-icons text-sm">arrow_drop_down</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Center - Timer (on mobile, shows at top-right, on desktop in center) */}
+          <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto sm:flex-1 sm:flex sm:justify-center text-center">
+            <div>
+              <div className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
+                {formatTime(elapsedTime)}
+              </div>
+              <button
+                onClick={() => setIsStopwatchHidden(!isStopwatchHidden)}
+                className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
+              >
+                {isStopwatchHidden ? 'Show' : 'Hide'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Right side - Tools (hidden on mobile) */}
+          <div className="hidden sm:flex items-center space-x-4 sm:flex-1 sm:justify-end">
+            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
+              <span className="material-icons mr-1">edit</span> Annotate
             </button>
-
+            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
+              <span className="material-icons mr-1">more_vert</span> More
+            </button>
           </div>
-        </div>
-        <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
-          <div className={`text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
-            {formatTime(elapsedTime)}
-          </div>
-          <button
-            onClick={() => setIsStopwatchHidden(!isStopwatchHidden)}
-            className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
-          >
-            {isStopwatchHidden ? 'Show' : 'Hide'}
-          </button>
-        </div>
-        <div className="flex items-center space-x-4">
-          <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-            <span className="material-icons mr-1">edit</span> Annotate
-          </button>
-          <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-            <span className="material-icons mr-1">more_vert</span> More
-          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left Side - Passage */}
-        <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col">
-          <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <div className="w-full md:w-1/2 p-3 sm:p-4 overflow-y-auto bg-white dark:bg-gray-800 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col">
+          <div className="flex justify-between items-center mb-3 sm:mb-4 flex-shrink-0">
             <p className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300"> </p>
-            <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300">
+            <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
               <span className="material-icons">fullscreen</span>
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <p className="text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-              {currentQuestion.passageText || currentQuestion.questionText}
-            </p>
+            {currentQuestion.passageImage ? (
+              <img src={currentQuestion.passageImage} alt="Passage" className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain" />
+            ) : (
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                {currentQuestion.passageText || currentQuestion.questionText}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Right Side - Question and Options */}
-        <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col">
-          <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <div className="w-full md:w-1/2 p-3 sm:p-4 overflow-y-auto bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 flex-shrink-0 gap-2">
             <div className="flex items-center">
-              <span className="bg-black dark:bg-gray-700 text-white text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
+              <span className="bg-black dark:bg-gray-700 text-white text-xs sm:text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
                 {currentQuestionIndex + 1}
               </span>
               <button 
                 onClick={handleFlagQuestion}
-                className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
               >
-                <span className={`material-icons text-lg mr-1 ${
+                <span className={`material-icons text-base sm:text-lg mr-1 ${
                   flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''
                 }`}>
                   {flaggedQuestions.has(currentQuestion.id) ? 'bookmark' : 'bookmark_border'}
@@ -1005,31 +1206,32 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </button>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300">
+              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
                 <span className="material-icons">zoom_out_map</span>
               </button>
-              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300">
+              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
                 <span className="material-icons">abc</span>
               </button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <p className="text-gray-700 dark:text-gray-300 mb-4 transition-colors duration-300">
+            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 transition-colors duration-300">
               {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
             </p>
-        <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
                 const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                 const isSelected = userAnswers[currentQuestion.id] === option;
                 
                 return (
                   <div 
-              key={index}
-              onClick={() => handleAnswerSelect(option)}
+                    key={index}
+                    onClick={() => handleAnswerSelect(option)}
                     className={`question-option ${isSelected ? 'selected' : ''}`}
+                    style={{ padding: '0.5rem 0.75rem' }}
                   >
-                    <span className="option-letter">{optionLetter}</span>
-                    <span>{option}</span>
+                    <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem' }}>{optionLetter}</span>
+                    <span className="text-sm sm:text-base">{option}</span>
                   </div>
                 );
               })}
@@ -1039,12 +1241,13 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       </div>
 
       {/* Bottom Bar */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex justify-between items-center flex-shrink-0 transition-colors duration-300 relative">
-        <div className="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">Welcome, {getUserDisplayName()}</div>
-        <div className="flex items-center space-x-2 relative">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center flex-shrink-0 transition-colors duration-300 relative gap-3 sm:gap-0">
+        <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 text-center sm:text-left sm:flex-1">Welcome, {getUserDisplayName()}</div>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-0 sm:space-x-2 relative sm:flex-1 sm:justify-center">
           <button 
             onClick={() => setShowQuestionNavigation(!showQuestionNavigation)}
-            className="bg-black dark:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors duration-300"
+            className="bg-black dark:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors duration-300 w-full sm:w-auto"
           >
             Question {currentQuestionIndex + 1} of {quizData.questions.length}
             <span className="material-icons text-sm align-middle">arrow_drop_down</span>
@@ -1053,9 +1256,9 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           {/* Question Navigation Modal - Positioned above the question button */}
           {showQuestionNavigation && (
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-[420px] border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto transition-colors duration-300">
-                <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-lg font-semibold text-gray-800 dark:text-white transition-colors duration-300">Quiz {quizData?.quizNumber ?? 'N/A'}</h1>
+              <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-[300px] sm:w-[420px] border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto transition-colors duration-300">
+                <div className="flex justify-between items-center mb-4 sm:mb-6">
+                  <h1 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white transition-colors duration-300">Quiz {quizData?.quizNumber ?? 'N/A'}</h1>
                   <button 
                     onClick={() => setShowQuestionNavigation(false)}
                     className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300"
@@ -1064,7 +1267,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 mb-6 pb-4 border-b border-gray-300 dark:border-gray-600 transition-colors duration-300 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 pb-4 border-b border-gray-300 dark:border-gray-600 transition-colors duration-300 text-xs">
                   <div className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
                     <span className="material-icons text-base mr-2 text-blue-600">location_on</span>
                     <span>Current</span>
@@ -1079,7 +1282,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-8 gap-1 mb-6 p-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-1 mb-4 sm:mb-6 p-2">
                   {quizData.questions.map((question, index) => {
                     const isAnswered = userAnswers[question.id];
                     const isCurrent = index === currentQuestionIndex;
@@ -1092,9 +1295,13 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         className={`question-box cursor-pointer ${
                           isCurrent ? 'current' : ''
                         } ${isAnswered ? 'answered' : ''} ${isFlagged ? 'flagged' : ''}`}
-                        style={{ transition: 'none' }}
+                        style={{ 
+                          transition: 'none',
+                          minHeight: '32px',
+                          fontSize: '12px'
+                        }}
                       >
-                        <span className={`font-medium text-sm ${
+                        <span className={`font-medium text-xs ${
                           isAnswered ? 'text-white dark:text-gray-800' : 
                           isCurrent ? 'text-white' : 
                           'text-gray-600 dark:text-gray-300'
@@ -1111,23 +1318,25 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                     setShowQuestionNavigation(false);
                     setShowReviewPage(true);
                   }}
-                  className="w-full py-2 px-3 bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out text-sm"
+                  className="w-full py-2 px-3 bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out text-xs sm:text-sm"
                 >
                   Go to Review Page
                 </button>
               </div>
             </div>
           )}
+          
         </div>
-        <div className="flex items-center space-x-2">
-        <button
+        
+        <div className="flex items-center space-x-2 w-full sm:w-auto sm:flex-1 sm:justify-end">
+          <button
             onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-          disabled={currentQuestionIndex === 0}
-            className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
-        >
+            disabled={currentQuestionIndex === 0}
+            className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300 flex-1 sm:flex-initial"
+          >
             Back
-        </button>
-            <button
+          </button>
+          <button
             onClick={() => {
               if (currentQuestionIndex === quizData.questions.length - 1) {
                 setShowReviewPage(true);
@@ -1135,10 +1344,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 setCurrentQuestionIndex(currentQuestionIndex + 1);
               }
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-300"
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors duration-300 flex-1 sm:flex-initial"
           >
             Next
-            </button>
+          </button>
         </div>
       </div>
 
@@ -1151,6 +1360,15 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           />
         ))}
       </div>
+
+      {/* Points Animation */}
+      {pointsAnimation.show && (
+        <PointsAnimation
+          pointsAwarded={pointsAnimation.points}
+          actionType={pointsAnimation.action}
+          onComplete={handlePointsAnimationComplete}
+        />
+      )}
     </div>
   );
 };

@@ -22,8 +22,14 @@ export function ModalProvider({ children }) {
   );
 }
 
-export const Modal = ({ children }) => {
-  return <ModalProvider>{children}</ModalProvider>;
+export const Modal = ({ children, className = "" }) => {
+  return (
+    <ModalProvider>
+      <ModalBody className={className}>
+        {children}
+      </ModalBody>
+    </ModalProvider>
+  );
 };
 
 export const ModalTrigger = ({ children, className }) => {
@@ -38,7 +44,7 @@ export const ModalTrigger = ({ children, className }) => {
   );
 };
 
-export const ModalBody = ({ children, className }) => {
+export const ModalBody = ({ children, className = "" }) => {
   const { open, setOpen } = useModal();
 
   useEffect(() => {
@@ -63,46 +69,34 @@ export const ModalBody = ({ children, className }) => {
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: 1,
-            backdropFilter: "blur(10px)",
-          }}
-          exit={{
-            opacity: 0,
-            backdropFilter: "blur(0px)",
-          }}
-          className="fixed [perspective:800px] [transform-style:preserve-3d] inset-0 h-full w-full flex items-center justify-center z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backdropFilter: 'blur(8px)' }}
         >
-          <Overlay />
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setOpen(false)}
+          />
 
+          {/* Modal Content */}
           <motion.div
             ref={ref}
-            className={`min-h-[50%] max-h-[90%] md:max-w-[40%] bg-white dark:bg-neutral-950 border border-transparent dark:border-neutral-800 md:rounded-2xl relative z-50 flex flex-col flex-1 overflow-hidden ${className}`}
-            initial={{
-              opacity: 0,
-              scale: 0.5,
-              rotateX: 40,
-              y: 40,
-            }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              rotateX: 0,
-              y: 0,
-            }}
-            exit={{
-              opacity: 0,
-              scale: 0.8,
-              rotateX: 10,
-            }}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{
               type: "spring",
-              stiffness: 260,
-              damping: 15,
+              stiffness: 300,
+              damping: 30,
             }}
+            className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full max-h-[90vh] overflow-hidden ${className}`}
+            onClick={(e) => e.stopPropagation()}
           >
             <CloseIcon />
             {children}
@@ -115,7 +109,7 @@ export const ModalBody = ({ children, className }) => {
 
 export const ModalContent = ({ children, className }) => {
   return (
-    <div className={`flex flex-col flex-1 p-8 md:p-10 ${className}`}>
+    <div className={`flex flex-col flex-1 p-6 ${className}`}>
       {children}
     </div>
   );
@@ -123,28 +117,9 @@ export const ModalContent = ({ children, className }) => {
 
 export const ModalFooter = ({ children, className }) => {
   return (
-    <div className={`flex justify-end p-4 bg-gray-100 dark:bg-neutral-900 ${className}`}>
+    <div className={`flex justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-600 ${className}`}>
       {children}
     </div>
-  );
-};
-
-const Overlay = ({ className }) => {
-  return (
-    <motion.div
-      initial={{
-        opacity: 0,
-      }}
-      animate={{
-        opacity: 1,
-        backdropFilter: "blur(10px)",
-      }}
-      exit={{
-        opacity: 0,
-        backdropFilter: "blur(0px)",
-      }}
-      className={`fixed inset-0 h-full w-full bg-black bg-opacity-50 z-50 ${className}`}
-    ></motion.div>
   );
 };
 
@@ -153,9 +128,9 @@ const CloseIcon = () => {
   return (
     <button
       onClick={() => setOpen(false)}
-      className="absolute top-4 right-4 group"
+      className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 group z-10"
     >
-      <X className="h-4 w-4 text-black dark:text-white group-hover:scale-125 group-hover:rotate-3 transition duration-200" />
+      <X className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-200" />
     </button>
   );
 }; 

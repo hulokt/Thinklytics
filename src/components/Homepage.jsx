@@ -41,7 +41,7 @@ const Homepage = ({ onGetStarted, onLogin }) => {
       <Navbar onGetStarted={onGetStarted} onLogin={onLogin} />
 
       {/* Hero Section */}
-      <section className="relative w-full flex flex-col items-center justify-center overflow-hidden py-24 sm:py-32 md:py-40">
+      <section className="relative w-full flex flex-col items-center justify-center overflow-hidden pt-36 sm:pt-40 md:pt-48 pb-24 sm:pb-32 md:pb-40">
         <div className="absolute inset-0 h-full w-full [background-image:linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="absolute pointer-events-none inset-0 flex items-center justify-center [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
         <div className="relative z-10 text-center px-4">

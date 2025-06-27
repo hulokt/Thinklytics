@@ -54,19 +54,19 @@ const Navbar = ({ onGetStarted, onLogin }) => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-24 sm:h-28">
           {/* Logo - Clickable */}
           <div 
-            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
             onClick={scrollToTop}
           >
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">R</span>
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg sm:text-xl">R</span>
             </div>
-            <span className="text-gray-900 dark:text-white text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-gray-900 dark:text-white text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               RedoMind
             </span>
           </div>
@@ -115,19 +115,18 @@ const Navbar = ({ onGetStarted, onLogin }) => {
           <div className="md:hidden">
             <Button
               variant="ghost"
-              size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white w-14 h-14 flex items-center justify-center"
             >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMobileMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-white/10 animate-fade-in">
-            <div className="flex flex-col space-y-4">
+          <div className="md:hidden py-8 border-t border-gray-200 dark:border-white/10 animate-fade-in bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+            <div className="flex flex-col space-y-8">
               {navItems.map((item) => (
                 <a
                   key={item.name}
@@ -139,33 +138,30 @@ const Navbar = ({ onGetStarted, onLogin }) => {
                     }
                     setIsMobileMenuOpen(false);
                   }}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 px-2 py-1 cursor-pointer"
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 px-4 py-4 text-xl font-medium cursor-pointer rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"
                 >
                   {item.name}
                 </a>
               ))}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-white/10">
+              <div className="flex items-center justify-between pt-8 border-t border-gray-200 dark:border-white/10">
                 <Button
                   variant="ghost"
-                  size="icon"
                   onClick={toggleDarkMode}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10"
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 w-16 h-16 flex items-center justify-center"
                 >
-                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {isDarkMode ? <Sun className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
                 </Button>
-                <div className="flex space-x-2">
+                <div className="flex space-x-4">
                   <Button 
                     variant="outline" 
-                    size="sm" 
                     onClick={onLogin}
-                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 text-lg font-medium"
                   >
                     Sign In
                   </Button>
                   <Button 
-                    size="sm" 
                     onClick={onGetStarted}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 text-lg font-medium"
                   >
                     Get Started
                   </Button>

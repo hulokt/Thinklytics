@@ -26,6 +26,17 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Debug logging
+  console.log('🏠 SidebarLayout rendered with props:', {
+    currentPage,
+    onPageChange: typeof onPageChange,
+    onLogout: typeof onLogout,
+    onAccountClick: typeof onAccountClick,
+    onProfileClick: typeof onProfileClick,
+    onHomeClick: typeof onHomeClick,
+    onHomeClickValue: onHomeClick
+  });
+
   useEffect(() => {
     const loadUserData = () => {
       if (user) {
@@ -88,7 +99,20 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
         <Sidebar open={open} setOpen={setOpen}>
           <SidebarBody className="justify-between gap-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-              {open ? <Logo onHomeClick={onHomeClick} /> : <LogoIcon onHomeClick={onHomeClick} />}
+              {(() => {
+                console.log('🏠 Sidebar state - open:', open);
+                if (open) {
+                  console.log('🏠 Rendering Logo component');
+                  return <Logo onHomeClick={onHomeClick} closeSidebar={() => {
+                      if (window.innerWidth < 768) setOpen(false);
+                  }} />;
+                } else {
+                  console.log('🏠 Rendering LogoIcon component');
+                  return <LogoIcon onHomeClick={onHomeClick} closeSidebar={() => {
+                      if (window.innerWidth < 768) setOpen(false);
+                  }} />;
+                }
+              })()}
               <div className="mt-8 flex flex-col gap-2">
                 {links.map((link, idx) => (
                   <button
@@ -233,14 +257,13 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   );
 }
 
-export const Logo = ({ onHomeClick }) => {
+export const Logo = ({ onHomeClick, closeSidebar }) => {
+  const navigate = useNavigate();
+  
   const handleClick = () => {
-    console.log('🏠 Logo (expanded) clicked! Calling onHomeClick...');
-    if (onHomeClick) {
-      onHomeClick();
-    } else {
-      console.error('🏠 onHomeClick is not defined!');
-    }
+    console.log('🏠 Logo clicked - go to home');
+    if (onHomeClick) onHomeClick();
+    if (closeSidebar) closeSidebar();
   };
 
   return (
@@ -249,9 +272,9 @@ export const Logo = ({ onHomeClick }) => {
       className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
       <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg">
-        <div className="h-6 w-6 bg-white rounded-lg flex items-center justify-center">
-          <div className="h-3 w-3 bg-blue-600 rounded-sm"></div>
-        </div>
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
       </div>
       <motion.div
         initial={{ opacity: 0 }}
@@ -269,14 +292,13 @@ export const Logo = ({ onHomeClick }) => {
   );
 };
 
-export const LogoIcon = ({ onHomeClick }) => {
+export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
+  const navigate = useNavigate();
+  
   const handleClick = () => {
-    console.log('🏠 LogoIcon (collapsed) clicked! Calling onHomeClick...');
-    if (onHomeClick) {
-      onHomeClick();
-    } else {
-      console.error('🏠 onHomeClick is not defined!');
-    }
+    console.log('�� LogoIcon clicked - go to home');
+    if (onHomeClick) onHomeClick();
+    if (closeSidebar) closeSidebar();
   };
 
   return (
@@ -285,9 +307,9 @@ export const LogoIcon = ({ onHomeClick }) => {
       className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
       <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg">
-        <div className="h-6 w-6 bg-white rounded-lg flex items-center justify-center">
-          <div className="h-3 w-3 bg-blue-600 rounded-sm"></div>
-        </div>
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
       </div>
     </button>
   );

@@ -563,12 +563,19 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                           )}
                         </div>
                       </div>
-                      {/* Passage image or text */}
-                      {question.passageImage ? (
-                        <img src={question.passageImage} alt="Passage" className="max-h-48 rounded shadow border mb-2 mx-auto" />
-                      ) : question.passageText ? (
-                        <p className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">{question.passageText}</p>
-                      ) : null}
+                      {/* Passage image and/or text - show image first if present */}
+                      {question.passageImage && (
+                        <img
+                          src={question.passageImage}
+                          alt="Passage"
+                          className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
+                        />
+                      )}
+                      {question.passageText && (
+                        <p className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">
+                          {question.passageText}
+                        </p>
+                      )}
                       <p className="text-gray-900 dark:text-white mb-3 transition-colors duration-300">{question.questionText}</p>
                       
                       <div className="space-y-2 mb-3">

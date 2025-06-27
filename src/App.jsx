@@ -20,10 +20,19 @@ import { supabase } from './lib/supabaseClient';
 
 // Main App Component wrapped with Auth Provider and Dark Mode Provider
 function App() {
+  const isProd = import.meta.env.PROD;
+  const basename = isProd ? "/SatLog" : "/";
+  
+  console.log('🏠 App component - Environment:', {
+    isProd,
+    basename,
+    env: import.meta.env
+  });
+  
   return (
     <DarkModeProvider>
       <AuthProvider>
-        <Router basename="/SatLog">
+        <Router basename={basename}>
           <AppContent />
         </Router>
       </AuthProvider>
@@ -215,8 +224,10 @@ function AppContent() {
   useEffect(() => {
     const savedResumeId = localStorage.getItem('satlog:resumeQuizId');
 
-    if (user && savedResumeId) {
-      // Try resume quiz automatically
+    // Only attempt auto-resume if we are on the public home page (fresh load) or root
+    const atHome = location.pathname === '/home' || location.pathname === '/';
+
+    if (user && savedResumeId && atHome) {
       const idNum = parseInt(savedResumeId, 10);
       const existing = quizManager?.findQuizById(idNum);
       if (existing) {
@@ -226,11 +237,10 @@ function AppContent() {
         navigate('/quiz');
         return;
       } else {
-        // Clear stale resume id
         localStorage.removeItem('satlog:resumeQuizId');
       }
     }
-  }, [user, quizManager, navigate]);
+  }, [user, quizManager, location.pathname, navigate]);
 
   // Log data loading status
   useEffect(() => {
@@ -419,7 +429,7 @@ function AppContent() {
         }
 
         const updatedEvents = (calendarEvents || []).map(ev =>
-          ev.id === event.id ? { ...ev, status: 'in-progress' } : ev
+          ev.id === event.id ? { ...ev, status: 'in-progress', quizId: inProgressQuiz.id } : ev
         );
         await upsertCalendarEvents(updatedEvents);
 
@@ -489,11 +499,21 @@ function AppContent() {
   };
 
   const handleLogoClick = () => {
-    if (user) {
-      navigate('/questions');
-    } else {
-      navigate('/home');
-    }
+    console.log('🏠 handleLogoClick called!');
+    console.log('🏠 Current user:', user);
+    console.log('🏠 Current location:', location.pathname);
+    
+    // Clear quiz state
+    console.log('🏠 Clearing quiz state...');
+    setCurrentQuiz(null);
+    setIsResumingQuiz(false);
+    setResumingQuizData(null);
+    localStorage.removeItem('satlog:resumeQuizId');
+    
+    console.log('🏠 Navigating to /home (Homepage)');
+    navigate('/home');
+    
+    console.log('🏠 handleLogoClick completed');
   };
 
   // When entering quiz page store resume id, clear on leave/finish
@@ -603,25 +623,23 @@ function AppContent() {
 
       <Route path="/quiz" element={
         <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="quiz" 
-            onPageChange={handlePageChange} 
+          <SidebarLayout
+            currentPage="quiz"
+            onPageChange={handlePageChange}
             onLogout={handleLogout}
             onAccountClick={() => navigate('/account')}
             onProfileClick={() => navigate('/profile')}
             onHomeClick={handleLogoClick}
           >
-            <div className="h-screen overflow-hidden">
-              <QuizPage
-                questions={currentQuiz}
-                onBack={() => {
-                  clearQuizState();
-                  navigate('/selector');
-                }}
-                isResuming={isResumingQuiz}
-                initialQuizData={resumingQuizData}
-              />
-            </div>
+            <QuizPage
+              questions={currentQuiz}
+              onBack={() => {
+                clearQuizState();
+                navigate('/selector');
+              }}
+              isResuming={isResumingQuiz}
+              initialQuizData={resumingQuizData}
+            />
           </SidebarLayout>
         </ProtectedRoute>
       } />

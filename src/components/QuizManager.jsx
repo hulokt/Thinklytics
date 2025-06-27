@@ -168,14 +168,8 @@ export class QuizManager {
       score
     });
 
-    // 🚧 Sanitize questions to avoid oversized JSON (strip large base64 images)
-    const MAX_IMAGE_CHARS = 4000; // keep small preview only
-    const sanitizedQuestions = syncedQuestions.map(q => {
-      if (q.passageImage && q.passageImage.length > MAX_IMAGE_CHARS) {
-        return { ...q, passageImage: q.passageImage.slice(0, MAX_IMAGE_CHARS) + '/*truncated*/' };
-      }
-      return q;
-    });
+    // Keep full image data for completed quizzes - storage limits should be handled at the database level
+    const sanitizedQuestions = syncedQuestions.map(q => ({ ...q }));
 
     const completedQuiz = {
       ...quizData,

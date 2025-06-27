@@ -1,3 +1,4 @@
+import React from "react";
 import { cn } from "../../lib/utils";
 
 export const BentoGrid = ({
@@ -26,7 +27,7 @@ export const BentoGridItem = ({
   return (
     <div
       className={cn(
-        "row-span-1 rounded-xl group/bento hover:shadow-xl transition duration-200 shadow-input dark:shadow-none p-4 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 justify-between flex flex-col space-y-4 relative overflow-hidden",
+        "row-span-1 rounded-xl group/bento hover:shadow-xl transition duration-200 shadow-input dark:shadow-none p-4 bg-gray-50 dark:bg-white/5 backdrop-blur-sm border border-gray-100 dark:border-white/10 justify-between flex flex-col space-y-4 relative overflow-hidden",
         className
       )}
     >

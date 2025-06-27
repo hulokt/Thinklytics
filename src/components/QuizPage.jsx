@@ -534,9 +534,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       // Clear any stored resume data
       localStorage.removeItem('satlog:resumeQuizId');
       
-      // Show success message
-      alert(`Quiz completed successfully! Your score: ${completedQuiz.score}%`);
-      
       // Log the final quiz state for debugging
       console.log('📊 Final completed quiz state:', {
         id: completedQuiz.id,
@@ -1228,11 +1225,22 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {currentQuestion.passageImage ? (
-              <img src={currentQuestion.passageImage} alt="Passage" className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain" />
-            ) : (
+            {/* Allow both passage image and text. Always display image first if present */}
+            {currentQuestion.passageImage && (
+              <img
+                src={currentQuestion.passageImage}
+                alt="Passage"
+                className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
+              />
+            )}
+            {currentQuestion.passageText && (
               <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                {currentQuestion.passageText || currentQuestion.questionText}
+                {currentQuestion.passageText}
+              </p>
+            )}
+            {!currentQuestion.passageText && !currentQuestion.passageImage && (
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                {currentQuestion.questionText}
               </p>
             )}
           </div>

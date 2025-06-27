@@ -586,6 +586,76 @@ const CalendarPage = ({ onStartQuiz }) => {
     }
   };
 
+  // Unified delete handler that routes to appropriate deletion logic
+  const handleDeleteEvent = async (event) => {
+    try {
+      console.log('🗑️ Attempting to delete event:', event);
+      
+      // Determine event source and route to appropriate handler
+      const eventId = String(event.id || '');
+      
+      if (eventId.startsWith('completed-') || eventId.startsWith('inprogress-')) {
+        // This is a QuizManager-sourced event
+        console.log('🗑️ Deleting QuizManager event with quizId:', event.quizId);
+        
+        if (!quizManager || !event.quizId) {
+          throw new Error('QuizManager or quizId not available for QuizManager event');
+        }
+        
+        const deleteResult = await quizManager.deleteQuiz(event.quizId);
+        if (!deleteResult) {
+          throw new Error('Failed to delete from QuizManager');
+        }
+        
+        // Also remove any calendar event that still references this quizId (e.g. the original planned event)
+        const updatedEvents = (calendarEvents || []).filter(e => e.quizId !== event.quizId);
+        if (updatedEvents.length !== (calendarEvents || []).length) {
+          console.log('🗑️ Removed matching calendar event(s) linked to quizId', event.quizId);
+          await mergeAndSaveCalendarEvents(updatedEvents);
+        }
+        
+        setToastMessage('Quiz deleted successfully');
+      } else if (event.type === 'custom') {
+        // This is a custom calendar event
+        console.log('🗑️ Deleting custom calendar event with id:', event.id);
+        
+        const updatedEvents = (calendarEvents || []).filter(e => e.id !== event.id);
+        await mergeAndSaveCalendarEvents(updatedEvents);
+        
+        setToastMessage('Event deleted successfully');
+      } else {
+        // This is a planned quiz calendar event
+        console.log('🗑️ Deleting planned quiz calendar event with id:', event.id);
+        
+        // Delete from QuizManager if quizId exists
+        if (quizManager && event.quizId) {
+          console.log('🗑️ Also deleting corresponding QuizManager record with quizId:', event.quizId);
+          await quizManager.deleteQuiz(event.quizId);
+        }
+        
+        // Remove from calendar events
+        const updatedEvents = (calendarEvents || []).filter(e => e.id !== event.id);
+        await mergeAndSaveCalendarEvents(updatedEvents);
+        
+        setToastMessage('Quiz deleted successfully');
+      }
+      
+      setToastType('success');
+      setShowToast(true);
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('❌ Error deleting event:', error);
+      setToastMessage(`Failed to delete: ${error.message}`);
+      setToastType('error');
+      setShowToast(true);
+      
+      // Auto-hide error toast after 5 seconds
+      setTimeout(() => setShowToast(false), 5000);
+    }
+  };
+
   const handleDeleteQuiz = async (quiz) => {
     try {
       console.log('🗑️ Attempting to delete quiz:', quiz);
@@ -1123,7 +1193,7 @@ const CalendarPage = ({ onStartQuiz }) => {
                                         )}
                                         
                                         <button
-                                          onClick={() => handleDeleteQuiz(event)}
+                                          onClick={() => handleDeleteEvent(event)}
                                           className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
                                           title="Delete this quiz"
                                         >
@@ -1162,7 +1232,7 @@ const CalendarPage = ({ onStartQuiz }) => {
                                       </div>
                                       
                                       <button
-                                        onClick={() => handleDeleteCustomEvent(event)}
+                                        onClick={() => handleDeleteEvent(event)}
                                         className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
                                         title="Delete"
                                       >

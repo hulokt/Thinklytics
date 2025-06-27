@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/SatLog/',
+  base: process.env.NODE_ENV === 'production' ? '/SatLog/' : '/',
   server: {
     port: 5173,
     strictPort: false,

@@ -1,0 +1,17 @@
+{
+  "name": "SAT Master Log",
+  "short_name": "SAT Log",
+  "description": "A modern SAT practice quiz application with cloud-based data storage",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+} 

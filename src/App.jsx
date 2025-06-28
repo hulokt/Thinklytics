@@ -349,8 +349,42 @@ function AppContent() {
   const handleAddQuestion = async (newQuestion) => {
     if (!questions) return;
     
-    const newQuestionsArray = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
-    const questionsWithIds = newQuestionsArray.map(q => ({ ...q, id: Date.now() + Math.random() }));
+    // Always treat incoming data as an array
+    const incoming = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
+
+    // Helper to decide if two questions are the same (ignores id & timestamps)
+    const isSameQuestion = (a, b) => {
+      return (
+        (a.section || "") === (b.section || "") &&
+        (a.domain || "") === (b.domain || "") &&
+        (a.questionType || "") === (b.questionType || "") &&
+        (a.passageText || "") === (b.passageText || "") &&
+        (a.questionText || "") === (b.questionText || "")
+      );
+    };
+
+    // Build a list of unique incoming questions (dedupe within the batch)
+    const dedupedIncoming = [];
+    incoming.forEach((inc) => {
+      const alreadySeen = dedupedIncoming.some((dq) => isSameQuestion(dq, inc));
+      const alreadyInBank = questions.some((q) => isSameQuestion(q, inc));
+      if (!alreadySeen && !alreadyInBank) {
+        dedupedIncoming.push(inc);
+      }
+    });
+
+    // If everything is duplicated, simply exit
+    if (dedupedIncoming.length === 0) {
+      return;
+    }
+
+    // Assign fresh ids
+    const questionsWithIds = dedupedIncoming.map((q) => ({
+      ...q,
+      id: Date.now() + Math.random(),
+    }));
+
+    // Merge and save
     const updatedQuestions = [...questions, ...questionsWithIds];
     await upsertQuestions(updatedQuestions);
   };

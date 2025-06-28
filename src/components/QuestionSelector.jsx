@@ -641,170 +641,353 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       alert('No questions selected!');
       return;
     }
+
     setIsExporting(true);
     setExportSuccess(false);
+
     try {
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - margin * 2;
-      let currentY = margin;
-      const FONT = 'helvetica';
-      const TEXT_COLOR = '#374151';
-      const HEADER_COLOR = '#111827';
-      const BORDER_COLOR = '#E5E7EB';
-      const ANSWER_CHOICE_FILL = '#FFFFFF';
-      pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(22);
-      pdf.setTextColor(HEADER_COLOR);
-      pdf.text('Your SAT Question Bank', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 15;
-      const loadImage = (src) => new Promise((resolve, reject) => {
-        const img = new window.Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
+      // --- PAGE & LAYOUT CONSTANTS ---
+      const inch = 25.4;
+      const pageWidth = 8.5 * inch;
+      const pageHeight = 11 * inch;
+      const marginX = 0.75 * inch;
+      const marginY = 1 * inch;
+      const gutter = 0.5 * inch;
+      const colWidth = 3.5 * inch;
+      const contentWidth = pageWidth - 2 * marginX;
+      const contentHeight = pageHeight - 2 * marginY;
+      const questionBoxSize = 0.25 * inch; // smaller number box
+      const grayBarHeight = questionBoxSize;
+      const dividerX = marginX + colWidth + gutter / 2;
+      const answerIndent = 0.25 * inch;
+      const questionSpacing = 0.5 * inch;
+      const directionsBoxPadY = 0.25 * inch;
+      const directionsBoxPadX = 0.5 * inch;
+
+      // --- FONTS & COLORS ---
+      const COLORS = {
+        black: '#000000',
+        white: '#FFFFFF',
+        blue: '#2563eb',
+        indigo: '#4f46e5',
+        gray: '#d1d5db',
+        grayLight: '#e5e7eb', // slightly darker for header bar
+        grayBar: '#e5e7eb',
+        text: '#111827',
+        subtitleBorder: '#60a5fa',
+        underline: '#1e3a8a',
+        directionsBox: '#000',
+        directionsText: '#fff',
+        divider: '#d1d5db',
+        code: '#6b7280',
+      };
+      const FONTS = {
+        inter: 'helvetica',
+        noto: 'helvetica',
+        georgia: 'times',
+        serif: 'times',
+      };
+
+      // --- PDF INIT ---
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pageWidth, pageHeight],
       });
-      for (let i = 0; i < selected.length; i++) {
-        const question = selected[i];
-        let questionElements = [];
-        questionElements.push({ type: 'header', height: 12 });
+      let page = 1;
+
+      // --- COVER PAGE ---
+      pdf.setFillColor(COLORS.white);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      // Top-left Redomind logo
+      try {
+        const logoImg = await loadImage('/favicon.svg');
+        pdf.addImage(logoImg, 'SVG', marginX, marginY - 4, 16, 16);
+      } catch {}
+
+      // Top-right barcode placeholder (simple thick lines)
+      const bcX = pageWidth - marginX - 20;
+      const bcY = marginY - 4;
+      pdf.setFillColor(COLORS.black);
+      for (let i = 0; i < 10; i++) {
+        const w = (i % 2 === 0) ? 1 : 0.5;
+        pdf.rect(bcX + i * 1.5, bcY, w, 18, 'F');
+      }
+
+      // Main title – "The" small, "Redomind" big underline, Practice Test #1 stack
+      const titleY = marginY + 30;
+      pdf.setFont(FONTS.georgia, 'bold');
+      pdf.setFontSize(60);
+      pdf.setTextColor(COLORS.text);
+      pdf.text('Redomind', marginX, titleY);
+
+      // Blue underline
+      pdf.setDrawColor(COLORS.blue);
+      pdf.setLineWidth(1.8);
+      pdf.line(marginX, titleY + 2, marginX + 80, titleY + 2);
+
+      // Practice Test line
+      pdf.setFontSize(48);
+      pdf.text('Practice', marginX, titleY + 25);
+      pdf.text('Test', marginX, titleY + 45);
+
+      // Pencil icon (✏️) to the right of title
+      pdf.setFont(FONTS.serif, 'normal');
+      pdf.setFontSize(40);
+      pdf.text('✏', marginX + 95, titleY + 30);
+
+      // Info Box
+      const boxY = titleY + 60;
+      const boxW = contentWidth;
+      const boxH = 35;
+      pdf.setDrawColor(COLORS.blue);
+      pdf.setLineWidth(0.8);
+      pdf.roundedRect(marginX, boxY, boxW, boxH, 3, 3, 'D');
+      pdf.setFont(FONTS.inter, 'bold');
+      pdf.setFontSize(14);
+      pdf.text('Make time to take the Redomind test.', marginX + 4, boxY + 10);
+      pdf.setFont(FONTS.inter, 'normal');
+      pdf.setFontSize(12);
+      pdf.text('It is one of the best ways to track and improve your SAT skills.', marginX + 4, boxY + 18);
+
+      // Footer shield + code
+      pdf.setDrawColor(COLORS.black);
+      pdf.setLineWidth(0.6);
+      const footerY = pageHeight - marginY + 2;
+      pdf.rect(marginX, footerY, 22, 10, 'D');
+      pdf.setFontSize(10);
+      pdf.text('RDM', marginX + 11, footerY + 6, { align: 'center' });
+      pdf.setFont(FONTS.inter, 'normal');
+      pdf.setTextColor(COLORS.code);
+      pdf.text('RDM-PT1', pageWidth - marginX, footerY + 6, { align: 'right' });
+      pdf.addPage();
+      page++;
+
+      // --- QUESTIONS: TWO-COLUMN ROW LAYOUT ---
+      const lineHeight = 3.5; // mm (approx for 9 pt * 1.2)
+
+      const drawDivider = () => {
+        pdf.setDrawColor(COLORS.divider);
+        pdf.setLineWidth(0.8);
+        pdf.line(dividerX, marginY, dividerX, pageHeight - marginY);
+      };
+      drawDivider();
+
+      let currentRowY = marginY;
+
+      // Helper to measure full block height
+      const measureQuestionHeight = async (question) => {
+        // compute heights similarly to previous logic
+        const textWidth = colWidth;
+        const toMm = (pt) => pt * 0.3528;
+
+        pdf.setFont(FONTS.georgia, 'normal');
+        pdf.setFontSize(9);
+        const passageLines = pdf.splitTextToSize(question.passageText || '', textWidth);
+        const passageH = passageLines.length * toMm(9) * 1.2;
+
+        pdf.setFont(FONTS.georgia, 'bold');
+        const questionLines = pdf.splitTextToSize(question.questionText || '', textWidth);
+        const questionH = questionLines.length * toMm(9) * 1.2;
+
+        pdf.setFont(FONTS.georgia, 'normal');
+        const choices = ['A', 'B', 'C', 'D'];
+        let answersH = 0;
+        for (const ch of choices) {
+          const lines = pdf.splitTextToSize(`${ch}) ${question.answerChoices[ch] || ''}`, textWidth);
+          answersH += lines.length * toMm(9) * 1.15 + 2;
+        }
+
+        // Image height
+        let imgH = 0;
         if (question.passageImage) {
           try {
             const img = await loadImage(question.passageImage);
-            const aspectRatio = img.width / img.height;
-            const imgWidth = contentWidth * 0.8;
-            const imgHeight = imgWidth / aspectRatio;
-            questionElements.push({ type: 'image', img, x: margin + (contentWidth - imgWidth) / 2, width: imgWidth, height: imgHeight });
-          } catch {
-            questionElements.push({ type: 'text', text: '[Image failed to load]', style: 'italic', size: 10, color: '#EF4444' });
-          }
+            const imgW = textWidth;
+            imgH = imgW * (img.height / img.width) + 2;
+          } catch {}
         }
-        if (question.passageText) {
-          const lines = pdf.splitTextToSize(question.passageText, contentWidth);
-          questionElements.push({ type: 'text', text: lines, style: 'normal', size: 11, spacing: 5, marginLeft: 0 });
+
+        const blockH = Math.max(questionBoxSize, passageH + imgH + questionH + answersH + 12);
+        return { passageLines, questionLines, answersH, blockH, passageH, questionH, imgH };
+      };
+
+      // render helper (uses cached measure)
+      const renderQuestion = async (measurement, question, colIndex, startY, questionNumber) => {
+        const startX = colIndex === 0 ? marginX : marginX + colWidth + gutter;
+        const boxX = startX;
+        const textX = startX;
+        let cursorY = startY;
+
+        // Header bar
+        pdf.setFillColor(COLORS.black);
+        pdf.rect(boxX, cursorY, questionBoxSize, questionBoxSize, 'F');
+        pdf.setFillColor(COLORS.grayBar);
+        pdf.rect(boxX + questionBoxSize, cursorY, colWidth - questionBoxSize, questionBoxSize, 'F');
+
+        // Centered number
+        pdf.setFont(FONTS.georgia, 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(COLORS.white);
+        const numFontHeight = 8 * 0.3528;
+        pdf.text(String(questionNumber), boxX + questionBoxSize / 2, cursorY + questionBoxSize / 2 + numFontHeight / 2 - 0.5, { align: 'center' });
+
+        cursorY += questionBoxSize + 2;
+
+        // Passage
+        pdf.setFont(FONTS.georgia, 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(COLORS.text);
+        pdf.text(measurement.passageLines, textX, cursorY + 2, { maxWidth: colWidth, lineHeightFactor: 1.2 });
+        cursorY += measurement.passageH + 4;
+
+        // Image
+        if (question.passageImage && measurement.imgH > 0) {
+          try {
+            const imgType = question.passageImage.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+            pdf.addImage(question.passageImage, imgType, textX, cursorY, colWidth, measurement.imgH);
+            cursorY += measurement.imgH + 2;
+          } catch {}
         }
-        const questionLines = pdf.splitTextToSize(question.questionText, contentWidth);
-        questionElements.push({ type: 'text', text: questionLines, style: 'bold', size: 11.5, spacing: 6 });
-        const choices = ['A', 'B', 'C', 'D'].map(choice => ({ choice, text: question.answerChoices[choice] }));
-        questionElements.push({ type: 'choices', choices, height: 4 * 14 });
-        const totalHeight = questionElements.reduce((sum, el) => {
-          if (el.type === 'text') return sum + el.text.length * (el.size * 0.35) + (el.spacing || 0) + 5;
-          if (el.type === 'image') return sum + el.height + 10;
-          return sum + (el.height || 0) + 5;
-        }, 0);
-        if (currentY + totalHeight >= pageHeight - margin) {
+
+        // Question text
+        pdf.setFont(FONTS.georgia, 'bold');
+        pdf.text(measurement.questionLines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.2 });
+        cursorY += measurement.questionH + 3;
+
+        // Choices
+        pdf.setFont(FONTS.georgia, 'normal');
+        const choices = ['A','B','C','D'];
+        for (const ch of choices) {
+          const lines = pdf.splitTextToSize(`${ch}) ${question.answerChoices[ch] || ''}`, colWidth);
+          pdf.text(lines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.15 });
+          cursorY += lines.length * lineHeight + 2;
+        }
+      };
+
+      let questionNumber = 1;
+      for (let idx = 0; idx < selected.length; idx += 2) {
+        const leftQ = selected[idx];
+        const rightQ = selected[idx + 1] || null;
+
+        // Measure both (async images) – sequential await
+        const leftMeasure = await measureQuestionHeight(leftQ);
+        let rightMeasure = null;
+        if (rightQ) rightMeasure = await measureQuestionHeight(rightQ);
+
+        const rowHeight = Math.max(leftMeasure.blockH, rightMeasure ? rightMeasure.blockH : 0);
+
+        // New page if not enough space
+        if (currentRowY + rowHeight > pageHeight - marginY) {
           pdf.addPage();
-          currentY = margin;
+          page++;
+          drawDivider();
+          currentRowY = marginY;
         }
-        const questionStartY = currentY;
-        pdf.setFillColor(HEADER_COLOR);
-        pdf.roundedRect(margin, currentY, 8, 8, 2, 2, 'F');
-        pdf.setFont(FONT, 'bold');
-        pdf.setFontSize(11);
-        pdf.setTextColor('#FFFFFF');
-        pdf.text(String(i + 1), margin + 4, currentY + 5.5, { align: 'center' });
-        pdf.setFont(FONT, 'normal');
-        pdf.setFontSize(10);
-        pdf.setTextColor(TEXT_COLOR);
-        // Bookmark_border icon (Material style, open bottom)
-        const iconX = margin + 12;
-        const iconY = currentY + 1;
-        pdf.setDrawColor(TEXT_COLOR);
-        pdf.setLineWidth(0.5);
-        // Draw left, right, and top edges only
-        pdf.line(iconX, iconY, iconX + 5, iconY); // top
-        pdf.line(iconX, iconY, iconX, iconY + 7); // left
-        pdf.line(iconX + 5, iconY, iconX + 5, iconY + 7); // right
-        // Draw triangle cut at bottom
-        pdf.line(iconX, iconY + 7, iconX + 2.5, iconY + 5);
-        pdf.line(iconX + 5, iconY + 7, iconX + 2.5, iconY + 5);
-        pdf.text('Mark for Review', margin + 18, currentY + 5);
-        currentY += 16;
-        for (const el of questionElements) {
-          if (el.type === 'header') continue;
-          if (el.type === 'image') {
-            pdf.addImage(el.img, 'PNG', el.x, currentY, el.width, el.height);
-            currentY += el.height + 10;
-          }
-          if (el.type === 'text') {
-            pdf.setFont(FONT, el.style || 'normal');
-            pdf.setFontSize(el.size || 11);
-            pdf.setTextColor(el.color || TEXT_COLOR);
-            // Always use full contentWidth and left margin
-            pdf.text(el.text, margin, currentY, { maxWidth: contentWidth });
-            currentY += el.text.length * (el.size * 0.35) + el.spacing;
-          }
-          if (el.type === 'choices') {
-            currentY += 5;
-            for (const item of el.choices) {
-              const choiceY = currentY;
-              const choiceText = `${item.text}`;
-              const lines = pdf.splitTextToSize(choiceText, contentWidth - 20);
-              const boxHeight = Math.max(12, lines.length * 4.5 + 4);
-              pdf.setDrawColor(BORDER_COLOR);
-              pdf.setFillColor(ANSWER_CHOICE_FILL);
-              pdf.setLineWidth(0.5);
-              pdf.roundedRect(margin, choiceY, contentWidth, boxHeight, 3, 3, 'FD');
-              pdf.setFillColor(BORDER_COLOR);
-              pdf.circle(margin + 7, choiceY + boxHeight / 2, 4, 'F');
-              pdf.setFont(FONT, 'bold');
-              pdf.setFontSize(10);
-              pdf.setTextColor(HEADER_COLOR);
-              const centerY = choiceY + boxHeight / 2;
-              const letterOffset = 1.8;
-              pdf.text(item.choice, margin + 7, centerY + letterOffset, { align: 'center' });
-              pdf.setFont(FONT, 'normal');
-              pdf.setFontSize(11);
-              pdf.setTextColor(TEXT_COLOR);
-              const textBlockHeight = lines.length * 4.5;
-              const textStartY = choiceY + (boxHeight - textBlockHeight) / 2 + 3;
-              pdf.text(lines, margin + 15, textStartY);
-              currentY += boxHeight + 3;
-            }
-          }
+
+        // Render left
+        await renderQuestion(leftMeasure, leftQ, 0, currentRowY, questionNumber);
+        questionNumber++;
+
+        // Render right if exists
+        if (rightQ) {
+          await renderQuestion(rightMeasure, rightQ, 1, currentRowY, questionNumber);
+          questionNumber++;
         }
-        currentY = Math.max(currentY, questionStartY + totalHeight);
-        currentY += 10;
+
+        // Move to next row
+        currentRowY += rowHeight + 6; // spacing between rows
       }
+      
+      // --- ANSWER KEY ---
       pdf.addPage();
-      pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(18);
-      pdf.setTextColor(HEADER_COLOR);
-      pdf.text('Answer Key', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 15;
-      const answersPerRow = 10;
-      const colWidth = contentWidth / answersPerRow;
+      page++;
+      
+      // Answer Key Header
+      pdf.setFont(FONTS.georgia, 'bold');
+      pdf.setFontSize(20);
+      pdf.setTextColor(COLORS.text);
+      pdf.text('Answer Key', marginX, marginY);
+      
+      // Underline
+      pdf.setDrawColor(COLORS.underline);
+      pdf.setLineWidth(2);
+      pdf.line(marginX, marginY + 6, marginX + 50, marginY + 6);
+      
+      // Answer grid (8 columns)
+      const answersPerRow = 8;
+      const answerColWidth = (contentWidth - 20) / answersPerRow;
+      const answerRowHeight = 12;
+      let answerY = marginY + 20;
+      let answerX = marginX;
+      let answerNum = 1;
+      
       for (let i = 0; i < selected.length; i++) {
-        if (i > 0 && i % answersPerRow === 0) currentY += 10;
-        if (currentY + 10 >= pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin + 10;
+        const q = selected[i];
+        
+        // New row if needed
+        if (answerNum > 1 && (answerNum - 1) % answersPerRow === 0) {
+          answerY += answerRowHeight + 5;
+          answerX = marginX;
         }
-        const col = i % answersPerRow;
-        const answerX = margin + col * colWidth;
-        pdf.setFont(FONT, 'normal');
+        
+        // New page if needed
+        if (answerY + answerRowHeight + 10 > pageHeight - marginY) {
+          pdf.addPage();
+          page++;
+          answerY = marginY + 20;
+          answerX = marginX;
+        }
+        
+        // Calculate position
+        const col = (answerNum - 1) % answersPerRow;
+        const currentX = marginX + (col * answerColWidth);
+        
+        // Answer box
+        pdf.setFillColor(COLORS.white);
+        pdf.setDrawColor(COLORS.divider);
+        pdf.setLineWidth(0.5);
+        pdf.roundedRect(currentX, answerY, answerColWidth - 2, answerRowHeight, 3, 3, 'FD');
+        
+        // Question number
+        pdf.setFont(FONTS.georgia, 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(COLORS.text);
+        pdf.text(`${answerNum}.`, currentX + 3, answerY + 8);
+        
+        // Correct answer
+        pdf.setFont(FONTS.georgia, 'bold');
         pdf.setFontSize(10);
-        pdf.setTextColor(TEXT_COLOR);
-        pdf.text(`${i + 1}.`, answerX, currentY);
-        pdf.setFont(FONT, 'bold');
-        pdf.text(selected[i].correctAnswer, answerX + 7, currentY);
+        pdf.setTextColor(COLORS.blue);
+        pdf.text(q.correctAnswer, currentX + answerColWidth - 8, answerY + 8, { align: 'center' });
+        
+        answerNum++;
       }
+      
+      // Save
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `SAT_Quiz_Export_${timestamp}.pdf`;
-      pdf.save(filename, { returnPromise: true }).then(() => {
+      const filename = `Redomind_SAT_Selected_Questions_${timestamp}.pdf`;
+      pdf.save(filename);
         setIsExporting(false);
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 3000);
-      });
     } catch (error) {
-      alert('Error generating PDF: ' + error.message);
+      alert(`Error generating PDF: ${error.message}`);
       setIsExporting(false);
       setExportSuccess(false);
     }
   };
+
+  // Helper: Async image loader that resolves to an Image element
+  const loadImage = (src) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
 
   // Add these helpers at the top of the component (after useState, etc.)
   const getTodayString = () => {

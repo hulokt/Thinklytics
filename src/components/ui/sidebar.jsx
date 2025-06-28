@@ -76,19 +76,8 @@ export const MobileSidebar = ({ className, children, ...props }) => {
       >
         {/* Logo for mobile */}
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md">
-            <div className="h-5 w-5 bg-white rounded-md flex items-center justify-center">
-              <div className="h-2.5 w-2.5 bg-blue-600 rounded-sm"></div>
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm text-gray-800 dark:text-white leading-none transition-colors duration-300">
-              Redomind
-            </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400 leading-none transition-colors duration-300">
-              Study Platform
-            </span>
-          </div>
+          <img src="/logo.png" alt="Thinklytics Logo" className="w-8 h-8 rounded-lg object-cover" />
+          <span className="ml-2 text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Thinklytics</span>
         </div>
         
         <div className="flex justify-end z-20">

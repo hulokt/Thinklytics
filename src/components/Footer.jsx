@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from "./ui/button";
+import { Link } from 'react-router-dom';
 import { 
   Twitter, 
   Facebook, 
@@ -18,31 +19,31 @@ import {
 const Footer = () => {
   const footerLinks = {
     product: [
-      { name: "Dashboard", href: "#dashboard" },
-      { name: "Analytics", href: "#analytics" },
-      { name: "Study Plans", href: "#study-plans" },
-      { name: "Practice Tests", href: "#practice-tests" },
-      { name: "Mobile App", href: "#mobile" }
+      { name: "Dashboard", to: "/coming-soon/dashboard" },
+      { name: "Analytics", to: "/coming-soon/analytics" },
+      { name: "Study Plans", to: "/coming-soon/study-plans" },
+      { name: "Practice Tests", to: "/coming-soon/practice-tests" },
+      { name: "Mobile App", to: "/coming-soon/mobile" }
     ],
     company: [
-      { name: "About Us", href: "#about" },
-      { name: "Careers", href: "#careers" },
-      { name: "Press", href: "#press" },
-      { name: "Blog", href: "#blog" },
-      { name: "Contact", href: "#contact" }
+      { name: "About Us", to: "/about" },
+      { name: "Careers", to: "/careers" },
+      { name: "Press", to: "/press" },
+      { name: "Blog", to: "/blog" },
+      { name: "Contact", to: "/contact" }
     ],
     support: [
-      { name: "Help Center", href: "#help" },
-      { name: "Community", href: "#community" },
-      { name: "Tutorials", href: "#tutorials" },
-      { name: "API Docs", href: "#api" },
-      { name: "Status", href: "#status" }
+      { name: "Help Center", to: "/help" },
+      { name: "Community", to: "/community" },
+      { name: "Tutorials", to: "/tutorials" },
+      { name: "API Docs", to: "/api-docs" },
+      { name: "Status", to: "/status" }
     ],
     legal: [
-      { name: "Privacy Policy", href: "#privacy" },
-      { name: "Terms of Service", href: "#terms" },
-      { name: "Cookie Policy", href: "#cookies" },
-      { name: "GDPR", href: "#gdpr" }
+      { name: "Privacy Policy", to: "/privacy-policy" },
+      { name: "Terms of Service", to: "/terms" },
+      { name: "Cookie Policy", to: "/cookies" },
+      { name: "GDPR", to: "/gdpr" }
     ]
   };
 
@@ -113,11 +114,9 @@ const Footer = () => {
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-2 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">R</span>
-                </div>
+                <img src="/logo.png" alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
                 <span className="text-white text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  RedoMind
+                  Thinklytics
                 </span>
               </div>
               <p className="text-gray-300 mb-6 leading-relaxed">
@@ -126,7 +125,7 @@ const Footer = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3 text-gray-300">
                   <Mail className="w-5 h-5 text-blue-400" />
-                  <span>support@redomind.com</span>
+                  <span>support@thinklytics.com</span>
                 </div>
                 <div className="flex items-center space-x-3 text-gray-300">
                   <Phone className="w-5 h-5 text-blue-400" />
@@ -134,7 +133,7 @@ const Footer = () => {
                 </div>
                 <div className="flex items-center space-x-3 text-gray-300">
                   <MapPin className="w-5 h-5 text-blue-400" />
-                  <span>San Francisco, CA</span>
+                  <span>Tampa, Florida</span>
                 </div>
               </div>
             </div>
@@ -143,13 +142,10 @@ const Footer = () => {
             <div>
               <h4 className="text-white font-semibold mb-6">Product</h4>
               <ul className="space-y-3">
-                {footerLinks.product.map((link) => (
-                  <li key={link.name}>
-                    <a href={link.href} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
-                      {link.name}
-                    </a>
-                  </li>
-                ))}
+                <li><Link to="/dashboard" className="text-gray-300 hover:text-blue-400 transition-colors duration-200">Dashboard</Link></li>
+                <li><Link to="/study-plans" className="text-gray-300 hover:text-blue-400 transition-colors duration-200">Study Plans</Link></li>
+                <li><Link to="/practice-tests" className="text-gray-300 hover:text-blue-400 transition-colors duration-200">Practice Tests</Link></li>
+                <li><Link to="/mobile" className="text-gray-300 hover:text-blue-400 transition-colors duration-200">Mobile App</Link></li>
               </ul>
             </div>
 
@@ -159,9 +155,9 @@ const Footer = () => {
               <ul className="space-y-3">
                 {footerLinks.company.map((link) => (
                   <li key={link.name}>
-                    <a href={link.href} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
+                    <Link to={link.to} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
                       {link.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -173,9 +169,9 @@ const Footer = () => {
               <ul className="space-y-3">
                 {footerLinks.support.map((link) => (
                   <li key={link.name}>
-                    <a href={link.href} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
+                    <Link to={link.to} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
                       {link.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -187,9 +183,9 @@ const Footer = () => {
               <ul className="space-y-3">
                 {footerLinks.legal.map((link) => (
                   <li key={link.name}>
-                    <a href={link.href} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
+                    <Link to={link.to} className="text-gray-300 hover:text-blue-400 transition-colors duration-200">
                       {link.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -203,7 +199,7 @@ const Footer = () => {
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2024 RedoMind. All rights reserved.
+              © 2024 Thinklytics. All rights reserved.
             </div>
             <div className="flex items-center space-x-6">
               <div className="flex space-x-4">

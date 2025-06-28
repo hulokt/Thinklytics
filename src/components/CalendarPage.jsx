@@ -861,9 +861,17 @@ const CalendarPage = ({ onStartQuiz }) => {
           return true;
       }
       
-      // Always keep completed events - they represent historical data
+      // For completed events, only keep them if they have a quizId (meaning they were from planned quizzes)
+      // Remove standalone completed events that were created manually in the past
       if (evt.status === 'completed') {
-          return true;
+          if (evt.quizId) {
+              // This is a completed event from a planned quiz, keep it
+              return true;
+          } else {
+              // This is a standalone completed event, remove it since QuizManager handles completed quizzes
+              dbg('cleanup → removing standalone completed event without quizId:', evt);
+              return false;
+          }
       }
       
       // For any other quiz-related events, only remove if they're missing a quizId when they should have one

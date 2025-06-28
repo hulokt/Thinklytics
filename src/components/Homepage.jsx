@@ -134,7 +134,7 @@ const Homepage = ({ onGetStarted, onLogin }) => {
               Loved by Students Nationwide
             </h2>
             <p className="mt-4 text-base md:text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
-              See how Redomind is transforming SAT prep for students just like you.
+              See how Thinklytics is transforming SAT prep for students just like you.
             </p>
           </div>
           <div className="relative flex h-[500px] flex-col items-center justify-center overflow-hidden rounded-lg">
@@ -146,8 +146,6 @@ const Homepage = ({ onGetStarted, onLogin }) => {
           </div>
         </div>
       </section>
-
-
 
       {/* Membership Section */}
       <MembershipSection />
@@ -309,7 +307,7 @@ const testimonials = [
   },
   {
     quote:
-      "I used to dread reviewing my practice tests. Redomind made it simple and even a bit fun. I finally broke 1500!",
+      "I used to dread reviewing my practice tests. Thinklytics made it simple and even a bit fun. I finally broke 1500!",
     name: "Jessica P.",
     title: "High School Student, New York",
     avatar: "JP",

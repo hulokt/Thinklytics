@@ -1114,10 +1114,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       pdf.setFillColor(COLORS.white);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-      // Top-left Redomind logo
+      // Top-left Thinklytics logo
       try {
-        const logoImg = await loadImage('/favicon.svg');
-        pdf.addImage(logoImg, 'SVG', marginX, marginY - 4, 16, 16);
+        const logoImg = await loadImage('/logo.png');
+        pdf.addImage(logoImg, 'PNG', marginX, marginY - 4, 16, 16);
       } catch {}
 
       // Top-right barcode placeholder (simple thick lines)
@@ -1129,12 +1129,12 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         pdf.rect(bcX + i * 1.5, bcY, w, 18, 'F');
       }
 
-      // Main title – "The" small, "Redomind" big underline, Practice Test #1 stack
+      // Main title – "The" small, "Thinklytics" big underline, Practice Test #1 stack
       const titleY = marginY + 30;
       pdf.setFont(FONTS.georgia, 'bold');
       pdf.setFontSize(60);
       pdf.setTextColor(COLORS.text);
-      pdf.text('Redomind', marginX, titleY);
+      pdf.text('Thinklytics', marginX, titleY);
 
       // Blue underline
       pdf.setDrawColor(COLORS.blue);
@@ -1160,7 +1160,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       pdf.roundedRect(marginX, boxY, boxW, boxH, 3, 3, 'D');
       pdf.setFont(FONTS.inter, 'bold');
       pdf.setFontSize(14);
-      pdf.text('Make time to take the Redomind test.', marginX + 4, boxY + 10);
+      pdf.text('Make time to take the Thinklytics test.', marginX + 4, boxY + 10);
       pdf.setFont(FONTS.inter, 'normal');
       pdf.setFontSize(12);
       pdf.text('It is one of the best ways to track and improve your SAT skills.', marginX + 4, boxY + 18);
@@ -1171,10 +1171,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       const footerY = pageHeight - marginY + 2;
       pdf.rect(marginX, footerY, 22, 10, 'D');
       pdf.setFontSize(10);
-      pdf.text('RDM', marginX + 11, footerY + 6, { align: 'center' });
+      pdf.text('THK', marginX + 11, footerY + 6, { align: 'center' });
       pdf.setFont(FONTS.inter, 'normal');
       pdf.setTextColor(COLORS.code);
-      pdf.text('RDM-PT1', pageWidth - marginX, footerY + 6, { align: 'right' });
+      pdf.text('THK-PT1', pageWidth - marginX, footerY + 6, { align: 'right' });
       pdf.addPage();
       page++;
 
@@ -1381,7 +1381,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       
       // Save
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `Redomind_SAT_Question_Bank_${timestamp}.pdf`;
+      const filename = `Thinklytics_SAT_Question_Bank_${timestamp}.pdf`;
       pdf.save(filename);
         setIsExporting(false);
         setExportSuccess(true);

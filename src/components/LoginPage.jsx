@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
+import Navbar from './Navbar';
 
 const LoginPage = ({ onLogin, onSwitchToSignup, onBack }) => {
   const [formData, setFormData] = useState({
@@ -81,31 +82,8 @@ const LoginPage = ({ onLogin, onSwitchToSignup, onBack }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">
-      {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-lg border-b border-gray-200/50 dark:border-gray-700/50 relative overflow-hidden transition-colors duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <button
-              onClick={onBack}
-              className="flex items-center space-x-3"
-            >
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Redomind</h1>
-            </button>
-            <button
-              onClick={onBack}
-              className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium">Back to Home</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
+      {/* Minimal Navbar */}
+      <Navbar minimal={true} onLogin={onBack} />
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <motion.div 
@@ -129,7 +107,7 @@ const LoginPage = ({ onLogin, onSwitchToSignup, onBack }) => {
                 Welcome Back
               </h2>
               <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                Welcome to Redomind! Sign in to continue your SAT improvement journey.
+                Welcome to Thinklytics! Sign in to continue your SAT improvement journey.
               </p>
             </div>
 

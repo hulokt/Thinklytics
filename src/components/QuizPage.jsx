@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuestionAnswers, useCalendarEvents } from '../hooks/useUserData';
+import { useQuestionAnswers } from '../hooks/useUserData';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { awardPoints, handleHighScore } from '../lib/userPoints';
@@ -70,7 +70,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   // Use new QuizManager
   const { quizManager, allQuizzesLoading } = useQuizManager();
   const { data: questionAnswers, upsertData: upsertQuestionAnswers } = useQuestionAnswers();
-  const { data: calendarEvents, upsertData: saveCalendarEvents, refreshData: refreshCalendarEvents } = useCalendarEvents();
 
   // Debug helper to avoid noisy logs elsewhere
   const dbgQ = (...args) => console.log('[QuizPage]', ...args);
@@ -463,32 +462,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         status: completedQuiz.status
       });
 
-      /* 🌟 Update Calendar Event */
-      try {
-        // 🔄 Refresh calendar events to avoid overwriting newer entries added elsewhere
-        if (typeof refreshCalendarEvents === 'function') {
-          await refreshCalendarEvents();
-          // Small delay to ensure state update completes
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        // Use the refreshed calendarEvents state 
-        const freshEvents = Array.isArray(calendarEvents) ? [...calendarEvents] : [];
-        let updatedEvents = [...freshEvents];
-        dbgQ('calendar pre-patch length', updatedEvents.length);
-        const idx = updatedEvents.findIndex(ev => ev.quizId === completedQuiz.id);
-        if (idx >= 0) {
-          updatedEvents[idx] = { ...updatedEvents[idx], status: 'completed' };
-        } else {
-          updatedEvents.push({ id: Date.now(), date: completedQuiz.date.split('T')[0], type: 'quiz', status: 'completed', title: `Quiz #${completedQuiz.quizNumber}`, quizId: completedQuiz.id });
-        }
-        dbgQ('calendar post-patch length', updatedEvents.length, 'Snapshot', updatedEvents.map(e=>({id:e.id,status:e.status})));
-        await saveCalendarEvents(updatedEvents);
-        dbgQ('calendar saved');
-      } catch (err) {
-        console.error('Error updating calendar events after quiz completion:', err);
-      }
-
       // 3. Award points for completing the quiz
       await awardPointsAndAnimate('COMPLETE_QUIZ', { score: completedQuiz.score });
       
@@ -624,12 +597,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
-
-  // Helper to always merge and save calendar events safely
-  const mergeAndSaveCalendarEvents = async (newOrUpdatedEvents) => {
-    // Just save the provided array directly - it should already be the complete merged array
-    await saveCalendarEvents(newOrUpdatedEvents);
-  };
 
   if (!quizData || !quizData.questions || !currentQuestion) {
     return (

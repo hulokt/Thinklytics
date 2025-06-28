@@ -1,6 +1,6 @@
 {
-  "name": "SAT Master Log",
-  "short_name": "SAT Log",
+  "name": "Thinklytics",
+  "short_name": "Thinklytics",
   "description": "A modern SAT practice quiz application with cloud-based data storage",
   "start_url": "/",
   "display": "standalone",
@@ -8,9 +8,9 @@
   "theme_color": "#3B82F6",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/logo.png",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

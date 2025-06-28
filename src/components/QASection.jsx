@@ -66,21 +66,23 @@ const QASection = () => {
                   {faq.question}
                 </h3>
                 <div className="flex-shrink-0 ml-4">
-                  {openItems.includes(index) ? (
-                    <ChevronUp className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-200" />
-                  ) : (
+                  <div className={`transition-transform duration-300 ease-in-out ${openItems.includes(index) ? 'rotate-180' : 'rotate-0'}`}>
                     <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-200" />
-                  )}
+                  </div>
                 </div>
               </button>
               
-              {openItems.includes(index) && (
-                <div className="px-6 pb-6 animate-fade-in">
+              <div 
+                className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                  openItems.includes(index) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="px-6 pb-6">
                   <p className="text-gray-700 dark:text-gray-300 leading-relaxed border-t border-gray-200 dark:border-white/10 pt-4">
                     {faq.answer}
                   </p>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

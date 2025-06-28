@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { SidebarLayout } from './components/SidebarLayout';
 import Homepage from './components/Homepage';
@@ -17,6 +17,47 @@ import { DarkModeProvider } from './contexts/DarkModeContext';
 import { useQuestions, useCalendarEvents } from './hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 import { supabase } from './lib/supabaseClient';
+// Footer pages
+import AboutPage from './pages/AboutPage';
+import CareersPage from './pages/CareersPage';
+import ContactPage from './pages/ContactPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import HelpCenterPage from './pages/HelpCenterPage';
+import BlogPage from './pages/BlogPage';
+import CookiePolicyPage from './pages/CookiePolicyPage';
+import PressPage from './pages/PressPage';
+import DashboardPage from './pages/DashboardPage';
+import StudyPlansPage from './pages/StudyPlansPage';
+import PracticeTestsPage from './pages/PracticeTestsPage';
+import MobileAppPage from './pages/MobileAppPage';
+import GDPRPage from './pages/GDPRPage';
+import CommunityPage from './pages/CommunityPage';
+import TutorialsPage from './pages/TutorialsPage';
+import APIDocsPage from './pages/APIDocsPage';
+import StatusPage from './pages/StatusPage';
+import FeaturesPage from './pages/FeaturesPage';
+import PricingPage from './pages/PricingPage';
+
+// Simple Coming Soon placeholder
+const ComingSoonPage = ({ title }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <h1 className="text-4xl font-bold mb-4 text-blue-700 dark:text-blue-300">Coming Soon</h1>
+    <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">{title ? title : 'This page is under construction.'}</p>
+    <a href="/" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">Back to Home</a>
+  </div>
+);
+
+// Scroll to top component
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 // Main App Component wrapped with Auth Provider and Dark Mode Provider
 function App() {
@@ -30,13 +71,15 @@ function App() {
   });
   
   return (
-    <DarkModeProvider>
+    <Router basename={basename}>
       <AuthProvider>
-        <Router basename={basename}>
-          <AppContent />
-        </Router>
+        <DarkModeProvider>
+          <Suspense fallback={<div>Loading...</div>}>
+            <AppContent />
+          </Suspense>
+        </DarkModeProvider>
       </AuthProvider>
-    </DarkModeProvider>
+    </Router>
   );
 }
 
@@ -254,11 +297,17 @@ function AppContent() {
     }
   }, [user, questions, inProgressQuizzes, questionsLoading, allQuizzesLoading]);
 
+  // Navigation helper with scroll to top
+  const navigateWithScroll = (path) => {
+    navigate(path);
+    window.scrollTo(0, 0);
+  };
+
   const handleLogin = async (formData = null) => {
     try {
       console.log('🔐 Attempting login with:', formData);
       
-      const email = formData?.email || 'demo@redomind.com';
+      const email = formData?.email || 'demo@thinklytics.com';
       const password = formData?.password || 'demo123';
       
       const { user: loggedInUser, error } = await signIn(email, password);
@@ -269,7 +318,7 @@ function AppContent() {
       }
       
       console.log('✅ Login successful:', loggedInUser?.email);
-      navigate('/questions');
+      navigateWithScroll('/questions');
       return { success: true };
     } catch (error) {
       console.error('❌ Login exception:', error);
@@ -281,7 +330,7 @@ function AppContent() {
     try {
       console.log('📝 Attempting signup with:', formData);
       
-      const email = formData?.email || 'user@redomind.com';
+      const email = formData?.email || 'user@thinklytics.com';
       const password = formData?.password || 'user123';
       const name = formData?.name || 'New User';
       
@@ -333,7 +382,7 @@ function AppContent() {
       }
       
       // Navigate to home after logout is complete
-      navigate('/home');
+      navigateWithScroll('/home');
       
       console.log('✅ Logout completed');
     } catch (error) {
@@ -342,7 +391,7 @@ function AppContent() {
       setCurrentQuiz(null);
       setIsResumingQuiz(false);
       setResumingQuizData(null);
-      navigate('/home');
+      navigateWithScroll('/home');
     }
   };
 
@@ -407,7 +456,7 @@ function AppContent() {
     setCurrentQuiz(selectedQuestions);
     setIsResumingQuiz(false);
     setResumingQuizData(null);
-    navigate('/quiz');
+    navigateWithScroll('/quiz');
   };
 
   const handleStartQuizFromCalendar = async (event) => {
@@ -470,7 +519,7 @@ function AppContent() {
         setCurrentQuiz(inProgressQuiz.questions);
         setIsResumingQuiz(true);
         setResumingQuizData(inProgressQuiz);
-        navigate('/quiz');
+        navigateWithScroll('/quiz');
         return;
       }
 
@@ -495,7 +544,7 @@ function AppContent() {
           setCurrentQuiz(existingQuiz.questions);
           setIsResumingQuiz(true);
           setResumingQuizData(existingQuiz);
-          navigate('/quiz');
+          navigateWithScroll('/quiz');
           return;
         }
       }
@@ -505,7 +554,7 @@ function AppContent() {
       setCurrentQuiz(adHocQuestions);
       setIsResumingQuiz(false);
       setResumingQuizData(null);
-      navigate('/quiz');
+      navigateWithScroll('/quiz');
     } catch (err) {
       console.error('❌ Failed to start calendar quiz:', err);
     }
@@ -515,7 +564,7 @@ function AppContent() {
     setCurrentQuiz(quizData.questions);
     setIsResumingQuiz(true);
     setResumingQuizData(quizData);
-    navigate('/quiz');
+    navigateWithScroll('/quiz');
   };
 
   // Clear quiz state after completion
@@ -528,7 +577,7 @@ function AppContent() {
 
   // Navigation helpers
   const handlePageChange = (page) => {
-    navigate(page);
+    navigateWithScroll(page);
     clearQuizState();
   };
 
@@ -545,7 +594,7 @@ function AppContent() {
     localStorage.removeItem('satlog:resumeQuizId');
     
     console.log('🏠 Navigating to /home (Homepage)');
-    navigate('/home');
+    navigateWithScroll('/home');
     
     console.log('🏠 handleLogoClick completed');
   };
@@ -560,214 +609,241 @@ function AppContent() {
   }, [location.pathname, resumingQuizData]);
 
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      
-      <Route path="/home" element={
-        <PublicRoute>
-          <Homepage 
-            onGetStarted={() => navigate('/signup')} 
-            onLogin={() => navigate('/login')} 
-          />
-        </PublicRoute>
-      } />
-      
-      <Route path="/login" element={
-        <PublicRoute>
-          <LoginPage 
-            onLogin={handleLogin} 
-            onSwitchToSignup={() => navigate('/signup')}
-            onBack={() => navigate('/home')} 
-          />
-        </PublicRoute>
-      } />
-      
-      <Route path="/signup" element={
-        <PublicRoute>
-          <SignupPage 
-            onSignup={handleSignup} 
-            onSwitchToLogin={() => navigate('/login')}
-            onBack={() => navigate('/home')} 
-          />
-        </PublicRoute>
-      } />
-
-      {/* Auth Callback Route */}
-      <Route path="/auth/callback" element={<AuthCallback />} />
-
-      {/* Protected Routes */}
-      <Route path="/questions" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="questions" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            {(questionsLoading || allQuizzesLoading) ? (
-              <div className="flex items-center justify-center h-full min-h-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-lg text-gray-600">Loading questions...</p>
-                </div>
-              </div>
-            ) : (
-              <QuestionLogger
-                questions={questions || []}
-                onAddQuestion={handleAddQuestion}
-                onUpdateQuestion={handleUpdateQuestion}
-                onDeleteQuestion={handleDeleteQuestion}
-              />
-            )}
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/selector" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="selector" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            {(questionsLoading || allQuizzesLoading) ? (
-              <div className="flex items-center justify-center h-full min-h-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-lg text-gray-600">Loading questions...</p>
-                </div>
-              </div>
-            ) : (
-              <QuestionSelector
-                questions={questions || []}
-                onStartQuiz={handleStartQuiz}
-                onResumeQuiz={handleResumeQuiz}
-                inProgressQuizzes={inProgressQuizzes || []}
-              />
-            )}
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/quiz" element={
-        <ProtectedRoute>
-          <SidebarLayout
-            currentPage="quiz"
-            onPageChange={handlePageChange}
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            <QuizPage
-              questions={currentQuiz}
-              onBack={() => {
-                clearQuizState();
-                navigate('/selector');
-              }}
-              isResuming={isResumingQuiz}
-              initialQuizData={resumingQuizData}
+    <>
+      <ScrollToTop />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        
+        <Route path="/home" element={
+          <PublicRoute>
+            <Homepage 
+              onGetStarted={() => navigateWithScroll('/signup')} 
+              onLogin={() => navigateWithScroll('/login')} 
             />
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
+          </PublicRoute>
+        } />
+        
+        <Route path="/login" element={
+          <PublicRoute>
+            <LoginPage 
+              onLogin={handleLogin} 
+              onSwitchToSignup={() => navigateWithScroll('/signup')}
+              onBack={() => navigateWithScroll('/home')} 
+            />
+          </PublicRoute>
+        } />
+        
+        <Route path="/signup" element={
+          <PublicRoute>
+            <SignupPage 
+              onSignup={handleSignup} 
+              onSwitchToLogin={() => navigateWithScroll('/login')}
+              onBack={() => navigateWithScroll('/home')} 
+            />
+          </PublicRoute>
+        } />
 
-      <Route path="/history" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="history" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            {(questionsLoading || allQuizzesLoading) ? (
-              <div className="flex items-center justify-center h-full min-h-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-lg text-gray-600">Loading...</p>
+        {/* Auth Callback Route */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Protected Routes */}
+        <Route path="/questions" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="questions" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              {(questionsLoading || allQuizzesLoading) ? (
+                <div className="flex items-center justify-center h-full min-h-0">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600">Loading questions...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <QuizHistory
-                onBack={() => navigate('/selector')}
-                onResumeQuiz={handleResumeQuiz}
+              ) : (
+                <QuestionLogger
+                  questions={questions || []}
+                  onAddQuestion={handleAddQuestion}
+                  onUpdateQuestion={handleUpdateQuestion}
+                  onDeleteQuestion={handleDeleteQuestion}
+                />
+              )}
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/selector" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="selector" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              {(questionsLoading || allQuizzesLoading) ? (
+                <div className="flex items-center justify-center h-full min-h-0">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600">Loading questions...</p>
+                  </div>
+                </div>
+              ) : (
+                <QuestionSelector
+                  questions={questions || []}
+                  onStartQuiz={handleStartQuiz}
+                  onResumeQuiz={handleResumeQuiz}
+                  inProgressQuizzes={inProgressQuizzes || []}
+                />
+              )}
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/quiz" element={
+          <ProtectedRoute>
+            <SidebarLayout
+              currentPage="quiz"
+              onPageChange={handlePageChange}
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <QuizPage
+                questions={currentQuiz}
+                onBack={() => {
+                  clearQuizState();
+                  navigateWithScroll('/selector');
+                }}
+                isResuming={isResumingQuiz}
+                initialQuizData={resumingQuizData}
               />
-            )}
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/analytics" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="analytics" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            {questionsLoading ? (
-              <div className="flex items-center justify-center h-full min-h-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-lg text-gray-600">Loading...</p>
+        <Route path="/history" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="history" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              {(questionsLoading || allQuizzesLoading) ? (
+                <div className="flex items-center justify-center h-full min-h-0">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600">Loading...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <AnalyticsPage questions={questions || []} />
-            )}
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
+              ) : (
+                <QuizHistory
+                  onBack={() => navigateWithScroll('/selector')}
+                  onResumeQuiz={handleResumeQuiz}
+                />
+              )}
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/calendar" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="calendar" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            <CalendarPage onStartQuiz={handleStartQuizFromCalendar} />
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
+        <Route path="/analytics" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="analytics" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              {questionsLoading ? (
+                <div className="flex items-center justify-center h-full min-h-0">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600">Loading...</p>
+                  </div>
+                </div>
+              ) : (
+                <AnalyticsPage questions={questions || []} />
+              )}
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <SidebarLayout 
-            currentPage="profile" 
-            onPageChange={handlePageChange} 
-            onLogout={handleLogout}
-            onAccountClick={() => navigate('/account')}
-            onProfileClick={() => navigate('/profile')}
-            onHomeClick={handleLogoClick}
-          >
-            <Profile onBack={() => navigate('/questions')} />
-          </SidebarLayout>
-        </ProtectedRoute>
-      } />
+        <Route path="/calendar" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="calendar" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <CalendarPage onStartQuiz={handleStartQuizFromCalendar} />
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/account" element={
-        <ProtectedRoute>
-          <AccountPage onBack={() => navigate('/questions')} />
-        </ProtectedRoute>
-      } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="profile" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <Profile onBack={() => navigateWithScroll('/questions')} />
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
 
-      {/* Redirect any unknown routes */}
-      <Route path="*" element={<Navigate to={user ? "/questions" : "/home"} replace />} />
-    </Routes>
+        <Route path="/account" element={
+          <ProtectedRoute>
+            <AccountPage onBack={() => navigateWithScroll('/questions')} />
+          </ProtectedRoute>
+        } />
+
+        {/* Footer/Legal/Company pages */}
+        <Route path="/about" element={<AboutPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/careers" element={<CareersPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/contact" element={<ContactPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/terms" element={<TermsOfServicePage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/help" element={<HelpCenterPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/blog" element={<BlogPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/cookies" element={<CookiePolicyPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/press" element={<PressPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/dashboard" element={<DashboardPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/study-plans" element={<StudyPlansPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/practice-tests" element={<PracticeTestsPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/mobile" element={<MobileAppPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/gdpr" element={<GDPRPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/community" element={<CommunityPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/tutorials" element={<TutorialsPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/api-docs" element={<APIDocsPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/status" element={<StatusPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/features" element={<FeaturesPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/pricing" element={<PricingPage onBack={() => navigateWithScroll('/home')} />} />
+        {/* Placeholder for remaining /coming-soon/:slug */}
+        <Route path="/coming-soon/:slug" element={<ComingSoonPage title={null} />} />
+
+        {/* Redirect any unknown routes */}
+        <Route path="*" element={<Navigate to={user ? "/questions" : "/home"} replace />} />
+      </Routes>
+    </>
   );
 }
 

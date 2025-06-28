@@ -60,6 +60,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
   const [showImportWarning, setShowImportWarning] = useState(false);
   const [showCancelImportConfirm, setShowCancelImportConfirm] = useState(false);
   const [importedQuestions, setImportedQuestions] = useState([]);
+  // Track edited questions during import to preserve user changes
+  const [editedQuestions, setEditedQuestions] = useState({});
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
@@ -665,7 +667,9 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     setCsvError('');
     
     try {
-      const cleanedData = cleanCSV(csvInput);
+      // Apply exclamation-to-comma conversion for single CSV entries
+      const processedCsvInput = convertExclamationToComma(csvInput);
+      const cleanedData = cleanCSV(processedCsvInput);
       
       setFormData(cleanedData);
       setShowCsvModal(false);
@@ -722,7 +726,9 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
   // Parse multiple questions from CSV
   const parseMultipleQuestionsFromCSV = (csvString) => {
-    const lines = csvString.trim().split('\n').filter(line => line.trim() !== '');
+    // First convert exclamation marks to commas in the CSV string
+    const processedCsvString = convertExclamationToComma(csvString);
+    const lines = processedCsvString.trim().split('\n').filter(line => line.trim() !== '');
     const questions = [];
     
     // Helper function to count fields properly (respecting quotes)
@@ -810,6 +816,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         setFormData(questions[0]);
         setIsImportMode(true);
         setImportProgress({ total: questions.length, completed: 0 });
+        setEditedQuestions({}); // Initialize edited questions state
         setShowCsvModal(false);
         setCsvInput('');
       }
@@ -854,6 +861,12 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       // Clear validation errors if validation passes
       setValidationErrors({});
 
+      // Save current question's edits before moving to next
+      setEditedQuestions(prev => ({
+        ...prev,
+        [currentQuestionIndex]: { ...formData }
+      }));
+
       // Then move to next question
       const nextIndex = currentQuestionIndex + 1;
       
@@ -861,7 +874,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         // Add the current question to the collection and move to next
         setImportedQuestions(prev => [...prev, { ...formData }]);
         setCurrentQuestionIndex(nextIndex);
-        setFormData(csvQuestions[nextIndex]);
+        
+        // Load the next question, using edited version if available
+        const nextQuestion = editedQuestions[nextIndex] || csvQuestions[nextIndex];
+        setFormData(nextQuestion);
         setImportProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
       } else {
         // Import complete - this is the last question
@@ -882,6 +898,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
           setCsvQuestions([]);
           setCurrentQuestionIndex(0);
           setImportProgress({ total: 0, completed: 0 });
+          setEditedQuestions({}); // Clear edited questions state
           
           // Show completion message
           setPointsAnimation({
@@ -901,22 +918,41 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
   // Move to previous question during import
   const handlePrevQuestion = () => {
     if (!isImportMode) return;
+    
+    // Save current question's edits before moving back
+    setEditedQuestions(prev => ({
+      ...prev,
+      [currentQuestionIndex]: { ...formData }
+    }));
+    
     const prevIndex = currentQuestionIndex - 1;
     if (prevIndex >= 0) {
       setCurrentQuestionIndex(prevIndex);
-      setFormData(csvQuestions[prevIndex]);
+      
+      // Load the previous question, using edited version if available
+      const prevQuestion = editedQuestions[prevIndex] || csvQuestions[prevIndex];
+      setFormData(prevQuestion);
     }
   };
 
   // Skip current question in import mode
   const handleSkipQuestion = () => {
+    // Save current question's edits before skipping
+    setEditedQuestions(prev => ({
+      ...prev,
+      [currentQuestionIndex]: { ...formData }
+    }));
+    
     const nextIndex = currentQuestionIndex + 1;
     
     if (nextIndex < csvQuestions.length) {
       // Add the current question to the collection and move to next
       setImportedQuestions(prev => [...prev, { ...formData }]);
       setCurrentQuestionIndex(nextIndex);
-      setFormData(csvQuestions[nextIndex]);
+      
+      // Load the next question, using edited version if available
+      const nextQuestion = editedQuestions[nextIndex] || csvQuestions[nextIndex];
+      setFormData(nextQuestion);
       setImportProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
     } else {
       // Import complete - this is the last question
@@ -937,6 +973,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         setCsvQuestions([]);
         setCurrentQuestionIndex(0);
         setImportProgress({ total: 0, completed: 0 });
+        setEditedQuestions({}); // Clear edited questions state
         
         // Show completion message
         setPointsAnimation({
@@ -964,6 +1001,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     setCurrentQuestionIndex(0);
     setImportProgress({ total: 0, completed: 0 });
     setImportedQuestions([]);
+    setEditedQuestions({}); // Clear edited questions state
     setShowCancelImportConfirm(false);
     
     // Reset form

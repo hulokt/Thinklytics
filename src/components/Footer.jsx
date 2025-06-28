@@ -15,6 +15,7 @@ import {
   Award,
   TrendingUp
 } from "lucide-react";
+import logoImage from "/logo.png";
 
 const Footer = () => {
   const footerLinks = {
@@ -114,7 +115,7 @@ const Footer = () => {
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-2 mb-6">
-                <img src="/logo.png" alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
+                <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
                 <span className="text-white text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   Thinklytics
                 </span>

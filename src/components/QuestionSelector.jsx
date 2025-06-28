@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AnimatedQuestionList from './AnimatedQuestionList';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
@@ -17,6 +17,11 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { useCalendarEvents } from '../hooks/useUserData';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
+import { useAuth } from '../contexts/AuthContext';
+import { awardPoints, handleHighScore } from '../lib/userPoints';
+import PointsAnimation from './PointsAnimation';
+import html2canvas from 'html2canvas';
+import logoImage from "/logo.png";
 
 const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuizzes }) => {
   const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -702,7 +707,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
       // Top-left Thinklytics logo
       try {
-        const logoImg = await loadImage('/logo.png');
+        const logoImg = await loadImage(logoImage);
         pdf.addImage(logoImg, 'PNG', marginX, marginY - 4, 16, 16);
       } catch {}
 

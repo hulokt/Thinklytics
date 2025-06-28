@@ -17,6 +17,7 @@ import DarkModeToggle from './ui/DarkModeToggle';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { Sun, Moon } from 'lucide-react';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import logoImage from "/logo.png";
 
 export function SidebarLayout({ children, currentPage, onPageChange, onLogout, onAccountClick, onProfileClick, onHomeClick }) {
   const [open, setOpen] = useState(false);
@@ -271,7 +272,7 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
       onClick={handleClick}
       className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
-      <img src="/logo.png" alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
+      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -297,7 +298,7 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
       onClick={handleClick}
       className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
-      <img src="/logo.png" alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
+      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
     </button>
   );
 };

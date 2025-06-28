@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Users, Target, Award, TrendingUp, BookOpen, Zap, Shield } from 'lucide-react';
+import logoImage from "/logo.png";
 
 const AboutPage = ({ onBack }) => {
   const stats = [
@@ -14,19 +15,19 @@ const AboutPage = ({ onBack }) => {
       name: "Dr. Sarah Chen",
       role: "Founder & CEO",
       bio: "Former SAT instructor with 15+ years experience. PhD in Education from Stanford.",
-      image: "/logo.png"
+      image: logoImage
     },
     {
       name: "Michael Rodriguez",
       role: "CTO",
       bio: "Tech leader with expertise in educational technology and data analytics.",
-      image: "/logo.png"
+      image: logoImage
     },
     {
       name: "Dr. Emily Watson",
       role: "Head of Content",
       bio: "Curriculum specialist with deep knowledge of SAT test structure and strategies.",
-      image: "/logo.png"
+      image: logoImage
     }
   ];
 

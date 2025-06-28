@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   SAT_SECTIONS, 
   getDomainOptions, 
@@ -10,11 +10,12 @@ import {
 import AnimatedList from './AnimatedList';
 import AnimatedButton from './ui/animated-button';
 import { useAuth } from '../contexts/AuthContext';
-import { awardPoints, incrementEditCounter } from '../lib/userPoints';
+import { awardPoints, incrementEditCounter, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
+import logoImage from "/logo.png";
 
 const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQuestion }) => {
   // Ensure questions is always an array
@@ -1116,7 +1117,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
       // Top-left Thinklytics logo
       try {
-        const logoImg = await loadImage('/logo.png');
+        const logoImg = await loadImage(logoImage);
         pdf.addImage(logoImg, 'PNG', marginX, marginY - 4, 16, 16);
       } catch {}
 

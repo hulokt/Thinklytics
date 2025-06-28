@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Play, Clock, User, BookOpen, Video, FileText, Target, Star, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Play, Clock, User, BookOpen, Video, FileText, Target, Star, TrendingUp, Filter, Search } from 'lucide-react';
+import logoImage from "/logo.png";
 
 const TutorialsPage = ({ onBack }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
 
   const categories = [
     { id: 'all', name: 'All Tutorials' },
@@ -16,76 +19,75 @@ const TutorialsPage = ({ onBack }) => {
   const tutorials = [
     {
       id: 1,
-      title: "Getting Started with Thinklytics",
-      description: "Learn the basics of logging questions, understanding analytics, and maximizing your study efficiency.",
-      category: "getting-started",
-      duration: "15 min",
-      instructor: "Dr. Sarah Chen",
+      title: "SAT Math Fundamentals: Algebra Basics",
+      description: "Master the essential algebraic concepts that form the foundation of SAT Math success.",
+      duration: "45 min",
       difficulty: "Beginner",
-      rating: 4.9,
-      students: "2,500+",
-      thumbnail: "/logo.png",
-      featured: true
+      category: "Math",
+      rating: 4.8,
+      views: 12500,
+      thumbnail: logoImage,
+      instructor: "Dr. Sarah Chen"
     },
     {
       id: 2,
-      title: "Mastering SAT Math: Algebra Fundamentals",
-      description: "Deep dive into algebraic concepts commonly tested on the SAT with step-by-step problem-solving strategies.",
-      category: "math",
-      duration: "45 min",
-      instructor: "Michael Rodriguez",
+      title: "Reading Comprehension Strategies",
+      description: "Learn proven techniques to improve your reading speed and comprehension accuracy.",
+      duration: "60 min",
       difficulty: "Intermediate",
-      rating: 4.8,
-      students: "1,800+",
-      thumbnail: "/logo.png"
+      category: "Reading",
+      rating: 4.9,
+      views: 8900,
+      thumbnail: logoImage,
+      instructor: "Dr. Emily Watson"
     },
     {
       id: 3,
-      title: "Reading Comprehension: Speed vs. Accuracy",
-      description: "Learn to balance reading speed with comprehension accuracy for optimal performance on the SAT reading section.",
-      category: "reading",
-      duration: "30 min",
-      instructor: "Dr. Emily Watson",
-      difficulty: "Intermediate",
+      title: "Writing and Language: Grammar Mastery",
+      description: "Comprehensive guide to SAT grammar rules and common error patterns.",
+      duration: "75 min",
+      difficulty: "Advanced",
+      category: "Writing",
       rating: 4.7,
-      students: "1,200+",
-      thumbnail: "/logo.png"
+      views: 6700,
+      thumbnail: logoImage,
+      instructor: "Michael Rodriguez"
     },
     {
       id: 4,
-      title: "Understanding Your Analytics Dashboard",
-      description: "Navigate your personal analytics to identify strengths, weaknesses, and create targeted study plans.",
-      category: "analytics",
-      duration: "20 min",
-      instructor: "Dr. Sarah Chen",
+      title: "Time Management for SAT Success",
+      description: "Strategic approaches to maximize your efficiency during the SAT exam.",
+      duration: "30 min",
       difficulty: "Beginner",
-      rating: 4.9,
-      students: "3,100+",
-      thumbnail: "/logo.png"
+      category: "Strategy",
+      rating: 4.6,
+      views: 10200,
+      thumbnail: logoImage,
+      instructor: "Dr. Sarah Chen"
     },
     {
       id: 5,
-      title: "Advanced Time Management Strategies",
-      description: "Learn advanced techniques for managing your time effectively during the SAT and practice tests.",
-      category: "advanced",
-      duration: "25 min",
-      instructor: "Michael Rodriguez",
+      title: "Advanced Problem Solving Techniques",
+      description: "Advanced strategies for tackling the most challenging SAT questions.",
+      duration: "90 min",
       difficulty: "Advanced",
-      rating: 4.6,
-      students: "900+",
-      thumbnail: "/logo.png"
+      category: "Math",
+      rating: 4.9,
+      views: 5400,
+      thumbnail: logoImage,
+      instructor: "Dr. Emily Watson"
     },
     {
       id: 6,
-      title: "Writing & Language: Grammar Mastery",
-      description: "Master the most common grammar rules tested on the SAT writing section with practical examples.",
-      category: "reading",
-      duration: "35 min",
-      instructor: "Dr. Emily Watson",
+      title: "Essay Writing for SAT Success",
+      description: "Step-by-step guide to writing compelling SAT essays that score high.",
+      duration: "50 min",
       difficulty: "Intermediate",
-      rating: 4.8,
-      students: "1,500+",
-      thumbnail: "/logo.png"
+      category: "Writing",
+      rating: 4.5,
+      views: 7800,
+      thumbnail: logoImage,
+      instructor: "Michael Rodriguez"
     }
   ];
 
@@ -257,7 +259,7 @@ const TutorialsPage = ({ onBack }) => {
                       <div className="flex items-center space-x-2">
                         <Star className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm font-medium">{tutorial.rating}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">({tutorial.students})</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">({tutorial.views})</span>
                       </div>
                       <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors">
                         Watch →

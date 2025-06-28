@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Search, Calendar, Clock, User, Tag, ArrowRight } from 'lucide-react';
+import logoImage from "/logo.png";
 
 const BlogPage = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,70 +18,69 @@ const BlogPage = ({ onBack }) => {
   const blogPosts = [
     {
       id: 1,
-      title: "10 Essential SAT Math Strategies That Actually Work",
-      excerpt: "Discover proven techniques to tackle even the most challenging SAT math problems. From time management to problem-solving approaches, these strategies have helped thousands of students improve their scores.",
-      category: "math",
+      title: "10 Proven Strategies to Improve Your SAT Math Score",
+      excerpt: "Discover the most effective techniques used by top-scoring students to master the SAT Math section...",
       author: "Dr. Sarah Chen",
-      date: "2024-12-15",
+      date: "2024-01-15",
       readTime: "8 min read",
-      tags: ["Math", "Strategies", "Tips"],
-      image: "/logo.png",
-      featured: true
+      category: "Math",
+      tags: ["SAT Math", "Strategies", "Study Tips"],
+      image: logoImage,
     },
     {
       id: 2,
-      title: "How to Improve Your Reading Comprehension in 30 Days",
-      excerpt: "Reading comprehension is a skill that can be developed with the right approach. Learn our systematic method for understanding complex passages and answering questions accurately.",
-      category: "reading",
+      title: "Understanding SAT Reading: A Complete Guide",
+      excerpt: "Master the art of reading comprehension with our comprehensive guide to the SAT Reading section...",
       author: "Dr. Emily Watson",
-      date: "2024-12-12",
-      readTime: "6 min read",
-      tags: ["Reading", "Comprehension", "Practice"],
-      image: "/logo.png"
+      date: "2024-01-12",
+      readTime: "12 min read",
+      category: "Reading",
+      tags: ["SAT Reading", "Comprehension", "Guide"],
+      image: logoImage
     },
     {
       id: 3,
-      title: "The Psychology of Test Anxiety: How to Stay Calm Under Pressure",
-      excerpt: "Test anxiety affects millions of students. Learn practical techniques to manage stress and perform your best on test day, backed by psychological research.",
-      category: "motivation",
+      title: "The Science Behind Effective SAT Preparation",
+      excerpt: "Learn how cognitive science and educational psychology can enhance your SAT study routine...",
       author: "Michael Rodriguez",
-      date: "2024-12-10",
-      readTime: "5 min read",
-      tags: ["Anxiety", "Psychology", "Wellness"],
-      image: "/logo.png"
+      date: "2024-01-10",
+      readTime: "10 min read",
+      category: "Science",
+      tags: ["Study Science", "Psychology", "Learning"],
+      image: logoImage
     },
     {
       id: 4,
-      title: "Creating an Effective SAT Study Schedule: A Complete Guide",
-      excerpt: "A well-structured study plan is crucial for SAT success. This comprehensive guide shows you how to create a personalized schedule that fits your lifestyle and learning style.",
-      category: "study-tips",
+      title: "Writing and Language: Common Mistakes to Avoid",
+      excerpt: "Identify and fix the most common errors students make in the SAT Writing and Language section...",
       author: "Dr. Sarah Chen",
-      date: "2024-12-08",
-      readTime: "10 min read",
-      tags: ["Study Schedule", "Planning", "Organization"],
-      image: "/logo.png"
+      date: "2024-01-08",
+      readTime: "6 min read",
+      category: "Writing",
+      tags: ["SAT Writing", "Grammar", "Common Mistakes"],
+      image: logoImage
     },
     {
       id: 5,
-      title: "Common SAT Writing Mistakes and How to Avoid Them",
-      excerpt: "Even strong writers make common errors on the SAT. Learn to identify and avoid the most frequent mistakes that can cost you valuable points.",
-      category: "reading",
+      title: "Creating Your Perfect SAT Study Schedule",
+      excerpt: "Design a personalized study plan that fits your lifestyle and maximizes your learning potential...",
       author: "Dr. Emily Watson",
-      date: "2024-12-05",
-      readTime: "7 min read",
-      tags: ["Writing", "Grammar", "Common Mistakes"],
-      image: "/logo.png"
+      date: "2024-01-05",
+      readTime: "9 min read",
+      category: "Planning",
+      tags: ["Study Schedule", "Planning", "Organization"],
+      image: logoImage
     },
     {
       id: 6,
-      title: "The Power of Practice Tests: How to Use Them Effectively",
-      excerpt: "Practice tests are more than just assessment tools. Discover how to use them strategically to identify weaknesses, build confidence, and improve your overall performance.",
-      category: "test-strategies",
+      title: "Test Day Strategies: What to Do Before, During, and After",
+      excerpt: "Essential tips to ensure you're at your best on test day and can perform to your full potential...",
       author: "Michael Rodriguez",
-      date: "2024-12-03",
-      readTime: "9 min read",
-      tags: ["Practice Tests", "Assessment", "Strategy"],
-      image: "/logo.png"
+      date: "2024-01-03",
+      readTime: "7 min read",
+      category: "Test Day",
+      tags: ["Test Day", "Preparation", "Performance"],
+      image: logoImage
     }
   ];
 

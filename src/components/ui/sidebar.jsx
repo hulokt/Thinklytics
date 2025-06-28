@@ -1,7 +1,8 @@
 "use client";
 import { cn } from "../../lib/utils";
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, createContext, useContext, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import logoImage from "/logo.png";
 
 const SidebarContext = createContext(undefined);
 
@@ -76,7 +77,7 @@ export const MobileSidebar = ({ className, children, ...props }) => {
       >
         {/* Logo for mobile */}
         <div className="flex items-center space-x-2">
-          <img src="/logo.png" alt="Thinklytics Logo" className="w-8 h-8 rounded-lg object-cover" />
+          <img src={logoImage} alt="Thinklytics Logo" className="w-8 h-8 rounded-lg object-cover" />
           <span className="ml-2 text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Thinklytics</span>
         </div>
         

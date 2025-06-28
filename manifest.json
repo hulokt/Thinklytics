@@ -2,13 +2,13 @@
   "name": "Thinklytics",
   "short_name": "Thinklytics",
   "description": "A modern SAT practice quiz application with cloud-based data storage",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "./logo.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"

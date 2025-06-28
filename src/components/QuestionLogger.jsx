@@ -1065,13 +1065,13 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       const inch = 25.4;
       const pageWidth = 8.5 * inch;
       const pageHeight = 11 * inch;
-      const marginX = 0.75 * inch;
+      const marginX = 0.5 * inch; // smaller margins for better centering (was 0.75)
       const marginY = 1 * inch;
       const gutter = 0.5 * inch;
       const colWidth = 3.5 * inch;
       const contentWidth = pageWidth - 2 * marginX;
       const contentHeight = pageHeight - 2 * marginY;
-      const questionBoxSize = 0.25 * inch; // smaller number box
+      const questionBoxSize = 0.15 * inch; // even smaller number box (was 0.2)
       const grayBarHeight = questionBoxSize;
       const dividerX = marginX + colWidth + gutter / 2;
       const answerIndent = 0.25 * inch;
@@ -1087,7 +1087,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         indigo: '#4f46e5',
         gray: '#d1d5db',
         grayLight: '#e5e7eb', // slightly darker for header bar
-        grayBar: '#e5e7eb',
+        grayBar: '#d1d5db', // lighter grey bar (was #9ca3af)
         text: '#111827',
         subtitleBorder: '#60a5fa',
         underline: '#1e3a8a',
@@ -1152,19 +1152,86 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       pdf.setFontSize(40);
       pdf.text('✏', marginX + 95, titleY + 30);
 
-      // Info Box
-      const boxY = titleY + 60;
-      const boxW = contentWidth;
-      const boxH = 35;
-      pdf.setDrawColor(COLORS.blue);
-      pdf.setLineWidth(0.8);
-      pdf.roundedRect(marginX, boxY, boxW, boxH, 3, 3, 'D');
+      // Start benefit sections below Practice Test text
+      let currentY = titleY + 60;
+
+      const drawSectionHeader = (title) => {
+        pdf.setFont(FONTS.georgia, 'bold');
+        pdf.setFontSize(14); // smaller header
+        pdf.setTextColor(COLORS.blue);
+        pdf.text(title, marginX, currentY);
+        currentY += 6;
+        pdf.setDrawColor(COLORS.blue);
+        pdf.setLineWidth(0.8);
+        pdf.line(marginX, currentY, marginX + 90, currentY);
+        currentY += 8;
+        pdf.setFont(FONTS.inter, 'normal');
+        pdf.setFontSize(9); // smaller body text
+        pdf.setTextColor(COLORS.text);
+      };
+
+      const drawBullets = (lines) => {
+        const bulletFontSize = 9;
+        const lineHeight = bulletFontSize * 0.3528 * 1.15; // convert pt to mm * line-height
+        pdf.setFontSize(bulletFontSize);
+        lines.forEach(line => {
+          const wrapped = pdf.splitTextToSize(`• ${line}`, contentWidth - 8);
+          pdf.text(wrapped, marginX + 4, currentY, { maxWidth: contentWidth - 8, lineHeightFactor: 1.15 });
+          currentY += wrapped.length * lineHeight + 1;
+        });
+        currentY += 2;
+      };
+
+      // Why Practice Tests Work
+      drawSectionHeader('Why Practice Tests Work');
+      drawBullets([
+        'Flexible Practice – work on your own schedule with adaptive tests.',
+        'Focused Improvement – target weak areas with customized sets.',
+        'Real Test Experience – simulate official timing & interface.'
+      ]);
+
+      // How Practice Tests Help You Succeed – Preparation
+      drawSectionHeader('How Practice Tests Help You Succeed');
       pdf.setFont(FONTS.inter, 'bold');
-      pdf.setFontSize(14);
-      pdf.text('Make time to take the Thinklytics test.', marginX + 4, boxY + 10);
+      pdf.text('For Test Preparation', marginX + 2, currentY);
+      currentY += 6;
       pdf.setFont(FONTS.inter, 'normal');
-      pdf.setFontSize(12);
-      pdf.text('It is one of the best ways to track and improve your SAT skills.', marginX + 4, boxY + 18);
+      drawBullets([
+        'Build familiarity with SAT formats and timing',
+        'Identify and address knowledge gaps',
+        'Develop efficient test-taking strategies',
+        'Improve time-management skills',
+        'Boost confidence through repetition'
+      ]);
+
+      // Performance tracking
+      pdf.setFont(FONTS.inter, 'bold');
+      pdf.text('For Performance Tracking', marginX + 2, currentY);
+      currentY += 6;
+      pdf.setFont(FONTS.inter, 'normal');
+      drawBullets([
+        'Monitor improvement across sections',
+        'Track progress on specific question types',
+        'Identify recurring error patterns',
+        'Set and achieve score goals',
+        'Generate detailed reports for applications'
+      ]);
+
+      // How to Use Practice Tests Effectively
+      drawSectionHeader('How to Use Practice Tests Effectively');
+      const steps = [
+        'Create Your Test – choose questions by topic & difficulty.',
+        'Take Your Time – pause and resume whenever needed.',
+        'Review and Edit – double-check answers, flag doubts.',
+        'Analyze Results – study analytics to plan next steps.'
+      ];
+      steps.forEach((step, idx) => {
+        pdf.setFont(FONTS.inter, 'bold');
+        pdf.text(`${idx + 1}.`, marginX + 2, currentY);
+        pdf.setFont(FONTS.inter, 'normal');
+        pdf.text(step, marginX + 10, currentY);
+        currentY += 6;
+      });
 
       // Footer shield + code
       pdf.setDrawColor(COLORS.black);
@@ -1184,8 +1251,18 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
       const drawDivider = () => {
         pdf.setDrawColor(COLORS.divider);
-        pdf.setLineWidth(0.8);
-        pdf.line(dividerX, marginY, dividerX, pageHeight - marginY);
+        pdf.setLineWidth(0.3); // thinner line (was 0.8)
+        // Draw dotted line by creating small line segments
+        const dashLength = 2; // mm
+        const gapLength = 2; // mm
+        const totalLength = dashLength + gapLength;
+        let y = marginY;
+        
+        while (y < pageHeight - marginY) {
+          const endY = Math.min(y + dashLength, pageHeight - marginY);
+          pdf.line(dividerX, y, dividerX, endY);
+          y += totalLength;
+        }
       };
       drawDivider();
 
@@ -1243,10 +1320,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
         // Centered number
         pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(8);
+        pdf.setFontSize(6); // smaller font size for smaller box (was 7)
         pdf.setTextColor(COLORS.white);
-        const numFontHeight = 8 * 0.3528;
-        pdf.text(String(questionNumber), boxX + questionBoxSize / 2, cursorY + questionBoxSize / 2 + numFontHeight / 2 - 0.5, { align: 'center' });
+        const numFontHeight = 6 * 0.3528; // adjusted for new font size
+        pdf.text(String(questionNumber), boxX + questionBoxSize / 2, cursorY + questionBoxSize / 2 + numFontHeight / 2 - 0.2, { align: 'center' });
 
         cursorY += questionBoxSize + 2;
 
@@ -1266,8 +1343,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
           } catch {}
         }
 
-        // Question text
-        pdf.setFont(FONTS.georgia, 'bold');
+        // Question text (not bold)
+        pdf.setFont(FONTS.georgia, 'normal'); // removed bold
         pdf.text(measurement.questionLines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.2 });
         cursorY += measurement.questionH + 3;
 
@@ -1295,6 +1372,42 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
         // New page if not enough space
         if (currentRowY + rowHeight > pageHeight - marginY) {
+          // Add page number and continue arrow before adding new page
+          if (page > 1) { // Not first page
+            const bottomLabelY = pageHeight - marginY + 8; // unified vertical position
+
+            // Page number (bold, centered)
+            pdf.setFont(FONTS.georgia, 'bold');
+            pdf.setFontSize(12);
+            pdf.setTextColor(COLORS.text);
+            pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
+
+            // Continue indicator on right (not last page)
+            if (idx + 2 < filteredQuestions.length) {
+              const text = 'Continue';
+              pdf.setFont(FONTS.georgia, 'bold');
+              pdf.setFontSize(12);
+              pdf.setTextColor(COLORS.text);
+
+              // Position the text a bit inside from the right edge
+              const textX = pageWidth - marginX - 8; // 8 mm inset
+              pdf.text(text, textX, bottomLabelY, { align: 'right' });
+
+              // Draw simple arrow (horizontal line + arrow head) right next to the text
+              const textWidth = pdf.getTextWidth(text);
+              const arrowStartX = textX + 2; // 2mm gap after text (since align right, arrow will be to the right)
+              const arrowY = bottomLabelY - 1.5; // refined alignment
+              const arrowLen = 6; // mm
+              pdf.setDrawColor(COLORS.text);
+              pdf.setLineWidth(1);
+              // Shaft
+              pdf.line(arrowStartX, arrowY, arrowStartX + arrowLen, arrowY);
+              // Arrow head
+              pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY - 2);
+              pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY + 2);
+            }
+          }
+          
           pdf.addPage();
           page++;
           drawDivider();
@@ -1313,6 +1426,33 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
         // Move to next row
         currentRowY += rowHeight + 6; // spacing between rows
+      }
+      
+      // Add page number and continue arrow to the last page with questions
+      if (page > 1) { // Not first page
+        const bottomLabelY = pageHeight - marginY + 8; // unified vertical position
+
+        // Page number (bold, centered)
+        pdf.setFont(FONTS.georgia, 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(COLORS.text);
+        pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
+        
+        // Continue indicator because answer key follows
+        const text = 'Continue';
+        pdf.setFont(FONTS.georgia, 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(COLORS.text);
+        const textX = pageWidth - marginX - 8;
+        pdf.text(text, textX, bottomLabelY, { align: 'right' });
+        const arrowStartX = textX + 2;
+        const arrowY = bottomLabelY - 1.5;
+        const arrowLen = 6;
+        pdf.setDrawColor(COLORS.text);
+        pdf.setLineWidth(1);
+        pdf.line(arrowStartX, arrowY, arrowStartX + arrowLen, arrowY);
+        pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY - 2);
+        pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY + 2);
       }
       
       // --- ANSWER KEY ---

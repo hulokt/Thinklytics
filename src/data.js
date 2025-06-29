@@ -13,28 +13,22 @@ export const READING_WRITING_DOMAINS = {
 // Question types organized by domain for Reading & Writing
 export const READING_WRITING_QUESTION_TYPES_BY_DOMAIN = {
   'Information and Ideas': [
-    'Main Idea',
-    'Inference',
-    'Supporting Evidence',
-    'Detail'
+    'Central Ideas and Details',
+    'Inferences',
+    'Command of Evidence'
   ],
   'Craft and Structure': [
     'Words in Context',
-    'Text Structure',
-    'Purpose',
+    'Text Structure and Purpose',
     'Cross-Text Connections'
   ],
   'Expression of Ideas': [
     'Rhetorical Synthesis',
-    'Transitions',
-    'Conciseness',
-    'Precision'
+    'Transitions'
   ],
   'Standard English Conventions': [
-    'Punctuation',
-    'Sentence Boundaries',
-    'Verb Tense and Agreement',
-    'Pronouns and Modifiers'
+    'Boundaries',
+    'Form, Structure, and Sense'
   ]
 };
 
@@ -48,27 +42,31 @@ export const MATH_DOMAINS = {
 // Question types organized by domain for Math
 export const MATH_QUESTION_TYPES_BY_DOMAIN = {
   'Algebra': [
-    'Linear Equations',
-    'Inequalities',
-    'Systems of Equations'
+    'Linear equations in one variable',
+    'Linear functions',
+    'Linear equations in two variables',
+    'Systems of two linear equations in two variables',
+    'Linear inequalities in one or two variables'
   ],
   'Advanced Math': [
-    'Quadratics',
-    'Rational Expressions',
-    'Radical Equations',
-    'Functions'
+    'Nonlinear functions',
+    'Nonlinear equations in one variable and systems of equations in two variables',
+    'Equivalent expressions'
   ],
   'Problem Solving and Data Analysis': [
-    'Ratios and Proportions',
-    'Unit Conversions',
-    'Data Interpretation',
-    'Statistics'
+    'Ratios, rates, proportional relationships, and units',
+    'Percentages',
+    'One-variable data: Distributions and measures of center and spread',
+    'Two-variable data: Models and scatterplots',
+    'Probability and conditional probability',
+    'Inference from sample statistics and margin of error',
+    'Evaluating statistical claims: Observational studies and experiments'
   ],
   'Geometry and Trigonometry': [
-    'Angles',
-    'Circles',
-    'Area/Volume',
-    'Trigonometric Functions'
+    'Area and volume',
+    'Lines, angles, and triangles',
+    'Right triangles and trigonometry',
+    'Circles'
   ]
 };
 

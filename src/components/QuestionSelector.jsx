@@ -1222,9 +1222,13 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
                   onChange={(e) => handleFilterChange('questionType', e.target.value)}
                   className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
                 >
-                  {questionTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+                  {questionTypes.map(type => {
+                    const words = type.split(' ');
+                    const displayLabel = words.length > 5 ? `${words.slice(0, 5).join(' ')} ...` : type;
+                    return (
+                      <option key={type} value={type}>{displayLabel}</option>
+                    );
+                  })}
                 </select>
               </div>
               <div>

@@ -5,6 +5,7 @@ import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager } from './QuizManager';
 import CountUp from './ui/CountUp';
 import InfoTooltip from './ui/tooltip';
+import { SAT_SECTIONS, MATH_DOMAINS, READING_WRITING_DOMAINS, getQuestionTypeOptions } from '../data';
 
 // Register Chart.js components
 ChartJS.register(
@@ -170,6 +171,19 @@ const AnalyticsPage = ({ questions }) => {
 
     // Question type statistics - calculate based on completed quiz results only
     const questionTypeStats = {};
+    
+    // Debug: Log all questions to see their types
+    console.log('🔍 Question Type Analysis - All Questions:', {
+      totalQuestions: questionsArray.length,
+      questionTypes: questionsArray.map(q => ({
+        id: q.id,
+        section: q.section,
+        domain: q.domain,
+        questionType: q.questionType,
+        difficulty: q.difficulty
+      }))
+    });
+    
     questionsArray.forEach(question => {
       const type = question.questionType || 'Unknown';
       if (!questionTypeStats[type]) {
@@ -205,6 +219,17 @@ const AnalyticsPage = ({ questions }) => {
           }
         }
       }
+    });
+    
+    // Debug: Log the final question type stats
+    console.log('🔍 Question Type Statistics Final:', {
+      questionTypeStats: Object.entries(questionTypeStats).map(([type, stats]) => ({
+        type,
+        total: stats.total,
+        attempted: stats.attempted,
+        correct: stats.correct,
+        wrong: stats.wrong
+      }))
     });
 
     // Find most struggling areas (max 3 each) - only for domains/types with 2+ wrong answers
@@ -532,26 +557,68 @@ const AnalyticsPage = ({ questions }) => {
     { bg: 'rgba(150, 251, 196, 0.8)', border: 'rgba(150, 251, 196, 1)', hover: 'rgba(150, 251, 196, 0.9)' }
   ];
 
-  // Domain occurrence chart data with consistent colors
-  const domainLabels = Object.keys(analytics.domainStats).slice(0, 8);
-  const domainData = Object.values(analytics.domainStats).slice(0, 8);
-  
+  // New helper to create occurrence data for a stats map
+  const createOccurrenceData = (statsMap) => {
+    const labels = Object.keys(statsMap).slice(0, 8);
+    const dataArr = Object.values(statsMap).slice(0, 8);
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Total Questions',
+          data: dataArr.map(stat => stat.total),
+          backgroundColor: dataArr.map((_, index) => colorPalette[index % colorPalette.length].bg),
+          borderColor: dataArr.map((_, index) => colorPalette[index % colorPalette.length].border),
+          borderWidth: 2,
+          borderRadius: 8,
+          borderSkipped: false,
+          hoverBackgroundColor: dataArr.map((_, index) => colorPalette[index % colorPalette.length].hover),
+        },
+        {
+          label: 'Attempted Questions',
+          data: dataArr.map(stat => stat.attempted || 0),
+          backgroundColor: 'rgba(255, 193, 7, 0.7)',
+          borderColor: 'rgba(255, 193, 7, 1)',
+          borderWidth: 2,
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+      ],
+    };
+  };
+
+  // Split stats by section
+  const mathDomainSet = new Set(Object.values(MATH_DOMAINS));
+  const rwDomainSet = new Set(Object.values(READING_WRITING_DOMAINS));
+  const domainStatsMath = Object.fromEntries(Object.entries(analytics.domainStats).filter(([d]) => mathDomainSet.has(d)));
+  const domainStatsRW = Object.fromEntries(Object.entries(analytics.domainStats).filter(([d]) => rwDomainSet.has(d)));
+
+  const mathTypeSet = new Set(getQuestionTypeOptions(SAT_SECTIONS.MATH));
+  const rwTypeSet = new Set(getQuestionTypeOptions(SAT_SECTIONS.READING_WRITING));
+  const questionTypeStatsMath = Object.fromEntries(Object.entries(analytics.questionTypeStats).filter(([t]) => mathTypeSet.has(t)));
+  const questionTypeStatsRW = Object.fromEntries(Object.entries(analytics.questionTypeStats).filter(([t]) => rwTypeSet.has(t)));
+
+  const domainOccurrenceDataMath = createOccurrenceData(domainStatsMath);
+  const domainOccurrenceDataRW = createOccurrenceData(domainStatsRW);
+  const questionTypeOccurrenceDataMath = createOccurrenceData(questionTypeStatsMath);
+  const questionTypeOccurrenceDataRW = createOccurrenceData(questionTypeStatsRW);
+
   const domainOccurrenceData = {
-    labels: domainLabels,
+    labels: Object.keys(analytics.domainStats).slice(0, 8),
     datasets: [
       {
         label: 'Total Questions',
-        data: domainData.map(stat => stat.total),
-        backgroundColor: domainData.map((_, index) => colorPalette[index % colorPalette.length].bg),
-        borderColor: domainData.map((_, index) => colorPalette[index % colorPalette.length].border),
+        data: Object.values(analytics.domainStats).slice(0, 8).map(stat => stat.total),
+        backgroundColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].bg),
+        borderColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].border),
         borderWidth: 2,
         borderRadius: 8,
         borderSkipped: false,
-        hoverBackgroundColor: domainData.map((_, index) => colorPalette[index % colorPalette.length].hover),
+        hoverBackgroundColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].hover),
       },
       {
         label: 'Attempted Questions',
-        data: domainData.map(stat => stat.attempted || 0),
+        data: Object.values(analytics.domainStats).slice(0, 8).map(stat => stat.attempted || 0),
         backgroundColor: 'rgba(255, 193, 7, 0.7)',
         borderColor: 'rgba(255, 193, 7, 1)',
         borderWidth: 2,
@@ -561,26 +628,22 @@ const AnalyticsPage = ({ questions }) => {
     ],
   };
 
-  // Question type occurrence chart data with consistent colors
-  const questionTypeLabels = Object.keys(analytics.questionTypeStats).slice(0, 8);
-  const questionTypeData = Object.values(analytics.questionTypeStats).slice(0, 8);
-  
   const questionTypeOccurrenceData = {
-    labels: questionTypeLabels,
+    labels: Object.keys(analytics.questionTypeStats).slice(0, 8),
     datasets: [
       {
         label: 'Total Questions',
-        data: questionTypeData.map(stat => stat.total),
-        backgroundColor: questionTypeData.map((_, index) => colorPalette[index % colorPalette.length].bg),
-        borderColor: questionTypeData.map((_, index) => colorPalette[index % colorPalette.length].border),
+        data: Object.values(analytics.questionTypeStats).slice(0, 8).map(stat => stat.total),
+        backgroundColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].bg),
+        borderColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].border),
         borderWidth: 2,
         borderRadius: 8,
         borderSkipped: false,
-        hoverBackgroundColor: questionTypeData.map((_, index) => colorPalette[index % colorPalette.length].hover),
+        hoverBackgroundColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].hover),
       },
       {
         label: 'Attempted Questions',
-        data: questionTypeData.map(stat => stat.attempted || 0),
+        data: Object.values(analytics.questionTypeStats).slice(0, 8).map(stat => stat.attempted || 0),
         backgroundColor: 'rgba(168, 85, 247, 0.7)',
         borderColor: 'rgba(168, 85, 247, 1)',
         borderWidth: 2,
@@ -1056,31 +1119,17 @@ const AnalyticsPage = ({ questions }) => {
 
           {/* Domain and Question Type Occurrence Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            
-            {/* Domain Occurrences */}
+            {/* Domain Distribution (Math) */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Domain Distribution</h3>
-                <InfoTooltip
-                  content={
-                    <div>
-                      <div className="font-semibold mb-2">Domain Distribution Analysis:</div>
-                      <ul className="space-y-1 text-xs">
-                        <li>• <strong>Total Questions:</strong> How many questions you've logged per domain</li>
-                        <li>• <strong>Attempted Questions:</strong> How many you've actually practiced</li>
-                        <li>• <strong>Purpose:</strong> See which domains you focus on most</li>
-                        <li>• <strong>Top 8 Shown:</strong> Most common domains displayed</li>
-                      </ul>
-                    </div>
-                  }
-                />
+                <h3 className="text-lg font-semibold text-gray-900">Domain Distribution (Math)</h3>
               </div>
               <div className="h-64 relative">
                 <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/30 to-transparent pointer-events-none rounded-lg"></div>
-                {Object.keys(analytics.domainStats).length > 0 ? (
-                  <Bar data={domainOccurrenceData} options={occurrenceChartOptions} />
+                {Object.keys(domainStatsMath).length > 0 ? (
+                  <Bar data={domainOccurrenceDataMath} options={occurrenceChartOptions} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500">
                     <div className="text-center">
@@ -1092,30 +1141,64 @@ const AnalyticsPage = ({ questions }) => {
               </div>
             </div>
 
-            {/* Question Type Occurrences */}
+            {/* Domain Distribution (Reading & Writing) */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-sm"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Domain Distribution (Reading & Writing)</h3>
+              </div>
+              <div className="h-64 relative">
+                <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/30 to-transparent pointer-events-none rounded-lg"></div>
+                {Object.keys(domainStatsRW).length > 0 ? (
+                  <Bar data={domainOccurrenceDataRW} options={occurrenceChartOptions} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">🏷️</div>
+                      <p>No domain data available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Question Type Distribution Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Question Type Distribution (Math) */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500"></div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Question Type Distribution</h3>
-                <InfoTooltip
-                  content={
-                    <div>
-                      <div className="font-semibold mb-2">Question Type Distribution Analysis:</div>
-                      <ul className="space-y-1 text-xs">
-                        <li>• <strong>Total Questions:</strong> How many questions you've logged per type</li>
-                        <li>• <strong>Attempted Questions:</strong> How many you've actually practiced</li>
-                        <li>• <strong>Purpose:</strong> See which question types you practice most</li>
-                        <li>• <strong>Top 8 Shown:</strong> Most common question types displayed</li>
-                      </ul>
-                    </div>
-                  }
-                />
+                <h3 className="text-lg font-semibold text-gray-900">Question Type Distribution (Math)</h3>
               </div>
               <div className="h-64 relative">
                 <div className="absolute inset-0 bg-gradient-to-t from-emerald-50/30 to-transparent pointer-events-none rounded-lg"></div>
-                {Object.keys(analytics.questionTypeStats).length > 0 ? (
-                  <Bar data={questionTypeOccurrenceData} options={occurrenceChartOptions} />
+                {Object.keys(questionTypeStatsMath).length > 0 ? (
+                  <Bar data={questionTypeOccurrenceDataMath} options={occurrenceChartOptions} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">🔧</div>
+                      <p>No question type data available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Question Type Distribution (Reading & Writing) */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500"></div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full shadow-sm"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Question Type Distribution (Reading & Writing)</h3>
+              </div>
+              <div className="h-64 relative">
+                <div className="absolute inset-0 bg-gradient-to-t from-emerald-50/30 to-transparent pointer-events-none rounded-lg"></div>
+                {Object.keys(questionTypeStatsRW).length > 0 ? (
+                  <Bar data={questionTypeOccurrenceDataRW} options={occurrenceChartOptions} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500">
                     <div className="text-center">
@@ -1358,7 +1441,7 @@ const AnalyticsPage = ({ questions }) => {
           </div>
 
           {/* Section Performance Cards */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden mb-6 sm:mb-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6 transition-all duration-300 relative overflow-hidden mb-6 sm:mb-8 hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500"></div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-3 h-3 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full shadow-sm"></div>

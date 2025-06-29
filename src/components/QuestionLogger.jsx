@@ -1805,9 +1805,16 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
                     {(formData.domain
                       ? getQuestionTypeOptionsByDomain(formData.section, formData.domain)
                       : getQuestionTypeOptions(formData.section)
-                    ).map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
+                    ).map((type) => {
+                      const words = type.split(' ');
+                      const displayLabel =
+                        formData.section === SAT_SECTIONS.MATH && words.length > 5
+                          ? `${words.slice(0, 5).join(' ')} ...`
+                          : type;
+                      return (
+                        <option key={type} value={type}>{displayLabel}</option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>

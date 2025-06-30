@@ -237,12 +237,8 @@ const calendarStyles = `
   }
 `;
 
-// ========= Debug helper =========
-// Silence noisy logs in this component and expose a focused logger instead.
-const _origLog = console.log.bind(console);
-console.log = () => {}; // suppress every stray console.log coming from this file
-const dbg = (...args) => _origLog('[Calendar]', ...args);
-// =================================
+// Suppress verbose calendar debug logging in production
+const dbg = () => {};
 
 const CalendarPage = ({ onStartQuiz }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -339,7 +335,7 @@ const CalendarPage = ({ onStartQuiz }) => {
 
   // Combine calendar events with quiz manager data
   const getAllEventsForDate = (dateStr) => {
-    console.log(`🔍 Getting events for date: ${dateStr}`);
+    /* console.log(`🔍 Getting events for date: ${dateStr}`); */
     
     // Create a map to track unique events by quizId
     const eventMap = new Map();
@@ -371,7 +367,7 @@ const CalendarPage = ({ onStartQuiz }) => {
         return quizDateStr === dateStr;
       });
       
-      console.log('🔄 In-progress quizzes for date:', inProgressQuizzesForDate);
+      /* console.log('🔄 In-progress quizzes for date:', inProgressQuizzesForDate); */
       
       inProgressQuizzesForDate.forEach(quiz => {
         const event = {
@@ -397,7 +393,7 @@ const CalendarPage = ({ onStartQuiz }) => {
         return quizDateStr === dateStr;
       });
       
-      console.log('✅ Completed quizzes for date:', completedQuizzesForDate);
+      /* console.log('✅ Completed quizzes for date:', completedQuizzesForDate); */
       
       completedQuizzesForDate.forEach(quiz => {
         const event = {
@@ -422,7 +418,7 @@ const CalendarPage = ({ onStartQuiz }) => {
       .map(({ priority, ...event }) => event) // Remove priority from final events
       .filter(event => event.type !== 'notes'); // Exclude notes from activities list
     
-    console.log(`📅 Final unique events for ${dateStr}:`, uniqueEvents);
+    /* console.log(`📅 Final unique events for ${dateStr}:`, uniqueEvents); */
     return uniqueEvents;
   };
 
@@ -436,14 +432,14 @@ const CalendarPage = ({ onStartQuiz }) => {
 
   // Debug logging
   useEffect(() => {
-    console.log('📅 Calendar Debug:', {
+    /* console.log('📅 Calendar Debug:', {
       calendarEvents: calendarEvents?.length || 0,
       completedQuizzes: completedQuizzes?.length || 0,
       inProgressQuizzes: inProgressQuizzes?.length || 0,
       selectedDate: toLocalDateString(selectedDate),
       selectedDateEvents: selectedDateEvents,
       eventsLength: selectedDateEvents.length
-    });
+    }); */
   }, [calendarEvents, completedQuizzes, inProgressQuizzes, selectedDate, selectedDateEvents]);
 
   // === Global watcher: log whenever calendarEvents array changes ===
@@ -589,14 +585,14 @@ const CalendarPage = ({ onStartQuiz }) => {
   // Unified delete handler that routes to appropriate deletion logic
   const handleDeleteEvent = async (event) => {
     try {
-      console.log('🗑️ Attempting to delete event:', event);
+      /* console.log('🗑️ Attempting to delete event:', event); */
       
       // Determine event source and route to appropriate handler
       const eventId = String(event.id || '');
       
       if (eventId.startsWith('completed-') || eventId.startsWith('inprogress-')) {
         // This is a QuizManager-sourced event
-        console.log('🗑️ Deleting QuizManager event with quizId:', event.quizId);
+        /* console.log('🗑️ Deleting QuizManager event with quizId:', event.quizId); */
         
         if (!quizManager || !event.quizId) {
           throw new Error('QuizManager or quizId not available for QuizManager event');
@@ -610,14 +606,14 @@ const CalendarPage = ({ onStartQuiz }) => {
         // Also remove any calendar event that still references this quizId (e.g. the original planned event)
         const updatedEvents = (calendarEvents || []).filter(e => e.quizId !== event.quizId);
         if (updatedEvents.length !== (calendarEvents || []).length) {
-          console.log('🗑️ Removed matching calendar event(s) linked to quizId', event.quizId);
+          /* console.log('🗑️ Removed matching calendar event(s) linked to quizId', event.quizId); */
           await mergeAndSaveCalendarEvents(updatedEvents);
         }
         
         setToastMessage('Quiz deleted successfully');
       } else if (event.type === 'custom') {
         // This is a custom calendar event
-        console.log('🗑️ Deleting custom calendar event with id:', event.id);
+        /* console.log('🗑️ Deleting custom calendar event with id:', event.id); */
         
         const updatedEvents = (calendarEvents || []).filter(e => e.id !== event.id);
         await mergeAndSaveCalendarEvents(updatedEvents);
@@ -625,11 +621,11 @@ const CalendarPage = ({ onStartQuiz }) => {
         setToastMessage('Event deleted successfully');
       } else {
         // This is a planned quiz calendar event
-        console.log('🗑️ Deleting planned quiz calendar event with id:', event.id);
+        /* console.log('🗑️ Deleting planned quiz calendar event with id:', event.id); */
         
         // Delete from QuizManager if quizId exists
         if (quizManager && event.quizId) {
-          console.log('🗑️ Also deleting corresponding QuizManager record with quizId:', event.quizId);
+          /* console.log('🗑️ Also deleting corresponding QuizManager record with quizId:', event.quizId); */
           await quizManager.deleteQuiz(event.quizId);
         }
         
@@ -658,17 +654,17 @@ const CalendarPage = ({ onStartQuiz }) => {
 
   const handleDeleteQuiz = async (quiz) => {
     try {
-      console.log('🗑️ Attempting to delete quiz:', quiz);
+      /* console.log('🗑️ Attempting to delete quiz:', quiz); */
       
       // Always attempt to delete associated QuizManager record if quizId exists
       if (quizManager && quiz.quizId) {
-        console.log('🗑️ Deleting corresponding quiz manager record with quizId:', quiz.quizId);
+        /* console.log('🗑️ Deleting corresponding quiz manager record with quizId:', quiz.quizId); */
         await quizManager.deleteQuiz(quiz.quizId);
       }
 
       // Also remove any matching calendar event
       const updatedEvents = (calendarEvents || []).filter(event => event.id !== quiz.id);
-      console.warn('🗑️ handleDeleteQuiz – removing calendar event id:', quiz.id, 'Remaining events count:', updatedEvents.length);
+      /* console.warn('🗑️ handleDeleteQuiz – removing calendar event id:', quiz.id, 'Remaining events count:', updatedEvents.length); */
       mergeAndSaveCalendarEvents(updatedEvents);
       
       setToastMessage('Quiz deleted successfully');
@@ -690,10 +686,10 @@ const CalendarPage = ({ onStartQuiz }) => {
 
   const handleDeleteCustomEvent = async (event) => {
     try {
-      console.log('🗑️ Attempting to delete custom event:', event);
+      /* console.log('🗑️ Attempting to delete custom event:', event); */
       
       const updatedEvents = (calendarEvents || []).filter(e => e.id !== event.id);
-      console.log('🗑️ Updated calendar events:', updatedEvents);
+      /* console.log('🗑️ Updated calendar events:', updatedEvents); */
       mergeAndSaveCalendarEvents(updatedEvents);
       
       setToastMessage('Event deleted successfully');
@@ -715,16 +711,16 @@ const CalendarPage = ({ onStartQuiz }) => {
 
   const handleDeleteCompletedQuiz = async (quiz) => {
     try {
-      console.log('🗑️ Attempting to delete completed quiz:', quiz);
+      /* console.log('🗑️ Attempting to delete completed quiz:', quiz); */
       
       // Check if this is a calendar event or quiz manager event
       const quizId = String(quiz.id || '');
       if (quizId.startsWith('completed-') || quizId.startsWith('inprogress-')) {
         // This is from quiz manager, remove from quiz manager
-        console.log('🗑️ Deleting completed quiz from quiz manager with quizId:', quiz.quizId);
+        /* console.log('🗑️ Deleting completed quiz from quiz manager with quizId:', quiz.quizId); */
         if (quizManager && quiz.quizId) {
           const deleteResult = await quizManager.deleteQuiz(quiz.quizId);
-          console.log('🗑️ Quiz manager delete result:', deleteResult);
+          /* console.log('🗑️ Quiz manager delete result:', deleteResult); */
           if (!deleteResult) {
             throw new Error('Failed to delete from quiz manager');
           }
@@ -733,9 +729,9 @@ const CalendarPage = ({ onStartQuiz }) => {
         }
       } else {
         // This is a calendar event, remove from calendar events
-        console.log('🗑️ Deleting completed quiz calendar event with id:', quiz.id);
+        /* console.log('🗑️ Deleting completed quiz calendar event with id:', quiz.id); */
         const updatedEvents = (calendarEvents || []).filter(event => event.id !== quiz.id);
-        console.warn('🗑️ handleDeleteCompletedQuiz – removing calendar event id:', quiz.id, 'Remaining events count:', updatedEvents.length);
+        /* console.warn('🗑️ handleDeleteCompletedQuiz – removing calendar event id:', quiz.id, 'Remaining events count:', updatedEvents.length); */
         mergeAndSaveCalendarEvents(updatedEvents);
       }
       

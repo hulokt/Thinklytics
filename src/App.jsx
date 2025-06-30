@@ -403,6 +403,19 @@ function AppContent() {
 
     // Helper to decide if two questions are the same (ignores id & timestamps)
     const isSameQuestion = (a, b) => {
+      // For hidden questions, consider them duplicates if they have the same section/domain/type
+      // This prevents duplicates within the same batch while still allowing different hidden questions
+      const aIsHidden = isHiddenQuestion(a);
+      const bIsHidden = isHiddenQuestion(b);
+      
+      // Allow multiple hidden questions even if they share identical metadata.
+      // Hidden questions often act as draft placeholders, so we should never
+      // prevent them from being added.
+      if (aIsHidden && bIsHidden) {
+        return false; // never treat two hidden questions as duplicates
+      }
+      
+      // For regular questions, use the original duplicate detection logic
       return (
         (a.section || "") === (b.section || "") &&
         (a.domain || "") === (b.domain || "") &&
@@ -410,6 +423,27 @@ function AppContent() {
         (a.passageText || "") === (b.passageText || "") &&
         (a.questionText || "") === (b.questionText || "")
       );
+    };
+
+    // Helper to detect if a question should be hidden
+    const isHiddenQuestion = (question) => {
+      // Must have section, domain, and questionType
+      if (!question.section || !question.domain || !question.questionType) {
+        return false;
+      }
+      
+      // Check if all other fields are empty
+      const passageTextEmpty = !question.passageText || question.passageText.trim() === '';
+      const passageImageEmpty = !question.passageImage;
+      const questionTextEmpty = !question.questionText || question.questionText.trim() === '';
+      const explanationEmpty = !question.explanation || question.explanation.trim() === '';
+      
+      // Check if all answer choices are empty
+      const answerChoicesEmpty = !question.answerChoices || 
+        Object.values(question.answerChoices).every(choice => !choice || choice.trim() === '');
+      
+      return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+             explanationEmpty && answerChoicesEmpty;
     };
 
     // Build a list of unique incoming questions (dedupe within the batch)
@@ -427,10 +461,11 @@ function AppContent() {
       return;
     }
 
-    // Assign fresh ids
+    // Assign fresh ids and mark hidden questions
     const questionsWithIds = dedupedIncoming.map((q) => ({
       ...q,
       id: Date.now() + Math.random(),
+      hidden: isHiddenQuestion(q), // Auto-detect hidden status
     }));
 
     // Merge and save
@@ -441,7 +476,37 @@ function AppContent() {
   const handleUpdateQuestion = async (questionId, updatedQuestion) => {
     if (!questions) return;
     
-    const updatedQuestions = questions.map(q => q.id === questionId ? { ...q, ...updatedQuestion } : q);
+    // Helper to detect if a question should be hidden
+    const isHiddenQuestion = (question) => {
+      // Must have section, domain, and questionType
+      if (!question.section || !question.domain || !question.questionType) {
+        return false;
+      }
+      
+      // Check if all other fields are empty
+      const passageTextEmpty = !question.passageText || question.passageText.trim() === '';
+      const passageImageEmpty = !question.passageImage;
+      const questionTextEmpty = !question.questionText || question.questionText.trim() === '';
+      const explanationEmpty = !question.explanation || question.explanation.trim() === '';
+      
+      // Check if all answer choices are empty
+      const answerChoicesEmpty = !question.answerChoices || 
+        Object.values(question.answerChoices).every(choice => !choice || choice.trim() === '');
+      
+      return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+             explanationEmpty && answerChoicesEmpty;
+    };
+    
+    const updatedQuestions = questions.map(q => {
+      if (q.id === questionId) {
+        const mergedQuestion = { ...q, ...updatedQuestion };
+        return {
+          ...mergedQuestion,
+          hidden: isHiddenQuestion(mergedQuestion) // Re-evaluate hidden status
+        };
+      }
+      return q;
+    });
     await upsertQuestions(updatedQuestions);
   };
 
@@ -449,6 +514,12 @@ function AppContent() {
     if (!questions) return;
     
     const updatedQuestions = questions.filter(q => q.id !== questionId);
+    await upsertQuestions(updatedQuestions);
+  };
+
+  const handleBulkDeleteQuestions = async (questionIds) => {
+    if (!questions || !Array.isArray(questionIds) || questionIds.length === 0) return;
+    const updatedQuestions = questions.filter(q => !questionIds.includes(q.id));
     await upsertQuestions(updatedQuestions);
   };
 
@@ -668,9 +739,11 @@ function AppContent() {
               ) : (
                 <QuestionLogger
                   questions={questions || []}
+                  loading={questionsLoading}
                   onAddQuestion={handleAddQuestion}
                   onUpdateQuestion={handleUpdateQuestion}
                   onDeleteQuestion={handleDeleteQuestion}
+                  onBulkDeleteQuestions={handleBulkDeleteQuestions}
                 />
               )}
             </SidebarLayout>

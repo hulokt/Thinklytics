@@ -113,6 +113,9 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
     let filtered = [...questions];
 
+    // First, exclude hidden questions from quiz builder
+    filtered = filtered.filter(q => !q.hidden);
+
     // Apply section filter
     if (filters.section !== 'All') {
       filtered = filtered.filter(q => q.section === filters.section);
@@ -642,8 +645,12 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   // Modern Export as PDF function for selected questions
   const exportSelectedQuestionsAsPDF = async () => {
     const selected = questions.filter(q => selectedQuestions.includes(q.id));
-    if (selected.length === 0) {
-      alert('No questions selected!');
+    
+    // Filter out hidden questions from export
+    const exportableQuestions = selected.filter(q => !q.hidden);
+    
+    if (exportableQuestions.length === 0) {
+      alert('No visible questions selected!');
       return;
     }
 
@@ -945,9 +952,9 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       };
 
       let questionNumber = 1;
-      for (let idx = 0; idx < selected.length; idx += 2) {
-        const leftQ = selected[idx];
-        const rightQ = selected[idx + 1] || null;
+      for (let idx = 0; idx < exportableQuestions.length; idx += 2) {
+        const leftQ = exportableQuestions[idx];
+        const rightQ = exportableQuestions[idx + 1] || null;
 
         // Measure both (async images) – sequential await
         const leftMeasure = await measureQuestionHeight(leftQ);
@@ -970,7 +977,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
             pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
 
             // Continue arrow on right (not last page)
-            if (idx + 2 < selected.length) {
+            if (idx + 2 < exportableQuestions.length) {
               const text = 'Continue';
               pdf.setFont(FONTS.georgia, 'bold');
               pdf.setFontSize(12);
@@ -1048,8 +1055,8 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       let answerX = marginX;
       let answerNum = 1;
       
-      for (let i = 0; i < selected.length; i++) {
-        const q = selected[i];
+      for (let i = 0; i < exportableQuestions.length; i++) {
+        const q = exportableQuestions[i];
         
         // New row if needed
         if (answerNum > 1 && (answerNum - 1) % answersPerRow === 0) {

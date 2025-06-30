@@ -935,7 +935,7 @@ const AnalyticsPage = ({ questions }) => {
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
       
           {/* Modern Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div className="group relative bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative z-10">
@@ -949,7 +949,7 @@ const AnalyticsPage = ({ questions }) => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    <CountUp from={0} to={questions.length} duration={0.8} />
+                    <CountUp from={0} to={questions.filter(q => !q.hidden).length} duration={0.8} />
                   </p>
                   <p className="text-sm font-medium text-gray-600">Total Questions</p>
                   <p className="text-xs text-gray-500">Questions added to library</p>
@@ -1038,6 +1038,27 @@ const AnalyticsPage = ({ questions }) => {
                   </p>
                   <p className="text-sm font-medium text-gray-600">Study Minutes</p>
                   <p className="text-xs text-gray-500">Time spent practicing</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-500/5 to-gray-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                  </div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    <CountUp from={0} to={questions.filter(q => q.hidden).length} duration={0.8} delay={0.3} />
+                  </p>
+                  <p className="text-sm font-medium text-gray-600">Hidden Questions</p>
+                  <p className="text-xs text-gray-500">Draft/incomplete questions</p>
                 </div>
               </div>
             </div>
@@ -1164,25 +1185,59 @@ const AnalyticsPage = ({ questions }) => {
             </div>
           </div>
 
-          {/* Question Type Distribution Charts */}
+          {/* Question Type Distribution Lists */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Question Type Distribution (Math) */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500"></div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Question Type Distribution (Math)</h3>
-              </div>
-              <div className="h-64 relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-emerald-50/30 to-transparent pointer-events-none rounded-lg"></div>
-                {Object.keys(questionTypeStatsMath).length > 0 ? (
-                  <Bar data={questionTypeOccurrenceDataMath} options={occurrenceChartOptions} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">🔧</div>
-                      <p>No question type data available</p>
+                <h3 className="text-lg font-semibold text-gray-900">Question Types (Math)</h3>
+                <InfoTooltip
+                  content={
+                    <div>
+                      <div className="font-semibold mb-2">Math Question Type Distribution:</div>
+                      <ul className="space-y-1 text-xs">
+                        <li>• Shows count of questions for each math question type</li>
+                        <li>• <strong>Total:</strong> All questions in your library</li>
+                        <li>• <strong>Attempted:</strong> Questions you've answered in completed quizzes</li>
+                        <li>• Helps identify which types you practice most/least</li>
+                      </ul>
                     </div>
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                {Object.keys(questionTypeStatsMath).length > 0 ? (
+                  Object.entries(questionTypeStatsMath)
+                    .filter(([, stats]) => stats.total >= 1)
+                    .sort(([,a], [,b]) => b.total - a.total)
+                    .slice(0, 5)
+                    .map(([type, stats], index) => (
+                      <div key={type} className="group relative bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-2 border border-emerald-200 hover:shadow-md transition-all duration-200 hover:scale-[1.01]">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                        <div className="relative z-10 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-sm">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-900 truncate" title={type}>{type}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-bold text-emerald-600">{stats.total}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                      <div className="text-2xl">🔧</div>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-700 mb-1">No math question types available</p>
+                    <p className="text-xs text-gray-600">Add math questions to see type distribution</p>
                   </div>
                 )}
               </div>
@@ -1190,147 +1245,62 @@ const AnalyticsPage = ({ questions }) => {
 
             {/* Question Type Distribution (Reading & Writing) */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 via-indigo-500 to-blue-500"></div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Question Type Distribution (Reading & Writing)</h3>
+                <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full shadow-sm"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Question Types (Reading & Writing)</h3>
+                <InfoTooltip
+                  content={
+                    <div>
+                      <div className="font-semibold mb-2">Reading & Writing Question Type Distribution:</div>
+                      <ul className="space-y-1 text-xs">
+                        <li>• Shows count of questions for each R&W question type</li>
+                        <li>• <strong>Total:</strong> All questions in your library</li>
+                        <li>• <strong>Attempted:</strong> Questions you've answered in completed quizzes</li>
+                        <li>• Helps identify which types you practice most/least</li>
+                      </ul>
+                    </div>
+                  }
+                />
               </div>
-              <div className="h-64 relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-emerald-50/30 to-transparent pointer-events-none rounded-lg"></div>
+              <div className="space-y-2">
                 {Object.keys(questionTypeStatsRW).length > 0 ? (
-                  <Bar data={questionTypeOccurrenceDataRW} options={occurrenceChartOptions} />
+                  Object.entries(questionTypeStatsRW)
+                    .filter(([, stats]) => stats.total >= 1)
+                    .sort(([,a], [,b]) => b.total - a.total)
+                    .slice(0, 5)
+                    .map(([type, stats], index) => (
+                      <div key={type} className="group relative bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg p-2 border border-purple-200 hover:shadow-md transition-all duration-200 hover:scale-[1.01]">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                        <div className="relative z-10 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-sm">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-900 truncate" title={type}>{type}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-bold text-purple-600">{stats.total}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">🔧</div>
-                      <p>No question type data available</p>
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                      <div className="text-2xl">🔧</div>
                     </div>
+                    <p className="text-sm font-semibold text-gray-700 mb-1">No R&W question types available</p>
+                    <p className="text-xs text-gray-600">Add reading & writing questions to see type distribution</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-                      {/* Struggling Areas - Modern Design */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 via-red-500 to-red-600"></div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-3 h-3 bg-gradient-to-r from-red-500 to-red-600 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Most Challenging Domains</h3>
-                <InfoTooltip
-                  content={
-                    <div>
-                      <div className="font-semibold mb-2">How We Determine Most Challenging Domains:</div>
-                      <ul className="space-y-1 text-xs">
-                        <li>• <strong>Accuracy:</strong> Correct ÷ Attempted × 100</li>
-                        <li>• <strong>Minimum:</strong> 2+ attempted questions</li>
-                        <li>• <strong>Ranking:</strong> Lowest accuracy first</li>
-                        <li>• <strong>Max Shown:</strong> Top 3 domains only</li>
-                      </ul>
-                    </div>
-                  }
-                />
-              </div>
-              <div className="space-y-3">
-                {analytics.strugglingDomains.length > 0 ? (
-                  analytics.strugglingDomains.map((item, index) => (
-                    <div key={item.domain} className="group relative bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border border-red-200 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
-                      <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{item.domain}</p>
-                            <p className="text-xs text-gray-600">{item.attempted} questions attempted</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-red-600">{item.incorrectPercentage}%</p>
-                          <p className="text-xs text-red-500 font-medium">{item.wrong} wrong</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <div className="text-2xl">🎉</div>
-                    </div>
-                    <p className="text-sm font-semibold text-gray-700 mb-1">
-                      {analytics.completedQuizzes > 0 ? 'Great job!' : 'No challenging domains yet'}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      {analytics.completedQuizzes > 0 
-                        ? 'You\'re performing well across all domains!' 
-                        : 'Complete quizzes to see your challenging areas'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600"></div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full shadow-sm"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Most Challenging Question Types</h3>
-                <InfoTooltip
-                  content={
-                    <div>
-                      <div className="font-semibold mb-2">How We Determine Most Challenging Question Types:</div>
-                      <ul className="space-y-1 text-xs">
-                        <li>• <strong>Accuracy:</strong> Correct ÷ Attempted × 100</li>
-                        <li>• <strong>Minimum:</strong> 2+ attempted questions</li>
-                        <li>• <strong>Ranking:</strong> Lowest accuracy first</li>
-                        <li>• <strong>Max Shown:</strong> Top 3 types only</li>
-                      </ul>
-                    </div>
-                  }
-                />
-              </div>
-              <div className="space-y-3">
-                {analytics.strugglingTypes.length > 0 ? (
-                  analytics.strugglingTypes.map((item, index) => (
-                    <div key={item.type} className="group relative bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
-                      <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{item.type}</p>
-                            <p className="text-xs text-gray-600">{item.attempted} questions attempted</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-orange-600">{item.incorrectPercentage}%</p>
-                          <p className="text-xs text-orange-500 font-medium">{item.wrong} wrong</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <div className="text-2xl">🎉</div>
-                    </div>
-                    <p className="text-sm font-semibold text-gray-700 mb-1">
-                      {analytics.completedQuizzes > 0 ? 'Excellent work!' : 'No challenging types yet'}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      {analytics.completedQuizzes > 0 
-                        ? 'You\'re mastering all question types!' 
-                        : 'Complete quizzes to see your challenging question types'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Additional Modern Analytics */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

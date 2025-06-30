@@ -1,23 +1,61 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   SAT_SECTIONS, 
+  MATH_DOMAINS,
+  READING_WRITING_DOMAINS,
   getDomainOptions, 
   getQuestionTypeOptions, 
-  getQuestionTypeOptionsByDomain,
+  getQuestionTypeOptionsByDomain, 
   DIFFICULTY_LEVELS, 
   ANSWER_CHOICES 
 } from '../data';
 import AnimatedList from './AnimatedList';
 import AnimatedButton from './ui/animated-button';
 import { useAuth } from '../contexts/AuthContext';
-import { awardPoints, incrementEditCounter, handleHighScore } from '../lib/userPoints';
+import { awardPoints, incrementEditCounter, handleHighScore, POINTS_CONFIG } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
 import logoImage from "/logo.png";
 
-const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQuestion }) => {
+// Helper: Levenshtein distance for fuzzy matching of question types
+const levenshteinDistance = (a = "", b = "") => {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return dp[m][n];
+};
+
+// after Levenshtein helper add generic fuzzy chooser
+const fuzzyChoose = (raw, candidates, threshold = 0.45) => {
+  const clean = (raw || '').toLowerCase().replace(/[^a-z\s&+/]/g, '').trim();
+  let best = null, bestScore = 0;
+  for (const cand of candidates) {
+    const dist = levenshteinDistance(clean, cand.toLowerCase());
+    const sim = 1 - dist / Math.max(clean.length || 1, cand.length);
+    if (sim > bestScore) {
+      bestScore = sim;
+      best = cand;
+    }
+  }
+  return bestScore >= threshold ? best : null;
+};
+
+const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onBulkDeleteQuestions }) => {
   // Ensure questions is always an array
   const questionsArray = Array.isArray(questions) ? questions : [];
 
@@ -63,6 +101,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
   const [importedQuestions, setImportedQuestions] = useState([]);
   // Track edited questions during import to preserve user changes
   const [editedQuestions, setEditedQuestions] = useState({});
+  const [selectedQuestions, setSelectedQuestions] = useState(new Set());
+  const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
+  // Prevent double-click on Finish Import
+  const [isFinalizingImport, setIsFinalizingImport] = useState(false);
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
@@ -138,26 +180,64 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Helper to detect if this is intended as a hidden question
+    const isIntendedHiddenQuestion = () => {
+      // Must have section, domain, and questionType
+      if (!formData.section || !formData.domain || !formData.questionType) {
+        return false;
+      }
+      
+      // Check if all other fields are empty
+      const passageTextEmpty = !formData.passageText || formData.passageText.trim() === '';
+      const passageImageEmpty = !formData.passageImage;
+      const questionTextEmpty = !formData.questionText || formData.questionText.trim() === '';
+      const explanationEmpty = !formData.explanation || formData.explanation.trim() === '';
+      
+      // Check if all answer choices are empty
+      const answerChoicesEmpty = !formData.answerChoices || 
+        Object.values(formData.answerChoices).every(choice => !choice || choice.trim() === '');
+      
+      return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+             explanationEmpty && answerChoicesEmpty;
+    };
+
+    // Check if this is intended as a hidden question
+    const isHidden = isIntendedHiddenQuestion();
+    
     // Validate form fields
     const errors = {};
     
-    if (!formData.passageText.trim() && !formData.passageImage) {
-      errors.passageText = true;
-    }
+    // If not a hidden question, validate all required fields
+    if (!isHidden) {
+      if (!formData.passageText.trim() && !formData.passageImage) {
+        errors.passageText = true;
+      }
 
-    if (!formData.questionText.trim()) {
-      errors.questionText = true;
-    }
+      if (!formData.questionText.trim()) {
+        errors.questionText = true;
+      }
 
-    // Check if any answer choice is empty
-    const emptyChoices = Object.entries(formData.answerChoices)
-      .filter(([key, value]) => !value.trim())
-      .map(([key]) => key);
-    
-    if (emptyChoices.length > 0) {
-      emptyChoices.forEach(choice => {
-        errors[`answerChoice_${choice}`] = true;
-      });
+      // Check if any answer choice is empty
+      const emptyChoices = Object.entries(formData.answerChoices)
+        .filter(([key, value]) => !value.trim())
+        .map(([key]) => key);
+      
+      if (emptyChoices.length > 0) {
+        emptyChoices.forEach(choice => {
+          errors[`answerChoice_${choice}`] = true;
+        });
+      }
+    } else {
+      // For hidden questions, only validate that section, domain, and questionType are filled
+      if (!formData.section) {
+        errors.section = true;
+      }
+      if (!formData.domain) {
+        errors.domain = true;
+      }
+      if (!formData.questionType) {
+        errors.questionType = true;
+      }
     }
 
     // If there are validation errors, set them and throw error
@@ -252,13 +332,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     
     onDeleteQuestion(id);
     
-    // Show animation with the points value that the question was worth
-    // Since questions give 10 points, deleting one should show -10
-    setPointsAnimation({
-      show: true,
-      points: -10, // Negative value to show it's a deletion
-      action: 'DELETE_QUESTION'
-    });
+    // Award points for deletion
+    await awardPointsAndAnimate('DELETE_QUESTION');
   };
 
   const generateRandomQuestion = () => {
@@ -389,39 +464,32 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     'mths': SAT_SECTIONS.MATH
   };
 
+  // Filter questions based on search query and other criteria
   const filteredQuestions = useMemo(() => {
-    // If no query, just return all questions (sorted newest first)
-    const sortNewest = (arr) => arr.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.id || 0);
-      const dateB = new Date(b.createdAt || b.id || 0);
-      return dateB - dateA;
-    });
-
-    if (!searchQuery.trim()) {
-      return sortNewest([...questionsArray]);
+    let filtered = [...questions];
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(question => {
+        // Search in section, domain, question type, question text, and explanation
+        const searchableText = [
+          question.section,
+          question.domain,
+          question.questionType,
+          question.questionText,
+          question.explanation,
+          // Add "hidden" keyword for hidden questions
+          question.hidden ? 'hidden' : ''
+        ].join(' ').toLowerCase();
+        
+        return searchableText.includes(query);
+      });
     }
-
-    const normalized = searchQuery.trim().toLowerCase();
-
-    // Special handling if user searches single letter A-D
-    const upper = normalized.toUpperCase();
-    if (['A', 'B', 'C', 'D'].includes(upper) && normalized.length === 1) {
-      const letterResults = questionsArray.filter(q => q.correctAnswer === upper);
-      return sortNewest(letterResults);
-    }
-
-    const mappedQuery = synonymMap[normalized] || searchQuery;
-    const fuseResults = fuse.search(mappedQuery);
-
-    // Keep only reasonably relevant results (score <= 0.5)
-    const relevant = fuseResults.filter(r => r.score !== undefined && r.score <= 0.5);
-
-    // Sort by ascending score (more relevant first)
-    relevant.sort((a, b) => (a.score || 0) - (b.score || 0));
-
-    const items = relevant.map(r => r.item);
-    return items;
-  }, [searchQuery, fuse, questionsArray]);
+    
+    // Sort by newest first
+    return filtered.sort((a, b) => new Date(b.date || b.lastUpdated || 0) - new Date(a.date || a.lastUpdated || 0));
+  }, [questions, searchQuery]);
 
   // Prepare questions for AnimatedList
   const questionItems = filteredQuestions.map(question => {
@@ -432,7 +500,14 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     // Add image indicator if question has an image
     const imageIndicator = question.passageImage ? ' 📷' : '';
     
-    return `${question.section} - ${question.domain} | ${preview}${imageIndicator}`;
+    // Add hidden indicator for hidden questions
+    const hiddenIndicator = question.hidden ? ' 🔒' : '';
+    
+    // Add selection indicator if in bulk mode
+    const selectionIndicator = bulkSelectionMode ? 
+      (selectedQuestions.has(question.id) ? ' ☑️' : ' ☐') : '';
+    
+    return `${question.section} - ${question.domain} | ${preview}${imageIndicator}${hiddenIndicator}${selectionIndicator}`;
   });
 
   const handleQuestionSelect = (questionText, index) => {
@@ -442,7 +517,92 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     }
     
     const selectedQuestion = filteredQuestions[index];
-    handleEdit(selectedQuestion);
+    
+    if (bulkSelectionMode) {
+      // In bulk selection mode, toggle selection instead of editing
+      handleQuestionSelection(selectedQuestion.id);
+    } else {
+      // Normal mode - edit the question
+      handleEdit(selectedQuestion);
+    }
+  };
+
+  // Bulk selection handlers
+  const handleBulkSelectionToggle = () => {
+    setBulkSelectionMode(!bulkSelectionMode);
+    if (bulkSelectionMode) {
+      setSelectedQuestions(new Set());
+    }
+  };
+
+  const handleQuestionSelection = (questionId) => {
+    const newSelected = new Set(selectedQuestions);
+    if (newSelected.has(questionId)) {
+      newSelected.delete(questionId);
+    } else {
+      newSelected.add(questionId);
+    }
+    setSelectedQuestions(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filteredQuestions.map(q => q.id);
+    setSelectedQuestions(new Set(allIds));
+  };
+
+  const handleSelectNone = () => {
+    setSelectedQuestions(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestions.size === 0) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedQuestions.size} selected question${selectedQuestions.size > 1 ? 's' : ''}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      const deleteIds = Array.from(selectedQuestions);
+      const deleteCount = deleteIds.length;
+
+      // Perform bulk deletion once via parent handler
+      if (onBulkDeleteQuestions) {
+        await onBulkDeleteQuestions(deleteIds);
+      } else {
+        // Fallback: delete sequentially
+        for (const qid of deleteIds) {
+          await onDeleteQuestion(qid);
+        }
+      }
+
+      // Clear selection state & exit bulk mode
+      setSelectedQuestions(new Set());
+      setBulkSelectionMode(false);
+
+      // Show ONE consolidated animation for the total deducted points
+      const totalDeducted = POINTS_CONFIG.DELETE_QUESTION * deleteCount; // negative value
+      setPointsAnimation({
+        show: true,
+        points: totalDeducted,
+        action: 'DELETE_QUESTION'
+      });
+
+      // Deduct points in backend silently
+      if (user?.id) {
+        for (let i = 0; i < deleteCount; i++) {
+          try {
+            await awardPoints(user.id, 'DELETE_QUESTION');
+          } catch (err) {
+            console.error('Failed to deduct points during bulk delete:', err);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error during bulk delete:', error);
+      alert('Error deleting questions. Please try again.');
+    }
   };
 
   // Advanced CSV cleaning and parsing
@@ -479,128 +639,203 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
     // Normalize section
     const normalizeSection = (input) => {
-      const clean = (input || '').toLowerCase().replace(/[^a-z\s&+\/]/g, '').trim();
-      
-      const sectionMap = {
-        // Reading and Writing variations
-        'reading and writing': SAT_SECTIONS.READING_WRITING,
-        'reading & writing': SAT_SECTIONS.READING_WRITING,
-        'reading/writing': SAT_SECTIONS.READING_WRITING,
-        'reading writing': SAT_SECTIONS.READING_WRITING,
-        'readingandwriting': SAT_SECTIONS.READING_WRITING,
-        'r/w': SAT_SECTIONS.READING_WRITING,
-        'rw': SAT_SECTIONS.READING_WRITING,
-        'r+w': SAT_SECTIONS.READING_WRITING,
-        'writing and reading': SAT_SECTIONS.READING_WRITING,
-        'writing': SAT_SECTIONS.READING_WRITING,
-        'reading': SAT_SECTIONS.READING_WRITING,
-        'english': SAT_SECTIONS.READING_WRITING,
-        'lang': SAT_SECTIONS.READING_WRITING,
-        'language': SAT_SECTIONS.READING_WRITING,
-        
-        // Math variations
-        'math': SAT_SECTIONS.MATH,
-        'mathematics': SAT_SECTIONS.MATH,
-        'maths': SAT_SECTIONS.MATH,
-        'mth': SAT_SECTIONS.MATH,
-        'mths': SAT_SECTIONS.MATH,
-        'algebra': SAT_SECTIONS.MATH,
-        'geometry': SAT_SECTIONS.MATH,
-        'calculus': SAT_SECTIONS.MATH
-      };
-      
-      return sectionMap[clean] || SAT_SECTIONS.READING_WRITING; // Default fallback
+      const sectionOptions = Object.values(SAT_SECTIONS);
+      const match = fuzzyChoose(input, sectionOptions, 0.3);
+      return match || SAT_SECTIONS.READING_WRITING;
     };
 
     // Normalize domain
     const normalizeDomain = (input, section) => {
-      const clean = (input || '').toLowerCase().replace(/[^a-z\s]/g, '').trim();
-      
-      const domainMap = {
-        // Reading and Writing domains
-        'information and ideas': 'Information and Ideas',
-        'craft and structure': 'Craft and Structure',
-        'expression of ideas': 'Expression of Ideas',
-        'standard english conventions': 'Standard English Conventions',
-        
-        // Math domains
-        'algebra': 'Algebra',
-        'advanced math': 'Advanced Math',
-        'problem solving and data analysis': 'Problem Solving and Data Analysis',
-        'geometry and trigonometry': 'Geometry and Trigonometry'
-      };
-      
-      return domainMap[clean] || 'Information and Ideas';
+      const domainOptions = section === SAT_SECTIONS.MATH
+        ? Object.values(MATH_DOMAINS)
+        : [...Object.values(READING_WRITING_DOMAINS), ...Object.values(MATH_DOMAINS)];
+      const match = fuzzyChoose(input, domainOptions, 0.35);
+      return match || (section === SAT_SECTIONS.MATH ? 'Algebra' : 'Information and Ideas');
     };
 
     // Normalize question type
     const normalizeQuestionType = (input) => {
-      const clean = (input || '').toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+      console.log('🔍 normalizeQuestionType called with:', JSON.stringify(input));
       
+      // Re-usable cleaner for stray control characters
+      const scrub = (str = '') =>
+        str.replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // remove all C0 / C1 control chars
+           .replace(/\s+/g, ' ')                           // collapse whitespace
+           .trim();
+
+      // --- robust parsing logic for question type ---
       const typeMap = {
         // Reading and Writing question types - Information and Ideas
         'main idea': 'Main Idea',
-        'inference': 'Inference',
+        'inference': 'Inferences',  // Map to plural form as defined in data.js
+        'inferences': 'Inferences', // Keep plural form
         'supporting evidence': 'Supporting Evidence',
         'detail': 'Detail',
+        'central ideas and details': 'Central Ideas and Details',
+        'command of evidence': 'Command of Evidence',
         
         // Reading and Writing question types - Craft and Structure
         'words in context': 'Words in Context',
         'text structure': 'Text Structure',
+        'text structure and purpose': 'Text Structure and Purpose',
         'purpose': 'Purpose',
         'cross-text connections': 'Cross-Text Connections',
+        'structure and purpose': 'Structure and Purpose',
         
         // Reading and Writing question types - Expression of Ideas
         'rhetorical synthesis': 'Rhetorical Synthesis',
         'transitions': 'Transitions',
         'conciseness': 'Conciseness',
         'precision': 'Precision',
+        'modifier placement': 'Modifier Placement',
+        'logical comparison': 'Logical Comparison',
         
         // Reading and Writing question types - Standard English Conventions
         'punctuation': 'Punctuation',
         'sentence boundaries': 'Sentence Boundaries',
         'verb tense and agreement': 'Verb Tense and Agreement',
         'pronouns and modifiers': 'Pronouns and Modifiers',
-        
-        // Legacy Reading and Writing question types for backward compatibility
-        'central ideas and details': 'Central Ideas and Details',
-        'structure and purpose': 'Structure and Purpose',
-        'modifier placement': 'Modifier Placement',
         'punctuation usage': 'Punctuation Usage',
-        'logical comparison': 'Logical Comparison',
+        'boundaries': 'Boundaries',  // Match data.js exactly
+        'form structure and sense': 'Form, Structure, and Sense',  // Match data.js exactly
         
         // Math question types - Algebra
-        'linear equations': 'Linear Equations',
-        'inequalities': 'Inequalities',
-        'systems of equations': 'Systems of Equations',
+        'linear equations': 'Linear equations in one variable',  // Match data.js exactly
+        'linear functions': 'Linear functions',
+        'linear equations in two variables': 'Linear equations in two variables',
+        'systems of two linear equations in two variables': 'Systems of two linear equations in two variables',
+        'linear inequalities in one or two variables': 'Linear inequalities in one or two variables',
+        'inequalities': 'Linear inequalities in one or two variables',
+        'systems of equations': 'Systems of two linear equations in two variables',
+        'linear/quadratic equations': 'Linear equations in one variable',
         
         // Math question types - Advanced Math
-        'quadratics': 'Quadratics',
-        'rational expressions': 'Rational Expressions',
-        'radical equations': 'Radical Equations',
-        'functions': 'Functions',
+        'quadratics': 'Nonlinear functions',
+        'rational expressions': 'Equivalent expressions',
+        'radical equations': 'Nonlinear equations in one variable and systems of equations in two variables',
+        'functions': 'Nonlinear functions',
+        'nonlinear functions': 'Nonlinear functions',
+        'nonlinear equations': 'Nonlinear equations in one variable and systems of equations in two variables',
+        'equivalent expressions': 'Equivalent expressions',
         
         // Math question types - Problem Solving and Data Analysis
-        'ratios and proportions': 'Ratios and Proportions',
-        'unit conversions': 'Unit Conversions',
-        'data interpretation': 'Data Interpretation',
-        'statistics': 'Statistics',
+        'ratios and proportions': 'Ratios, rates, proportional relationships, and units',
+        'unit conversions': 'Ratios, rates, proportional relationships, and units',
+        'data interpretation': 'One-variable data: Distributions and measures of center and spread',
+        'statistics': 'One-variable data: Distributions and measures of center and spread',
+        'percentages': 'Percentages',
+        'probability': 'Probability and conditional probability',
+        'scatterplots': 'Two-variable data: Models and scatterplots',
+        'inference from sample statistics': 'Inference from sample statistics and margin of error',
+        'evaluating statistical claims': 'Evaluating statistical claims: Observational studies and experiments',
         
         // Math question types - Geometry and Trigonometry
-        'angles': 'Angles',
+        'angles': 'Lines, angles, and triangles',
         'circles': 'Circles',
-        'area/volume': 'Area/Volume',
-        'trigonometric functions': 'Trigonometric Functions',
+        'area/volume': 'Area and volume',
+        'trigonometric functions': 'Right triangles and trigonometry',
+        'geometry': 'Lines, angles, and triangles',
+        'trigonometry': 'Right triangles and trigonometry',
+        'right triangles': 'Right triangles and trigonometry',
+        'lines angles and triangles': 'Lines, angles, and triangles',
+        'area and volume': 'Area and volume',
         
-        // Legacy Math question types for backward compatibility
-        'linear/quadratic equations': 'Linear/Quadratic Equations',
-        'systems': 'Systems',
-        'percentages': 'Percentages',
-        'geometry': 'Geometry',
-        'trigonometry': 'Trigonometry'
+        // Additional mappings for common variations
+        'linear': 'Linear equations in one variable',
+        'quadratic': 'Nonlinear functions',
+        'ratio': 'Ratios, rates, proportional relationships, and units',
+        'proportion': 'Ratios, rates, proportional relationships, and units',
+        'data': 'One-variable data: Distributions and measures of center and spread',
+        'statistical': 'One-variable data: Distributions and measures of center and spread',
+        'geometric': 'Lines, angles, and triangles',
+        'trig': 'Right triangles and trigonometry',
+        'trigonometric': 'Right triangles and trigonometry',
+        'word': 'Words in Context',
+        'context': 'Words in Context',
+        'sentence': 'Boundaries',
+        'boundary': 'Boundaries',
+        'verb': 'Form, Structure, and Sense',
+        'agreement': 'Form, Structure, and Sense',
+        'pronoun': 'Form, Structure, and Sense',
+        'modifier': 'Form, Structure, and Sense',
+        'transition': 'Transitions',
+        'synthesis': 'Rhetorical Synthesis',
+        'rhetorical': 'Rhetorical Synthesis',
+        'main': 'Main Idea',
+        'idea': 'Main Idea',
+        'evidence': 'Supporting Evidence',
+        'supporting': 'Supporting Evidence',
+        'structure': 'Text Structure',
+        'text': 'Text Structure',
+        'cross': 'Cross-Text Connections',
+        'connection': 'Cross-Text Connections',
+        'command evidence': 'Command of Evidence',
       };
       
-      return typeMap[clean] || 'Words in Context';
+      // Prepare lower-cased, cleaned version once
+      const clean = scrub(input).toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+      
+      console.log('🔍 Cleaned input:', JSON.stringify(clean));
+      console.log('🔍 Available keys:', Object.keys(typeMap).filter(k => k.includes('inference')));
+      
+      // First try exact match
+      if (typeMap[clean]) {
+        console.log('🔍 Exact match found:', typeMap[clean]);
+        return typeMap[clean];
+      }
+      
+      // Try plural stripping (e.g. "inferences" → "inference")
+      if (clean.endsWith('s')) {
+        const singular = clean.slice(0, -1);
+        console.log('🔍 Trying singular:', JSON.stringify(singular));
+        if (typeMap[singular]) {
+          console.log('🔍 Plural match found:', typeMap[singular]);
+          return typeMap[singular];
+        }
+      }
+      
+      // Try keyword matching for complex phrases
+      if (clean.includes('command of evidence')) {
+        console.log('🔍 Keyword match: Command of Evidence');
+        return 'Command of Evidence';
+      }
+      
+      if (clean.includes('text structure') && clean.includes('purpose')) {
+        console.log('🔍 Keyword match: Text Structure and Purpose');
+        return 'Text Structure and Purpose';
+      }
+      
+      if (clean.includes('cross-text')) {
+        console.log('🔍 Keyword match: Cross-Text Connections');
+        return 'Cross-Text Connections';
+      }
+      
+      if (clean.includes('central ideas')) {
+        console.log('🔍 Keyword match: Central Ideas and Details');
+        return 'Central Ideas and Details';
+      }
+      
+      if (clean.includes('words in context')) {
+        console.log('🔍 Keyword match: Words in Context');
+        return 'Words in Context';
+      }
+      
+      if (clean.includes('inference')) {
+        console.log('🔍 Keyword match: Inference');
+        return 'Inference';
+      }
+      
+      // ------------------ Generic fuzzy matching (re-uses helper) ------------------
+      const candidates = [...new Set(Object.values(typeMap))];
+      const fuzzy = fuzzyChoose(clean, candidates, 0.3); // slightly more forgiving threshold
+      if (fuzzy) {
+        console.log('🔍 Fuzzy match (generic):', fuzzy);
+        return fuzzy;
+      }
+      
+      // Fallback
+      console.log('🔍 No match found, using fallback: Words in Context');
+      return 'Words in Context';
     };
 
     // Normalize difficulty
@@ -626,16 +861,55 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
     try {
       const rawValues = parseCSV(csvString);
       
-      if (rawValues.length < 11) {
-        throw new Error(`CSV must have at least 11 fields. Found ${rawValues.length} fields.`);
+      // Support both hidden questions (3 fields) and complete questions (11+ fields)
+      if (rawValues.length < 3) {
+        throw new Error(`CSV must have at least 3 fields for hidden questions or 11+ fields for complete questions. Found ${rawValues.length} fields.`);
       }
 
-      // Extract and normalize values
-      const [rawSection, rawDomain, rawQuestionType, rawPassage, rawQuestion, rawA, rawB, rawC, rawD, rawCorrect, rawExplanation, rawDifficulty] = rawValues;
+      // Extract required fields (always present)
+      const rawSection = rawValues[0];
+      const rawDomain = rawValues[1];
+      const rawQuestionType = rawValues[2];
+      
+      console.log('🔍 CSV parsing - raw values:', {
+        section: JSON.stringify(rawSection),
+        domain: JSON.stringify(rawDomain), 
+        questionType: JSON.stringify(rawQuestionType)
+      });
       
       const normalizedSection = normalizeSection(rawSection);
       const normalizedDomain = normalizeDomain(rawDomain, normalizedSection);
       const normalizedQuestionType = normalizeQuestionType(rawQuestionType);
+      
+      console.log('🔍 CSV parsing - normalized values:', {
+        section: normalizedSection,
+        domain: normalizedDomain,
+        questionType: normalizedQuestionType
+      });
+
+      // If only 3 fields provided, create hidden question
+      if (rawValues.length === 3) {
+        return {
+          section: normalizedSection,
+          domain: normalizedDomain,
+          questionType: normalizedQuestionType,
+          passageText: '',
+          questionText: '',
+          answerChoices: { A: '', B: '', C: '', D: '' },
+          correctAnswer: 'A',
+          explanation: '',
+          difficulty: DIFFICULTY_LEVELS.MEDIUM
+        };
+      }
+
+      // For complete questions, require at least 11 fields
+      if (rawValues.length < 11) {
+        throw new Error(`CSV must have at least 11 fields for complete questions. Found ${rawValues.length} fields.`);
+      }
+
+      // Extract remaining values for complete questions
+      const [, , , rawPassage, rawQuestion, rawA, rawB, rawC, rawD, rawCorrect, rawExplanation, rawDifficulty] = rawValues;
+      
       const normalizedDifficulty = normalizeDifficulty(rawDifficulty);
       
       // Validate correct answer
@@ -713,12 +987,16 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       }
       fieldCount++; // Count the last field
       
-      if (fieldCount < 12) {
+      // Support both hidden questions (3 fields) and complete questions (11+ fields)
+      if (fieldCount < 3) {
         const preview = line.length > 50 ? line.substring(0, 50) + '...' : line;
-        issues.push(`Line ${lineNumber}: Missing fields (${fieldCount}/12). Preview: "${preview}"`);
+        issues.push(`Line ${lineNumber}: Insufficient fields (${fieldCount}). Expected 3 for hidden questions or 11+ for complete questions. Preview: "${preview}"`);
+      } else if (fieldCount > 3 && fieldCount < 11) {
+        const preview = line.length > 50 ? line.substring(0, 50) + '...' : line;
+        issues.push(`Line ${lineNumber}: Incomplete fields (${fieldCount}). Expected either 3 for hidden questions or 11+ for complete questions. Preview: "${preview}"`);
       } else if (fieldCount > 12) {
         const preview = line.length > 50 ? line.substring(0, 50) + '...' : line;
-        issues.push(`Line ${lineNumber}: Too many fields (${fieldCount}/12). Preview: "${preview}"`);
+        issues.push(`Line ${lineNumber}: Too many fields (${fieldCount}). Maximum 12 fields allowed. Preview: "${preview}"`);
       }
     }
     
@@ -769,11 +1047,14 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       } catch (error) {
         // Provide more detailed error information
         const fieldCount = countFields(line);
-        const expectedFields = 12; // Section, Domain, Question Type, Passage, Question, A, B, C, D, Correct, Explanation, Difficulty
         
-        if (fieldCount < expectedFields) {
+        // Support both hidden questions (3 fields) and complete questions (11+ fields)
+        if (fieldCount < 3) {
           const preview = line.length > 100 ? line.substring(0, 100) + '...' : line;
-          throw new Error(`Line ${lineNumber}: Incomplete question data. Found ${fieldCount} fields, expected ${expectedFields}. Preview: "${preview}"`);
+          throw new Error(`Line ${lineNumber}: Insufficient question data. Found ${fieldCount} fields, expected 3 for hidden questions or 11+ for complete questions. Preview: "${preview}"`);
+        } else if (fieldCount > 3 && fieldCount < 11) {
+          const preview = line.length > 100 ? line.substring(0, 100) + '...' : line;
+          throw new Error(`Line ${lineNumber}: Incomplete question data. Found ${fieldCount} fields, expected either 3 for hidden questions or 11+ for complete questions. Preview: "${preview}"`);
         } else {
           throw new Error(`Line ${lineNumber}: ${error.message}`);
         }
@@ -829,37 +1110,67 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
   // Handle next question in import mode
   const handleNextQuestion = async () => {
+    // If we are already finalising, ignore subsequent clicks
+    if (isFinalizingImport) return;
+
     try {
+      // Helper to detect if this is intended as a hidden question
+      const isIntendedHiddenQuestion = () => {
+        // Must have section, domain, and questionType
+        if (!formData.section || !formData.domain || !formData.questionType) {
+          return false;
+        }
+        
+        // Check if all other fields are empty
+        const passageTextEmpty = !formData.passageText || formData.passageText.trim() === '';
+        const passageImageEmpty = !formData.passageImage;
+        const questionTextEmpty = !formData.questionText || formData.questionText.trim() === '';
+        const explanationEmpty = !formData.explanation || formData.explanation.trim() === '';
+        
+        // Check if all answer choices are empty
+        const allAnswerChoicesEmpty = Object.values(formData.answerChoices).every(choice => 
+          !choice || choice.trim() === ''
+        );
+        
+        return passageTextEmpty && passageImageEmpty && questionTextEmpty && explanationEmpty && allAnswerChoicesEmpty;
+      };
+
+      // Check if this is a hidden question
+      const isHidden = isIntendedHiddenQuestion();
+      
       // Validate the current question without adding it
       const errors = {};
       
-      if (!formData.passageText.trim() && !formData.passageImage) {
-        errors.passageText = true;
+      // Skip validation for hidden questions, only validate complete questions
+      if (!isHidden) {
+        if (!formData.passageText.trim() && !formData.passageImage) {
+          errors.passageText = true;
+        }
+
+        if (!formData.questionText.trim()) {
+          errors.questionText = true;
+        }
+
+        // Check if any answer choice is empty
+        const emptyChoices = Object.entries(formData.answerChoices)
+          .filter(([key, value]) => !value.trim())
+          .map(([key]) => key);
+        
+        if (emptyChoices.length > 0) {
+          emptyChoices.forEach(choice => {
+            errors[`answerChoice_${choice}`] = true;
+          });
+        }
+
+        // If there are validation errors, set them and return
+        if (Object.keys(errors).length > 0) {
+          setValidationErrors(errors);
+          console.warn('Validation failed: Please fill in all required fields');
+          return;
+        }
       }
 
-      if (!formData.questionText.trim()) {
-        errors.questionText = true;
-      }
-
-      // Check if any answer choice is empty
-      const emptyChoices = Object.entries(formData.answerChoices)
-        .filter(([key, value]) => !value.trim())
-        .map(([key]) => key);
-      
-      if (emptyChoices.length > 0) {
-        emptyChoices.forEach(choice => {
-          errors[`answerChoice_${choice}`] = true;
-        });
-      }
-
-      // If there are validation errors, set them and return
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        console.warn('Validation failed: Please fill in all required fields');
-        return;
-      }
-
-      // Clear validation errors if validation passes
+      // Clear validation errors if validation passes or if hidden question
       setValidationErrors({});
 
       // Save current question's edits before moving to next
@@ -881,6 +1192,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
         setFormData(nextQuestion);
         setImportProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
       } else {
+        // Prevent duplicate submissions while finalization is in progress
+        setIsFinalizingImport(true);
         // Import complete - this is the last question
         console.log('Import complete - processing last question');
         console.log('Current formData:', formData);
@@ -908,6 +1221,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
             action: 'BULK_IMPORT'
           });
           
+          // Reset the finalising flag after state updates flush
+          setTimeout(() => setIsFinalizingImport(false), 3000);
           return []; // Clear the collection
         });
       }
@@ -1052,8 +1367,11 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
 
   // Export questions as PDF
   const exportQuestionsAsPDF = async () => {
-    if (filteredQuestions.length === 0) {
-      alert('No questions to export!');
+    // Filter out hidden questions from export
+    const exportableQuestions = filteredQuestions.filter(q => !q.hidden);
+    
+    if (exportableQuestions.length === 0) {
+      alert('No visible questions to export!');
       return;
     }
 
@@ -1359,9 +1677,9 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       };
 
       let questionNumber = 1;
-      for (let idx = 0; idx < filteredQuestions.length; idx += 2) {
-        const leftQ = filteredQuestions[idx];
-        const rightQ = filteredQuestions[idx + 1] || null;
+      for (let idx = 0; idx < exportableQuestions.length; idx += 2) {
+        const leftQ = exportableQuestions[idx];
+        const rightQ = exportableQuestions[idx + 1] || null;
 
         // Measure both (async images) – sequential await
         const leftMeasure = await measureQuestionHeight(leftQ);
@@ -1383,7 +1701,7 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
             pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
 
             // Continue indicator on right (not last page)
-            if (idx + 2 < filteredQuestions.length) {
+            if (idx + 2 < exportableQuestions.length) {
               const text = 'Continue';
               pdf.setFont(FONTS.georgia, 'bold');
               pdf.setFontSize(12);
@@ -1478,8 +1796,8 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
       let answerX = marginX;
       let answerNum = 1;
       
-      for (let i = 0; i < filteredQuestions.length; i++) {
-        const q = filteredQuestions[i];
+      for (let i = 0; i < exportableQuestions.length; i++) {
+        const q = exportableQuestions[i];
         
         // New row if needed
         if (answerNum > 1 && (answerNum - 1) % answersPerRow === 0) {
@@ -1629,7 +1947,10 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
             <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">Paste CSV to Fill Questions</h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-              Format: Section, Domain, Question Type, Passage Text, Question Text, A, B, C, D, Correct (A/B/C/D), Explanation (optional), Difficulty
+              <strong>Complete questions:</strong> Section, Domain, Question Type, Passage Text, Question Text, A, B, C, D, Correct (A/B/C/D), Explanation (optional), Difficulty
+            </p>
+            <p className="text-sm text-purple-600 dark:text-purple-400 mb-2">
+              <strong>Hidden questions:</strong> Section, Domain, Question Type (only 3 fields) - auto-detected as drafts
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
               💡 <strong>Multi-question support:</strong> Paste multiple questions by putting each question on a new line. You can import up to 100 questions at once!
@@ -1639,12 +1960,18 @@ const QuestionLogger = ({ questions, onAddQuestion, onUpdateQuestion, onDeleteQu
               rows={6}
               value={csvInput}
               onChange={e => setCsvInput(e.target.value)}
-              placeholder={`Example single question:
+              placeholder={`Example complete question:
 Math,Algebra,Linear/Quadratic Equations,"A company manufactures boxes with length 3 inches more than width! height 2 inches less than width.","What are the dimensions?","Width: 3 in! Length: 6 in! Height: 1 in","Width: 4 in! Length: 7 in! Height: 2 in","Width: 5 in! Length: 8 in! Height: 3 in","Width: 2 in! Length: 5 in! Height: 0 in",B,"Let w = width. Then length = w + 3! height = w - 2.",Medium
 
-Example multiple questions (one per line):
-Math,Algebra,Multiple Choice,"Passage 1 with commas! replaced with! exclamation marks","Question 1?","A choice! with commas","B choice! with commas","C choice! with commas","D choice! with commas",B,"Explanation 1! with commas",Medium
-Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another example!","Question 2?","A! B! C!","B! C! D!","C! D! E!","D! E! F!",A,"Explanation 2! with commas",Hard`}
+Example hidden questions (only 3 fields):
+Math,Algebra,Linear/Quadratic Equations
+Reading and Writing,Information and Ideas,Words in Context
+Math,Geometry and Trigonometry,Circles
+
+Mixed import (complete + hidden questions):
+Math,Algebra,Linear/Quadratic Equations,"Full passage text","Full question?","Choice A","Choice B","Choice C","Choice D",A,"Full explanation",Easy
+Math,Problem Solving and Data Analysis,Statistics
+Reading and Writing,Standard English Conventions,Boundaries`}
             />
             {csvError && (
               <div className="text-red-600 text-xs mb-2 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800 whitespace-pre-line">
@@ -2092,34 +2419,102 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
           {/* Questions List Section with AnimatedList */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden transition-colors duration-300 min-h-[400px] md:min-h-[500px]">
             <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 transition-colors duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Question Bank</h2>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">
-                    {isImportMode ? 'Import in progress - editing disabled' : `${filteredQuestions.length} questions`}
-                  </p>
+              <div className="flex flex-col gap-3">
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Question Bank</h2>
+                    <div className="flex items-center gap-3 text-sm transition-colors duration-300">
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {isImportMode ? 'Import in progress - editing disabled' : (() => {
+                          const visibleQuestions = filteredQuestions.filter(q => !q.hidden);
+                          const hiddenQuestions = filteredQuestions.filter(q => q.hidden);
+                          return `${visibleQuestions.length} questions`;
+                        })()}
+                      </p>
+                      {!isImportMode && (() => {
+                        const hiddenQuestions = filteredQuestions.filter(q => q.hidden);
+                        return hiddenQuestions.length > 0 ? (
+                          <p className="text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                            {hiddenQuestions.length} hidden
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {/* Bulk Selection Toggle */}
+                  {!isImportMode && filteredQuestions.length > 0 && (
+                    <button
+                      onClick={handleBulkSelectionToggle}
+                      disabled={isImportMode}
+                      className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
+                        bulkSelectionMode
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/40 border border-purple-200 dark:border-purple-700'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600'
+                      } ${isImportMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {bulkSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+                    </button>
+                  )}
                 </div>
-              </div>
-              
-              {/* Search Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={isImportMode}
-                  placeholder="Search questions..."
-                  className={`w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm transition-colors duration-300 ${isImportMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                />
-                <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M4 10a6 6 0 1112 0 6 6 0 01-12 0z" />
-                </svg>
+                
+                {/* Bulk Selection Controls Row */}
+                {!isImportMode && bulkSelectionMode && filteredQuestions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      Bulk Selection Mode
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={handleSelectAll}
+                        className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors font-medium"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={handleSelectNone}
+                        className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                      >
+                        Clear All
+                      </button>
+                      {selectedQuestions.size > 0 && (
+                        <button
+                          onClick={handleBulkDelete}
+                          className="px-3 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors font-medium"
+                        >
+                          Delete Selected ({selectedQuestions.size})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Search Bar */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    disabled={isImportMode}
+                    placeholder="Search questions, sections, domains, or type 'hidden'..."
+                    className={`w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm transition-colors duration-300 ${isImportMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+                  <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M4 10a6 6 0 1112 0 6 6 0 01-12 0z" />
+                  </svg>
+                </div>
               </div>
             </div>
 
             {/* Animated Questions List - Takes up remaining space */}
             <div className="p-3 sm:p-4 flex-1 overflow-hidden">
-              {filteredQuestions.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-300">Loading questions...</h3>
+                </div>
+              ) : filteredQuestions.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors duration-300">
                     <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2165,7 +2560,10 @@ Reading and Writing,Information and Ideas,Words in Context,"Passage 2! another e
               <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex-shrink-0 transition-colors duration-300">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-2">
                   <span className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                    Click any question to edit
+                    {bulkSelectionMode 
+                      ? `Click questions to select/deselect (${selectedQuestions.size} selected)`
+                      : 'Click any question to edit'
+                    }
                   </span>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <button

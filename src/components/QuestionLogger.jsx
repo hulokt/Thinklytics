@@ -1243,6 +1243,12 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     
     const prevIndex = currentQuestionIndex - 1;
     if (prevIndex >= 0) {
+      // Remove the current question from importedQuestions since we're going back to review it
+      setImportedQuestions(prev => prev.slice(0, -1));
+      
+      // Decrement the completed count since we're going back
+      setImportProgress(prev => ({ ...prev, completed: Math.max(0, prev.completed - 1) }));
+      
       setCurrentQuestionIndex(prevIndex);
       
       // Load the previous question, using edited version if available

@@ -71,9 +71,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const { quizManager, allQuizzesLoading } = useQuizManager();
   const { data: questionAnswers, upsertData: upsertQuestionAnswers } = useQuestionAnswers();
 
-  // Debug helper to avoid noisy logs elsewhere
-  const dbgQ = (...args) => console.log('[QuizPage]', ...args);
-
   // Award points and show animation
   const awardPointsAndAnimate = async (actionType, additionalData = {}) => {
     if (!user?.id) return;

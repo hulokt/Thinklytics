@@ -466,29 +466,50 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
 
   // Filter questions based on search query and other criteria
   const filteredQuestions = useMemo(() => {
+    // Start with the complete list as received
     let filtered = [...questions];
-    
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+
+    // If the user has NOT typed "hidden", exclude hidden questions from the list
+    const searchLower = searchQuery.trim().toLowerCase();
+    if (!searchLower.includes('hidden')) {
+      filtered = filtered.filter(q => !q.hidden);
+    }
+
+    // Textual search across multiple fields (and "hidden" keyword for toggling)
+    if (searchLower) {
       filtered = filtered.filter(question => {
-        // Search in section, domain, question type, question text, and explanation
         const searchableText = [
           question.section,
           question.domain,
           question.questionType,
           question.questionText,
           question.explanation,
-          // Add "hidden" keyword for hidden questions
           question.hidden ? 'hidden' : ''
         ].join(' ').toLowerCase();
-        
-        return searchableText.includes(query);
+        return searchableText.includes(searchLower);
       });
     }
-    
-    // Sort by newest first
-    return filtered.sort((a, b) => new Date(b.date || b.lastUpdated || 0) - new Date(a.date || a.lastUpdated || 0));
+
+    // Helper to safely obtain a sortable timestamp
+    const safeGetTime = (q) => {
+      const val = q.createdAt || q.date || q.lastUpdated || 0;
+      const t = new Date(val).getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
+    // Sort newest → oldest with sensible fallbacks when no dates exist
+    return filtered.sort((a, b) => {
+      const diff = safeGetTime(b) - safeGetTime(a);
+      if (diff !== 0) return diff;
+
+      // Fallback to numeric id comparison if timestamps are identical / missing
+      if (typeof b.id === 'number' && typeof a.id === 'number') {
+        return b.id - a.id;
+      }
+
+      // Otherwise keep original relative order
+      return 0;
+    });
   }, [questions, searchQuery]);
 
   // Prepare questions for AnimatedList

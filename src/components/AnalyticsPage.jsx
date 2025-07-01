@@ -42,27 +42,70 @@ const AnalyticsPage = ({ questions }) => {
   const { completedQuizzes, inProgressQuizzes } = useQuizManager();
   const { data: questionAnswers } = useQuestionAnswers();
 
-  // Ensure all data is properly formatted as arrays
-  const completedQuizzesArray = Array.isArray(completedQuizzes) ? completedQuizzes : [];
-  const inProgressQuizzesArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
+  // Time-range selector state ("all" | "week")
+  const [timeRange, setTimeRange] = useState('all');
+
+  // Ensure all data is properly formatted as arrays (store *all* data)
+  const allCompletedQuizzesArray = Array.isArray(completedQuizzes) ? completedQuizzes : [];
+  const allInProgressQuizzesArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
   const questionsArray = Array.isArray(questions) ? questions : [];
   const questionAnswersObj = questionAnswers && typeof questionAnswers === 'object' ? questionAnswers : {};
 
+  // Helper: derive questions within current range (7 days vs all-time)
+  const nowTs = Date.now();
+  const weekAgoTs = nowTs - 7 * 24 * 60 * 60 * 1000;
+  const questionsInRange = timeRange === 'week'
+    ? questionsArray.filter(q => new Date(q.date || q.lastUpdated || q.createdAt || 0).getTime() >= weekAgoTs)
+    : questionsArray;
+
   const generateAnalytics = useCallback(() => {
+    // 🔎 Determine active data set based on selected time-range
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000; // 7-day window
+
+    const completedQuizzesArray =
+      timeRange === 'week'
+        ? allCompletedQuizzesArray.filter(q => new Date(q.date || q.lastUpdated || q.endTime || 0).getTime() >= weekAgo)
+        : allCompletedQuizzesArray;
+
+    const inProgressQuizzesArray =
+      timeRange === 'week'
+        ? allInProgressQuizzesArray.filter(q => new Date(q.date || q.lastUpdated || q.startTime || 0).getTime() >= weekAgo)
+        : allInProgressQuizzesArray;
+
+    // Questions scoped to range (reuse questionsInRange but computed here to have local weekAgo)
+    const questionsRangeArray = questionsInRange;
+
+    // Helper to filter answers map by date (only keep answers whose parent quiz is within selected range)
+    const questionAnswersObjFiltered = {};
+    Object.entries(questionAnswersObj).forEach(([qId, answers]) => {
+      questionAnswersObjFiltered[qId] = answers.filter(ans => {
+        // Find the parent quiz (could be completed or in-progress depending on status)
+        const parentQuiz = [...completedQuizzesArray, ...inProgressQuizzesArray].find(q => q.id === ans.quizId);
+        if (!parentQuiz) return false;
+        if (timeRange === 'week') {
+          const quizDate = new Date(parentQuiz.date || parentQuiz.lastUpdated || parentQuiz.endTime || parentQuiz.startTime || 0).getTime();
+          return quizDate >= weekAgo;
+        }
+        return true;
+      });
+    });
+
     console.log('🔄 Generating analytics with data:', {
+      range: timeRange,
       completedQuizzes: completedQuizzesArray.length,
       inProgressQuizzes: inProgressQuizzesArray.length,
-      totalQuestions: questionsArray.length,
-      questionAnswersKeys: Object.keys(questionAnswersObj).length
+      totalQuestions: questionsRangeArray.length,
+      questionAnswersKeys: Object.keys(questionAnswersObjFiltered).length
     });
 
     // Basic stats
     const totalQuizzes = completedQuizzesArray.length + inProgressQuizzesArray.length;
-    const totalQuestions = questionsArray.length;
+    const totalQuestions = questionsRangeArray.length;
     
     // Calculate answered questions based on completed quizzes only
-    const answeredQuestions = Object.keys(questionAnswersObj).filter(questionId => {
-      const answers = questionAnswersObj[questionId];
+    const answeredQuestions = Object.keys(questionAnswersObjFiltered).filter(questionId => {
+      const answers = questionAnswersObjFiltered[questionId];
       if (!answers || !Array.isArray(answers)) return false;
       
       // Check if any answer is from a completed quiz
@@ -100,7 +143,7 @@ const AnalyticsPage = ({ questions }) => {
 
     // Performance by section - calculate based on completed quiz results only
     const sectionStats = {};
-    questionsArray.forEach(question => {
+    questionsRangeArray.forEach(question => {
       const section = question.section || 'Unknown';
       if (!sectionStats[section]) {
         sectionStats[section] = { total: 0, correct: 0, attempted: 0 };
@@ -108,8 +151,8 @@ const AnalyticsPage = ({ questions }) => {
       sectionStats[section].total++;
       
       // Check if this question has been answered in any completed quiz
-      if (questionAnswersObj[question.id]) {
-        const answers = questionAnswersObj[question.id];
+      if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
         // Only count answers from completed quizzes
         const completedAnswers = answers.filter(answer => {
           return completedQuizzesArray.some(quiz => 
@@ -132,7 +175,7 @@ const AnalyticsPage = ({ questions }) => {
 
     // Domain statistics - calculate based on completed quiz results only
     const domainStats = {};
-    questionsArray.forEach(question => {
+    questionsRangeArray.forEach(question => {
       const domain = question.domain || 'Unknown';
       if (!domainStats[domain]) {
         domainStats[domain] = { total: 0, attempted: 0, correct: 0, wrong: 0 };
@@ -140,8 +183,8 @@ const AnalyticsPage = ({ questions }) => {
       domainStats[domain].total++;
       
       // Check if this question has been answered in completed quizzes
-      if (questionAnswersObj[question.id]) {
-        const answers = questionAnswersObj[question.id];
+      if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
         // Only count answers from completed quizzes
         const completedAnswers = answers.filter(answer => {
           return completedQuizzesArray.some(quiz => 
@@ -173,9 +216,9 @@ const AnalyticsPage = ({ questions }) => {
     const questionTypeStats = {};
     
     // Debug: Log all questions to see their types
-    console.log('🔍 Question Type Analysis - All Questions:', {
-      totalQuestions: questionsArray.length,
-      questionTypes: questionsArray.map(q => ({
+    console.log('🔍 Question Type Analysis - All Questions (range applied):', {
+      totalQuestions: questionsRangeArray.length,
+      questionTypes: questionsRangeArray.map(q => ({
         id: q.id,
         section: q.section,
         domain: q.domain,
@@ -184,7 +227,7 @@ const AnalyticsPage = ({ questions }) => {
       }))
     });
     
-    questionsArray.forEach(question => {
+    questionsRangeArray.forEach(question => {
       const type = question.questionType || 'Unknown';
       if (!questionTypeStats[type]) {
         questionTypeStats[type] = { total: 0, attempted: 0, correct: 0, wrong: 0 };
@@ -192,8 +235,8 @@ const AnalyticsPage = ({ questions }) => {
       questionTypeStats[type].total++;
       
       // Check if this question has been answered in completed quizzes only
-      if (questionAnswersObj[question.id]) {
-        const answers = questionAnswersObj[question.id];
+      if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
         // Only count answers from completed quizzes
         const completedAnswers = answers.filter(answer => {
           return completedQuizzesArray.some(quiz => 
@@ -284,14 +327,17 @@ const AnalyticsPage = ({ questions }) => {
       'Hard': { total: 0, correct: 0 }
     };
 
-    questionsArray.forEach(question => {
+    // Only consider non-hidden questions in difficulty analysis
+    const visibleQuestions = questionsRangeArray.filter(q => !q.hidden);
+
+    visibleQuestions.forEach(question => {
       const difficulty = question.difficulty || 'Medium';
       if (difficultyStats[difficulty]) {
         difficultyStats[difficulty].total++;
         
         // Check if this question has been answered correctly in completed quizzes
-        if (questionAnswersObj[question.id]) {
-          const answers = questionAnswersObj[question.id];
+        if (questionAnswersObjFiltered[question.id]) {
+          const answers = questionAnswersObjFiltered[question.id];
           // Only count answers from completed quizzes
           const completedAnswers = answers.filter(answer => {
             return completedQuizzesArray.some(quiz => 
@@ -362,10 +408,10 @@ const AnalyticsPage = ({ questions }) => {
         accuracy: stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0
       })),
       completedQuizzesCount: completedQuizzesArray.length,
-      questionAnswersSample: Object.keys(questionAnswersObj).slice(0, 3).map(qId => ({
+      questionAnswersSample: Object.keys(questionAnswersObjFiltered).slice(0, 3).map(qId => ({
         questionId: qId,
-        answers: questionAnswersObj[qId]?.length || 0,
-        completedAnswers: questionAnswersObj[qId]?.filter(answer => 
+        answers: questionAnswersObjFiltered[qId]?.length || 0,
+        completedAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
           completedQuizzesArray.some(quiz => 
             quiz.id === answer.quizId && 
             ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
@@ -400,17 +446,17 @@ const AnalyticsPage = ({ questions }) => {
         status: q.status,
         hasEndTime: !!q.endTime
       })),
-      questionAnswersValidation: Object.keys(questionAnswersObj).slice(0, 3).map(qId => ({
+      questionAnswersValidation: Object.keys(questionAnswersObjFiltered).slice(0, 3).map(qId => ({
         questionId: qId,
-        totalAnswers: questionAnswersObj[qId]?.length || 0,
-        completedAnswers: questionAnswersObj[qId]?.filter(answer => 
+        totalAnswers: questionAnswersObjFiltered[qId]?.length || 0,
+        completedAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
           completedQuizzesArray.some(quiz => 
             quiz.id === answer.quizId && 
             ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
              quiz.status === 'completed')
           )
         ).length || 0,
-        correctAnswers: questionAnswersObj[qId]?.filter(answer => 
+        correctAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
           answer.isCorrect === true && 
           completedQuizzesArray.some(quiz => 
             quiz.id === answer.quizId && 
@@ -439,21 +485,21 @@ const AnalyticsPage = ({ questions }) => {
       totalDomains: Object.keys(domainStats).length,
       totalQuestionTypes: Object.keys(questionTypeStats).length
     });
-  }, [completedQuizzesArray, inProgressQuizzesArray, questionsArray, questionAnswersObj]);
+  }, [allCompletedQuizzesArray, allInProgressQuizzesArray, questionsArray, questionAnswersObj, timeRange, questionsInRange.length]);
 
   // Call generateAnalytics when data changes
   useEffect(() => {
     console.log('🔄 Analytics useEffect triggered:', {
-      completedQuizzesLength: completedQuizzesArray.length,
+      completedQuizzesLength: allCompletedQuizzesArray.length,
       questionAnswersKeys: Object.keys(questionAnswersObj).length,
-      questionsLength: questionsArray.length,
-      inProgressQuizzesLength: inProgressQuizzesArray.length
+      questionsLength: questionsInRange.length,
+      inProgressQuizzesLength: allInProgressQuizzesArray.length
     });
     
-    if (completedQuizzesArray !== undefined && questionAnswersObj !== undefined && inProgressQuizzesArray !== undefined) {
+    if (allCompletedQuizzesArray !== undefined && questionAnswersObj !== undefined && allInProgressQuizzesArray !== undefined) {
       generateAnalytics();
     }
-  }, [completedQuizzesArray.length, Object.keys(questionAnswersObj).length, questionsArray.length, inProgressQuizzesArray.length, generateAnalytics]);
+  }, [allCompletedQuizzesArray.length, Object.keys(questionAnswersObj).length, questionsInRange.length, allInProgressQuizzesArray.length, generateAnalytics]);
 
   // Chart configurations with modern styling
   const sectionChartData = {
@@ -925,7 +971,18 @@ const AnalyticsPage = ({ questions }) => {
               Track your performance and progress with advanced insights
             </p>
           </div>
-          {/* If you add controls/buttons here in the future, wrap them in a flex-col md:flex-row group with w-full md:w-auto */}
+          {/* Time-range toggle */}
+          <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Range:</span>
+            <button
+              onClick={() => setTimeRange('week')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-200 ${timeRange==='week' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+            >Last 7 Days</button>
+            <button
+              onClick={() => setTimeRange('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-200 ${timeRange==='all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+            >All Time</button>
+          </div>
         </div>
       </div>
 
@@ -949,7 +1006,7 @@ const AnalyticsPage = ({ questions }) => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    <CountUp from={0} to={questions.filter(q => !q.hidden).length} duration={0.8} />
+                    <CountUp from={0} to={questionsInRange.filter(q => !q.hidden).length} duration={0.8} />
                   </p>
                   <p className="text-sm font-medium text-gray-600">Total Questions</p>
                   <p className="text-xs text-gray-500">Questions added to library</p>
@@ -1055,7 +1112,7 @@ const AnalyticsPage = ({ questions }) => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    <CountUp from={0} to={questions.filter(q => q.hidden).length} duration={0.8} delay={0.3} />
+                    <CountUp from={0} to={questionsInRange.filter(q => q.hidden).length} duration={0.8} delay={0.3} />
                   </p>
                   <p className="text-sm font-medium text-gray-600">Hidden Questions</p>
                   <p className="text-xs text-gray-500">Draft/incomplete questions</p>

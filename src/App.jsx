@@ -462,10 +462,13 @@ function AppContent() {
     }
 
     // Assign fresh ids and mark hidden questions
+    const nowIso = new Date().toISOString();
     const questionsWithIds = dedupedIncoming.map((q) => ({
       ...q,
       id: Date.now() + Math.random(),
       hidden: isHiddenQuestion(q), // Auto-detect hidden status
+      createdAt: nowIso,
+      lastUpdated: nowIso,
     }));
 
     // Merge and save
@@ -499,7 +502,7 @@ function AppContent() {
     
     const updatedQuestions = questions.map(q => {
       if (q.id === questionId) {
-        const mergedQuestion = { ...q, ...updatedQuestion };
+        const mergedQuestion = { ...q, ...updatedQuestion, lastUpdated: new Date().toISOString() };
         return {
           ...mergedQuestion,
           hidden: isHiddenQuestion(mergedQuestion) // Re-evaluate hidden status

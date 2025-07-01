@@ -1,0 +1,122 @@
+[33mcommit 1e08d44f1e5c81d1a733e5ac733006eda909db93[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Mon Jun 30 20:13:44 2025 -0400
+
+    time filter
+
+[33mcommit 2ee0091c1289de886632b03da52d089f233a190a[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Mon Jun 30 14:47:56 2025 -0400
+
+    prev btn fix
+
+[33mcommit 638c0d2bab17cc850271c789253c666fa556770f[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Mon Jun 30 13:33:17 2025 -0400
+
+    algorithm fix and hidden questions
+
+[33mcommit 03c42fb38c77191cf6322293c2773c57284cb4e5[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Sun Jun 29 16:20:46 2025 -0400
+
+    Q type and analytics fixes
+
+[33mcommit 600e6d3f3f2e4179870eee5f47b90aac477ad094[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Sat Jun 28 14:12:38 2025 -0400
+
+    pdf updates
+
+[33mcommit 9704be848885859f44c5470567fa28f218e6658a[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Sat Jun 28 13:12:03 2025 -0400
+
+    imag fix 3
+
+[33mcommit b3b3c616b9d2909c841bd59217fcdd4066ae0133[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Sat Jun 28 12:59:36 2025 -0400
+
+    imgfix 2
+
+[33mcommit 305e8b4587610bb86964bc4401c7bd63480875c1[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Sat Jun 28 12:22:27 2025 -0400
+
+    logo, footer, calender fix
+
+[33mcommit a2e4eb744592969a536e26dbc4709162ea47219f[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Fri Jun 27 22:20:52 2025 -0400
+
+    pdf fixes
+
+[33mcommit cbdf86458813218856463c893d4db4041b634bfb[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Fri Jun 27 20:12:13 2025 -0400
+
+    favicon
+
+[33mcommit ce0dc5b9a96d4baa236b3a68a75fa5081a378868[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Fri Jun 27 20:07:23 2025 -0400
+
+    fix exlimation and edit csv
+
+[33mcommit 923c6082a4c6cc6318fea02db98d6f7d4d1c419a[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Fri Jun 27 13:40:26 2025 -0400
+
+    Enhanced navbar: Made mobile navbar significantly larger with bigger touch targets, improved logo sizing, and updated hero section spacing
+
+[33mcommit 4b37052eb23bfedef412e2e4559eee83e2cc0e36[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Fri Jun 27 13:25:25 2025 -0400
+
+    updated ui
+
+[33mcommit be4f9a44ddfd3614223fcbadedf0897ee3b4b9fd[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Thu Jun 26 18:19:39 2025 -0400
+
+    after fix1
+
+[33mcommit 091991e39277c1d28e9e121c3bd28d8cee2f1411[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Thu Jun 26 15:50:00 2025 -0400
+
+    Your commit message
+
+[33mcommit c812a374a4f0630eefe573191f2ec257338ef574[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Thu Jun 26 14:54:08 2025 -0400
+
+    Prepare for deployment
+
+[33mcommit b6bd4570f2005a7dae0c6763475d56281eb95560[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Thu Jun 26 14:45:20 2025 -0400
+
+    V2
+
+[33mcommit ab3022642375659e94c7b603084e034cb41dea3f[m
+Merge: 77a4d8b d759b07
+Author: hulokt <huloktdrm@gmail.com>
+Date:   Mon Jun 23 12:29:35 2025 -0400
+
+    Merge pull request #1 from hulokt/codex/fix-quiz-history-and-resume-functionality
+    
+    Fix quiz progression handling
+
+[33mcommit d759b0711733711d1c191b0728e223c1eb284f11[m
+Author: hulokt <huloktdrm@gmail.com>
+Date:   Mon Jun 23 12:28:36 2025 -0400
+
+    Fix quiz numbering and completion logic
+
+[33mcommit 77a4d8b4ed4a10861fd4ba9785b794965cb0727f[m
+Author: hulokt drm <huloktdrm@gmail.com>
+Date:   Mon Jun 23 12:12:32 2025 -0400
+
+    Initial full project upload

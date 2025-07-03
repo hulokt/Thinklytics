@@ -90,6 +90,8 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   const [csvError, setCsvError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [csvCopied, setCsvCopied] = useState(false);
 
   // Multi-question CSV import state
   const [csvQuestions, setCsvQuestions] = useState([]);
@@ -105,6 +107,8 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
   // Prevent double-click on Finish Import
   const [isFinalizingImport, setIsFinalizingImport] = useState(false);
+  // Track the currently selected question for editing (not bulk selection)
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(-1);
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
@@ -207,7 +211,18 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     // Validate form fields
     const errors = {};
     
-    // If not a hidden question, validate all required fields
+    // Always validate section, domain, and questionType for all questions
+    if (!formData.section) {
+      errors.section = true;
+    }
+    if (!formData.domain) {
+      errors.domain = true;
+    }
+    if (!formData.questionType) {
+      errors.questionType = true;
+    }
+    
+    // If not a hidden question, validate additional required fields
     if (!isHidden) {
       if (!formData.passageText.trim() && !formData.passageImage) {
         errors.passageText = true;
@@ -226,17 +241,6 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         emptyChoices.forEach(choice => {
           errors[`answerChoice_${choice}`] = true;
         });
-      }
-    } else {
-      // For hidden questions, only validate that section, domain, and questionType are filled
-      if (!formData.section) {
-        errors.section = true;
-      }
-      if (!formData.domain) {
-        errors.domain = true;
-      }
-      if (!formData.questionType) {
-        errors.questionType = true;
       }
     }
 
@@ -262,6 +266,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       await awardPointsAndAnimate('EDIT_QUESTION');
       setEditingId(null);
       setOriginalFormData(null);
+      setSelectedQuestionIndex(-1);
     } else {
       onAddQuestion(formData);
       // Award points for adding
@@ -285,8 +290,9 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     }
   };
 
-  const handleEdit = (question) => {
+  const handleEdit = (question, questionIndex = -1) => {
     setEditingId(question.id);
+    setSelectedQuestionIndex(questionIndex);
     const questionData = {
       section: question.section,
       domain: question.domain,
@@ -544,7 +550,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       handleQuestionSelection(selectedQuestion.id);
     } else {
       // Normal mode - edit the question
-      handleEdit(selectedQuestion);
+      handleEdit(selectedQuestion, index);
     }
   };
 
@@ -936,11 +942,38 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       // Validate correct answer
       const correct = (rawCorrect || 'A').toUpperCase().replace(/[^ABCD]/g, 'A');
       
+      // Extract image data and text from passage content
+      let passageText = rawPassage || '';
+      let passageImage = null;
+      
+      // Check for image data markers
+      const imageMarker = '[IMAGE_DATA]';
+      const imageEndMarker = '[/IMAGE_DATA]';
+      
+      if (passageText.includes(imageMarker) && passageText.includes(imageEndMarker)) {
+        const imageStartIndex = passageText.indexOf(imageMarker);
+        const imageEndIndex = passageText.indexOf(imageEndMarker) + imageEndMarker.length;
+        
+        // Extract image data
+        const imageDataWithMarkers = passageText.substring(imageStartIndex, imageEndIndex);
+        const imageData = imageDataWithMarkers.replace(imageMarker, '').replace(imageEndMarker, '');
+        
+        // Validate that it's a proper data URL
+        if (imageData.startsWith('data:image/')) {
+          passageImage = imageData;
+        }
+        
+        // Remove image data from passage text
+        passageText = passageText.substring(0, imageStartIndex) + passageText.substring(imageEndIndex);
+        passageText = passageText.trim();
+      }
+      
       return {
         section: normalizedSection,
         domain: normalizedDomain,
         questionType: normalizedQuestionType,
-        passageText: rawPassage || '',
+        passageText: passageText,
+        passageImage: passageImage,
         questionText: rawQuestion || '',
         answerChoices: {
           A: rawA || '',
@@ -1162,7 +1195,18 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       // Validate the current question without adding it
       const errors = {};
       
-      // Skip validation for hidden questions, only validate complete questions
+      // Always validate section, domain, and questionType for all questions
+      if (!formData.section) {
+        errors.section = true;
+      }
+      if (!formData.domain) {
+        errors.domain = true;
+      }
+      if (!formData.questionType) {
+        errors.questionType = true;
+      }
+      
+      // If not a hidden question, validate additional required fields
       if (!isHidden) {
         if (!formData.passageText.trim() && !formData.passageImage) {
           errors.passageText = true;
@@ -1182,13 +1226,13 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
             errors[`answerChoice_${choice}`] = true;
           });
         }
+      }
 
-        // If there are validation errors, set them and return
-        if (Object.keys(errors).length > 0) {
-          setValidationErrors(errors);
-          console.warn('Validation failed: Please fill in all required fields');
-          return;
-        }
+      // If there are validation errors, set them and return
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        console.warn('Validation failed: Please fill in all required fields');
+        return;
       }
 
       // Clear validation errors if validation passes or if hidden question
@@ -1889,6 +1933,110 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       img.src = src;
     });
 
+  // Copy questions as CSV to clipboard
+  const copyQuestionsAsCSV = async () => {
+    // Filter out hidden questions from export
+    const exportableQuestions = filteredQuestions.filter(q => !q.hidden);
+    
+    if (exportableQuestions.length === 0) {
+      alert('No visible questions to copy!');
+      return;
+    }
+
+    // Helper function to convert commas to exclamation marks and escape CSV values
+    const convertAndEscapeCSVValue = (value) => {
+      if (value === null || value === undefined) return '';
+      
+      // First convert to string and replace ALL commas with exclamation marks
+      let str = String(value).replace(/,/g, '!');
+      
+      // Also replace newlines with spaces to prevent CSV line breaks
+      str = str.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Always wrap in quotes to ensure proper CSV formatting
+      // Escape existing quotes by doubling them
+      str = str.replace(/"/g, '""');
+      // Wrap in quotes
+      str = `"${str}"`;
+      
+      return str;
+    };
+
+    // Convert questions to CSV format in the specified order
+    const csvRows = exportableQuestions.map(question => {
+      // Combine passage text and image into a single field
+      let passageContent = question.passageText || '';
+      
+      // If there's an image, add it to the passage content with a special marker
+      if (question.passageImage) {
+        const imageMarker = '[IMAGE_DATA]';
+        const imageEndMarker = '[/IMAGE_DATA]';
+        // Add image data after text (or as standalone if no text)
+        if (passageContent.trim()) {
+          passageContent = `${passageContent} ${imageMarker}${question.passageImage}${imageEndMarker}`;
+        } else {
+          passageContent = `${imageMarker}${question.passageImage}${imageEndMarker}`;
+        }
+      }
+      
+      const row = [
+        convertAndEscapeCSVValue(question.section),
+        convertAndEscapeCSVValue(question.domain),
+        convertAndEscapeCSVValue(question.questionType),
+        convertAndEscapeCSVValue(passageContent),
+        convertAndEscapeCSVValue(question.questionText || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.A || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.B || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.C || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.D || ''),
+        convertAndEscapeCSVValue(question.correctAnswer || 'A'),
+        convertAndEscapeCSVValue(question.explanation || ''),
+        convertAndEscapeCSVValue(question.difficulty || 'Medium')
+      ];
+      return row.join(',');
+    });
+
+    // Create CSV content (no header for paste-friendly format)
+    const csvContent = csvRows.join('\n');
+
+    try {
+      // Copy to clipboard
+      await navigator.clipboard.writeText(csvContent);
+      
+      // Show success state and auto-close modal
+      setCsvCopied(true);
+      setTimeout(() => {
+        setCsvCopied(false);
+        setShowExportModal(false);
+      }, 1500);
+      
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = csvContent;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+        setCsvCopied(true);
+        setTimeout(() => {
+          setCsvCopied(false);
+          setShowExportModal(false);
+        }, 1500);
+      } catch (err) {
+        console.error('Failed to copy CSV to clipboard:', err);
+        alert('Failed to copy CSV to clipboard. Please try again.');
+      }
+      
+      document.body.removeChild(textArea);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 h-full overflow-hidden flex flex-col transition-colors duration-300">
       {/* Header - Modern Design */}
@@ -2083,6 +2231,82 @@ Reading and Writing,Standard English Conventions,Boundaries`}
         </div>
       )}
 
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-md relative">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">Export Questions</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                Choose your preferred export format for {filteredQuestions.filter(q => !q.hidden).length} visible questions.
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
+                Hidden questions will not be included in the export.
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 mb-6">
+                💡 CSV format: Section, Domain, Question Type, Passage Text, Question Text, A, B, C, D, Correct (A/B/C/D), Explanation, Difficulty. Images are embedded in passage text with special markers. Commas automatically converted to exclamation marks.
+              </p>
+              
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={async () => {
+                    setShowExportModal(false);
+                    await exportQuestionsAsPDF();
+                  }}
+                  disabled={isExporting}
+                  className="w-full px-6 py-3 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-300 hover:shadow-lg font-medium flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Export as PDF</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    copyQuestionsAsCSV();
+                  }}
+                  disabled={isExporting || csvCopied}
+                  className={`w-full px-6 py-3 rounded-lg transition-all duration-300 hover:shadow-lg font-medium flex items-center justify-center space-x-2 ${
+                    csvCopied 
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                      : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
+                  }`}
+                >
+                  {csvCopied ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                      <span>Copy CSV</span>
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="w-full px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto">
         <div className="w-full px-3 sm:px-6 py-4 h-full pb-20 sm:pb-6">
           <div className="max-w-7xl mx-auto h-full">
@@ -2113,8 +2337,12 @@ Reading and Writing,Standard English Conventions,Boundaries`}
               <div className="p-3 sm:p-4 space-y-3 flex-1 overflow-y-auto">
               {/* Section Tabs - Modern Design */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Section</label>
-                <div className="flex flex-wrap gap-2 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 p-2 rounded-xl shadow-inner transition-colors duration-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Section <span className="text-red-500">*</span></label>
+                <div className={`flex flex-wrap gap-2 p-2 rounded-xl shadow-inner transition-colors duration-300 ${
+                  validationErrors.section 
+                    ? 'bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 border-2 border-red-300 dark:border-red-600' 
+                    : 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'
+                }`}>
                   {Object.values(SAT_SECTIONS).map((section) => (
                     <button
                       key={section}
@@ -2135,11 +2363,15 @@ Reading and Writing,Standard English Conventions,Boundaries`}
               {/* Domain and Question Type Row - Compact */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Domain</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Domain <span className="text-red-500">*</span></label>
                   <select
                     value={formData.domain}
                     onChange={(e) => handleInputChange('domain', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm transition-colors duration-300"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 text-base sm:text-sm transition-colors duration-300 ${
+                      validationErrors.domain 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' 
+                        : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                    }`}
                   >
                     <option value="">Select Domain</option>
                     {getDomainOptions(formData.section).map((domain) => (
@@ -2149,11 +2381,15 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Question Type</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Question Type <span className="text-red-500">*</span></label>
                   <select
                     value={formData.questionType}
                     onChange={(e) => handleInputChange('questionType', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm transition-colors duration-300"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 text-base sm:text-sm transition-colors duration-300 ${
+                      validationErrors.questionType 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' 
+                        : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                    }`}
                   >
                     <option value="">Select Question Type</option>
                     {(formData.domain
@@ -2337,6 +2573,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                     onClick={() => {
                       setEditingId(null);
                       setOriginalFormData(null);
+                      setSelectedQuestionIndex(-1);
                       setFormData({
                         section: SAT_SECTIONS.READING_WRITING,
                         domain: '',
@@ -2381,6 +2618,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                         await handleDelete(editingId);
                         setEditingId(null);
                         setOriginalFormData(null);
+                        setSelectedQuestionIndex(-1);
                         setFormData({
                           section: SAT_SECTIONS.READING_WRITING,
                           domain: '',
@@ -2560,6 +2798,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                     enableArrowNavigation={!isImportMode}
                     displayScrollbar={true}
                     disabled={isImportMode}
+                    initialSelectedIndex={selectedQuestionIndex}
                   />
                   {isImportMode && (
                     <div className="absolute inset-0 bg-white/90 dark:bg-gray-900/90 flex items-center justify-center rounded-lg z-10 border-2 border-yellow-300 dark:border-yellow-600">
@@ -2594,7 +2833,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                   </span>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={exportQuestionsAsPDF}
+                      onClick={() => setShowExportModal(true)}
                       disabled={isExporting || exportSuccess}
                       className={`px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 text-sm font-medium ${
                         isExporting 
@@ -2609,7 +2848,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                           <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
-                          <span>Generating PDF...</span>
+                          <span>Exporting...</span>
                         </>
                       ) : exportSuccess ? (
                         <>
@@ -2623,7 +2862,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          <span>Export as PDF</span>
+                          <span>Export Questions</span>
                         </>
                       )}
                     </button>

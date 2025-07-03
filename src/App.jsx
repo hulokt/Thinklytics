@@ -415,14 +415,31 @@ function AppContent() {
         return false; // never treat two hidden questions as duplicates
       }
       
-      // For regular questions, use the original duplicate detection logic
-      return (
+      // For regular questions, use comprehensive duplicate detection logic
+      // Compare all significant fields to ensure true duplicates are detected
+      const basicFieldsMatch = (
         (a.section || "") === (b.section || "") &&
         (a.domain || "") === (b.domain || "") &&
         (a.questionType || "") === (b.questionType || "") &&
         (a.passageText || "") === (b.passageText || "") &&
-        (a.questionText || "") === (b.questionText || "")
+        (a.questionText || "") === (b.questionText || "") &&
+        (a.correctAnswer || "") === (b.correctAnswer || "") &&
+        (a.explanation || "") === (b.explanation || "") &&
+        (a.difficulty || "") === (b.difficulty || "") &&
+        (a.passageImage || "") === (b.passageImage || "")
       );
+      
+      // Compare answer choices
+      const aChoices = a.answerChoices || {};
+      const bChoices = b.answerChoices || {};
+      const answerChoicesMatch = (
+        (aChoices.A || "") === (bChoices.A || "") &&
+        (aChoices.B || "") === (bChoices.B || "") &&
+        (aChoices.C || "") === (bChoices.C || "") &&
+        (aChoices.D || "") === (bChoices.D || "")
+      );
+      
+      return basicFieldsMatch && answerChoicesMatch;
     };
 
     // Helper to detect if a question should be hidden

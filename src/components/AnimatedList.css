@@ -53,29 +53,33 @@
 }
 
 /* Light mode hover */
-:not(.dark) .item:hover {
+:not(.dark) .item.hovered {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
+  transform: translateX(2px);
 }
 
 /* Dark mode hover */
-.dark .item:hover {
+.dark .item.hovered {
   background-color: #4b5563;
   border-color: #6b7280;
+  transform: translateX(2px);
 }
 
-/* Light mode selected */
+/* Light mode selected (higher priority than hover) */
 :not(.dark) .item.selected {
-  background-color: #dbeafe;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  background-color: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+  transform: none !important;
 }
 
-/* Dark mode selected */
+/* Dark mode selected (higher priority than hover) */
 .dark .item.selected {
-  background-color: #1e3a8a;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  background-color: #1e3a8a !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+  transform: none !important;
 }
 
 /* Light mode text */

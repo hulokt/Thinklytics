@@ -33,6 +33,7 @@ const AnimatedList = ({
 }) => {
   const listRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex);
+  const [hoveredIndex, setHoveredIndex] = useState(-1);
   const [keyboardNav, setKeyboardNav] = useState(false);
   const [topGradientOpacity, setTopGradientOpacity] = useState(0);
   const [bottomGradientOpacity, setBottomGradientOpacity] = useState(1);
@@ -55,6 +56,11 @@ const AnimatedList = ({
   useEffect(() => {
     setVisibleCount(10);
   }, [items]);
+
+  // Update selected index when initialSelectedIndex changes
+  useEffect(() => {
+    setSelectedIndex(initialSelectedIndex);
+  }, [initialSelectedIndex]);
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -83,16 +89,17 @@ const AnimatedList = ({
       if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
         e.preventDefault();
         setKeyboardNav(true);
-        setSelectedIndex((prev) => Math.min(prev + 1, items.length - 1));
+        setHoveredIndex((prev) => Math.min(prev + 1, items.length - 1));
       } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
         e.preventDefault();
         setKeyboardNav(true);
-        setSelectedIndex((prev) => Math.max(prev - 1, 0));
+        setHoveredIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        if (selectedIndex >= 0 && selectedIndex < items.length) {
+        if (hoveredIndex >= 0 && hoveredIndex < items.length) {
           e.preventDefault();
+          setSelectedIndex(hoveredIndex);
           if (onItemSelect) {
-            onItemSelect(items[selectedIndex], selectedIndex);
+            onItemSelect(items[hoveredIndex], hoveredIndex);
           }
         }
       }
@@ -100,18 +107,18 @@ const AnimatedList = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [items, selectedIndex, onItemSelect, enableArrowNavigation, isFocused]);
+  }, [items, hoveredIndex, onItemSelect, enableArrowNavigation, isFocused]);
 
   useEffect(() => {
-    if (!keyboardNav || selectedIndex < 0 || !listRef.current) return;
+    if (!keyboardNav || hoveredIndex < 0 || !listRef.current) return;
     const container = listRef.current;
-    const selectedItem = container.querySelector(`[data-index="${selectedIndex}"]`);
-    if (selectedItem) {
+    const hoveredItem = container.querySelector(`[data-index="${hoveredIndex}"]`);
+    if (hoveredItem) {
       const extraMargin = 50;
       const containerScrollTop = container.scrollTop;
       const containerHeight = container.clientHeight;
-      const itemTop = selectedItem.offsetTop;
-      const itemBottom = itemTop + selectedItem.offsetHeight;
+      const itemTop = hoveredItem.offsetTop;
+      const itemBottom = itemTop + hoveredItem.offsetHeight;
       if (itemTop < containerScrollTop + extraMargin) {
         container.scrollTo({ top: itemTop - extraMargin, behavior: 'smooth' });
       } else if (itemBottom > containerScrollTop + containerHeight - extraMargin) {
@@ -122,7 +129,7 @@ const AnimatedList = ({
       }
     }
     setKeyboardNav(false);
-  }, [selectedIndex, keyboardNav]);
+  }, [hoveredIndex, keyboardNav]);
 
   return (
     <div className={`scroll-list-container ${className}`}>
@@ -133,7 +140,10 @@ const AnimatedList = ({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         onMouseEnter={() => setIsFocused(true)}
-        onMouseLeave={() => setIsFocused(false)}
+        onMouseLeave={() => {
+          setIsFocused(false);
+          setHoveredIndex(-1);
+        }}
         tabIndex={0}
       >
         {itemsToShow.map((item, index) => (
@@ -141,7 +151,7 @@ const AnimatedList = ({
             key={index}
             delay={0.1}
             index={index}
-            onMouseEnter={() => setSelectedIndex(index)}
+            onMouseEnter={() => setHoveredIndex(index)}
             onClick={() => {
               setSelectedIndex(index);
               if (onItemSelect) {
@@ -149,7 +159,7 @@ const AnimatedList = ({
               }
             }}
           >
-            <div className={`item ${selectedIndex === index ? 'selected' : ''} ${itemClassName}`}>
+            <div className={`item ${selectedIndex === index ? 'selected' : ''} ${hoveredIndex === index ? 'hovered' : ''} ${itemClassName}`}>
               <p className="item-text">{item}</p>
             </div>
           </AnimatedItem>

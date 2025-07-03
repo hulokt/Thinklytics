@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { formatRelativeTime } from '../lib/utils';
 import './AnimatedList.css';
 
 const AnimatedQuestionItem = ({ children, delay = 0, index, onMouseEnter, onClick }) => {
@@ -40,6 +41,7 @@ const AnimatedQuestionList = ({
   const [bottomGradientOpacity, setBottomGradientOpacity] = useState(1);
   const [visibleCount, setVisibleCount] = useState(10); // Start with 10 questions on mobile
   const [isMobile, setIsMobile] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date()); // For updating relative time
 
   // Check if we're on mobile
   useEffect(() => {
@@ -56,6 +58,15 @@ const AnimatedQuestionList = ({
   useEffect(() => {
     setVisibleCount(10);
   }, [questions]);
+
+  // Update current time every minute for relative timestamp updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute (60,000 ms)
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -156,8 +167,6 @@ const AnimatedQuestionList = ({
               />
               <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 flex-1 min-w-0 transition-colors duration-300">
                 <span className="font-medium truncate text-xs">{question.section}</span>
-                <span className="text-gray-400 dark:text-gray-500">•</span>
-                <span className="truncate text-xs">{question.domain}</span>
                 {flagged && <span className="text-yellow-500 text-xs">🚩</span>}
               </div>
             </div>
@@ -173,31 +182,39 @@ const AnimatedQuestionList = ({
           </div>
           
           <div className="pl-5">
-            <p className="text-gray-800 dark:text-gray-200 text-xs leading-tight line-clamp-2 mb-1 transition-colors duration-300">
-              {question.questionText.length > 100 
-                ? `${question.questionText.substring(0, 100)}...` 
-                : question.questionText
-              }
-            </p>
+                          <p className="text-gray-800 dark:text-gray-200 text-xs leading-tight line-clamp-2 mb-1 transition-colors duration-300">
+                {(() => {
+                  if (!question.passageText || question.passageText.trim().length === 0) {
+                    return 'No passage text';
+                  }
+                  const words = question.passageText.trim().split(/\s+/).slice(0, 10);
+                  return `${words.join(' ')}${question.passageText.split(/\s+/).length > 10 ? '...' : ''}`;
+                })()}
+              </p>
             
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
-              <span className="truncate">{question.questionType}</span>
-              {status && (
-                <>
-                  <span className="text-gray-400 dark:text-gray-500">•</span>
-                  <span className={`font-medium ${
-                    status === 'correct' 
-                      ? 'text-green-600' 
-                      : status === 'incorrect' 
-                      ? 'text-red-600'
-                      : status === 'mixed'
-                      ? 'text-yellow-600'
-                      : 'text-gray-500'
-                  }`}>
-                    {status === 'correct' ? 'Correct' : status === 'incorrect' ? 'Wrong' : status === 'mixed' ? 'Mixed' : 'New'}
-                  </span>
-                </>
-              )}
+            <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="truncate">{question.questionType}</span>
+                {status && (
+                  <>
+                    <span className="text-gray-400 dark:text-gray-500">•</span>
+                    <span className={`font-medium ${
+                      status === 'correct' 
+                        ? 'text-green-600' 
+                        : status === 'incorrect' 
+                        ? 'text-red-600'
+                        : status === 'mixed'
+                        ? 'text-yellow-600'
+                        : 'text-gray-500'
+                    }`}>
+                      {status === 'correct' ? 'Correct' : status === 'incorrect' ? 'Wrong' : status === 'mixed' ? 'Mixed' : 'New'}
+                    </span>
+                  </>
+                )}
+              </div>
+              <span className="text-gray-400 dark:text-gray-500 font-medium flex-shrink-0">
+                {formatRelativeTime(question.createdAt || question.lastUpdated)}
+              </span>
             </div>
           </div>
         </div>

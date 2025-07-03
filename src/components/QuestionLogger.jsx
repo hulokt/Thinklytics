@@ -17,6 +17,7 @@ import PointsAnimation from './PointsAnimation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
+import { formatRelativeTime } from '../lib/utils';
 import logoImage from "/logo.png";
 
 // Helper: Levenshtein distance for fuzzy matching of question types
@@ -109,11 +110,22 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   const [isFinalizingImport, setIsFinalizingImport] = useState(false);
   // Track the currently selected question for editing (not bulk selection)
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(-1);
+  // Timer for updating relative timestamps every minute
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
     console.log('importedQuestions state changed:', importedQuestions.length, importedQuestions);
   }, [importedQuestions]);
+
+  // Update current time every minute for relative timestamp updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute (60,000 ms)
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Award points and show animation
   const awardPointsAndAnimate = async (actionType, additionalData = {}) => {
@@ -518,24 +530,31 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     });
   }, [questions, searchQuery]);
 
-  // Prepare questions for AnimatedList
-  const questionItems = filteredQuestions.map(question => {
-    const preview = question.questionText ? 
-      `${question.questionText.substring(0, 80)}${question.questionText.length > 80 ? '...' : ''}` :
-      'No question text';
-    
-    // Add image indicator if question has an image
-    const imageIndicator = question.passageImage ? ' 📷' : '';
-    
-    // Add hidden indicator for hidden questions
-    const hiddenIndicator = question.hidden ? ' 🔒' : '';
-    
-    // Add selection indicator if in bulk mode
-    const selectionIndicator = bulkSelectionMode ? 
-      (selectedQuestions.has(question.id) ? ' ☑️' : ' ☐') : '';
-    
-    return `${question.section} - ${question.domain} | ${preview}${imageIndicator}${hiddenIndicator}${selectionIndicator}`;
-  });
+  // Prepare questions for AnimatedList - use useMemo for performance and currentTime dependency
+  const questionItems = useMemo(() => {
+    return filteredQuestions.map(question => {
+      // Get first 5 words from passage text
+      const passageWords = (question.passageText || '').trim().split(/\s+/);
+      const firstFiveWords = passageWords.slice(0, 5).join(' ');
+      const passagePreview = firstFiveWords && firstFiveWords.length > 0 
+        ? `${firstFiveWords}${passageWords.length > 5 ? '...' : ''}` 
+        : 'No passage text';
+      
+      // Add hidden indicator for hidden questions
+      const hiddenIndicator = question.hidden ? ' 🔒' : '';
+      
+      // Add selection indicator if in bulk mode
+      const selectionIndicator = bulkSelectionMode ? 
+        (selectedQuestions.has(question.id) ? ' ☑️' : ' ☐') : '';
+      
+      // Add timestamp (currentTime dependency ensures this updates every minute)
+      const timeStamp = question.createdAt || question.lastUpdated 
+        ? ` • ${formatRelativeTime(question.createdAt || question.lastUpdated)}` 
+        : '';
+      
+      return `${question.section} | ${passagePreview}${hiddenIndicator}${selectionIndicator}${timeStamp}`;
+    });
+  }, [filteredQuestions, bulkSelectionMode, selectedQuestions, currentTime]);
 
   const handleQuestionSelect = (questionText, index) => {
     if (isImportMode) {

@@ -108,18 +108,18 @@ const TutorialsPage = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tutorials</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Tutorials</h1>
           </div>
         </div>
       </div>
@@ -127,14 +127,14 @@ const TutorialsPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <BookOpen className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl homepage-feature-icon mb-6">
+            <BookOpen className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Learn from
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Experts</span>
+            <span className="homepage-gradient-text"> Experts</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Master SAT strategies with our comprehensive video tutorials and guides. 
             Learn from experienced educators and improve your score with proven techniques.
           </p>
@@ -148,8 +148,8 @@ const TutorialsPage = ({ onBack }) => {
               onClick={() => setSelectedCategory(category.id)}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 selectedCategory === category.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'homepage-cta-primary text-white'
+                  : 'homepage-card homepage-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {category.name}
@@ -160,8 +160,8 @@ const TutorialsPage = ({ onBack }) => {
         {/* Featured Tutorial */}
         {featuredTutorial && selectedCategory === 'all' && (
           <div className="mb-16">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Featured Tutorial</h3>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+            <h3 className="text-2xl font-bold homepage-text-primary mb-6">Featured Tutorial</h3>
+            <div className="homepage-card rounded-2xl shadow-xl overflow-hidden homepage-hover-glow">
               <div className="md:flex">
                 <div className="md:w-1/3 relative">
                   <img 
@@ -175,21 +175,21 @@ const TutorialsPage = ({ onBack }) => {
                 </div>
                 <div className="md:w-2/3 p-8">
                   <div className="flex items-center space-x-4 mb-4">
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-full">
+                    <span className="px-3 py-1 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] text-white text-sm font-medium rounded-full">
                       Featured
                     </span>
                     <span className={`px-3 py-1 text-sm font-medium rounded-full ${getDifficultyColor(featuredTutorial.difficulty)}`}>
                       {featuredTutorial.difficulty}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  <h2 className="text-2xl font-bold homepage-text-primary mb-4">
                     {featuredTutorial.title}
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                  <p className="homepage-text-secondary mb-6 leading-relaxed">
                     {featuredTutorial.description}
                   </p>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center space-x-4 text-sm homepage-text-muted">
                       <div className="flex items-center space-x-1">
                         <User className="w-4 h-4" />
                         <span>{featuredTutorial.instructor}</span>
@@ -203,7 +203,7 @@ const TutorialsPage = ({ onBack }) => {
                         <span>{featuredTutorial.rating}</span>
                       </div>
                     </div>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2">
+                    <button className="homepage-cta-primary text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 hover:shadow-xl">
                       <Play className="w-4 h-4" />
                       <span>Watch Now</span>
                     </button>
@@ -216,13 +216,13 @@ const TutorialsPage = ({ onBack }) => {
 
         {/* Tutorial Grid */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8">
             {selectedCategory === 'all' ? 'All Tutorials' : categories.find(c => c.id === selectedCategory)?.name}
           </h3>
           {filteredTutorials.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredTutorials.map((tutorial) => (
-                <div key={tutorial.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                <div key={tutorial.id} className="homepage-card rounded-xl shadow-lg overflow-hidden homepage-hover-glow">
                   <div className="relative">
                     <img 
                       src={tutorial.thumbnail} 
@@ -239,13 +239,13 @@ const TutorialsPage = ({ onBack }) => {
                         {tutorial.difficulty}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 line-clamp-2">
+                    <h3 className="text-lg font-bold homepage-text-primary mb-3 line-clamp-2">
                       {tutorial.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3 text-sm">
+                    <p className="homepage-text-secondary mb-4 line-clamp-3 text-sm">
                       {tutorial.description}
                     </p>
-                    <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <div className="flex items-center justify-between text-sm homepage-text-muted mb-4">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
                         <span>{tutorial.duration}</span>
@@ -259,9 +259,9 @@ const TutorialsPage = ({ onBack }) => {
                       <div className="flex items-center space-x-2">
                         <Star className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm font-medium">{tutorial.rating}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">({tutorial.views})</span>
+                        <span className="text-sm homepage-text-muted">({tutorial.views})</span>
                       </div>
-                      <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors">
+                      <button className="blue-gradient-text hover:underline font-medium transition-colors">
                         Watch →
                       </button>
                     </div>
@@ -271,9 +271,9 @@ const TutorialsPage = ({ onBack }) => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No tutorials found</h4>
-              <p className="text-gray-600 dark:text-gray-300">
+              <BookOpen className="w-16 h-16 homepage-text-muted mx-auto mb-4" />
+              <h4 className="text-xl font-semibold homepage-text-primary mb-2">No tutorials found</h4>
+              <p className="homepage-text-secondary">
                 Try selecting a different category or check back later for new content.
               </p>
             </div>
@@ -281,41 +281,41 @@ const TutorialsPage = ({ onBack }) => {
         </div>
 
         {/* Learning Path */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Recommended Learning Path</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Recommended Learning Path</h3>
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">1</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">1</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Start with Basics</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Start with Basics</h4>
+                <p className="homepage-text-secondary">
                   Begin with "Getting Started with Thinklytics" to understand the platform and basic features.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">2</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">2</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Master Analytics</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Master Analytics</h4>
+                <p className="homepage-text-secondary">
                   Learn to interpret your data with "Understanding Your Analytics Dashboard."
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">3</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">3</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Focus on Weak Areas</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Focus on Weak Areas</h4>
+                <p className="homepage-text-secondary">
                   Use analytics to identify weak areas and watch targeted tutorials for those sections.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">4</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">4</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Advanced Strategies</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Advanced Strategies</h4>
+                <p className="homepage-text-secondary">
                   Once comfortable with basics, explore advanced tutorials for optimization strategies.
                 </p>
               </div>
@@ -324,12 +324,12 @@ const TutorialsPage = ({ onBack }) => {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white text-center">
           <h3 className="text-2xl font-bold mb-4">Ready to Start Learning?</h3>
           <p className="text-lg mb-6 opacity-90">
             Join thousands of students who are already improving their SAT scores with our expert tutorials.
           </p>
-          <button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
+          <button className="bg-white text-[var(--brand-60)] hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
             Start Learning
           </button>
         </div>

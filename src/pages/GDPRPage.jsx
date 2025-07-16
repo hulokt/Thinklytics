@@ -86,18 +86,18 @@ const GDPRPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">GDPR Compliance</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">GDPR Compliance</h1>
           </div>
         </div>
       </div>
@@ -105,66 +105,66 @@ const GDPRPage = ({ onBack }) => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl homepage-feature-icon mb-6">
+            <Shield className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Your Data
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Rights</span>
+            <span className="homepage-gradient-text"> Rights</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             We are committed to protecting your privacy and ensuring compliance with the General Data Protection Regulation (GDPR). 
             This page explains your rights and how we handle your personal data.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+          <p className="text-sm homepage-text-muted mt-4">
             Last updated: December 2024
           </p>
         </div>
 
         {/* Your Rights Section */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Your GDPR Rights</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Your GDPR Rights</h3>
           <div className="grid md:grid-cols-2 gap-6">
             {rights.map((right, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                    <right.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                    <right.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{right.title}</h4>
+                  <h4 className="text-lg font-semibold homepage-text-primary">{right.title}</h4>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300">{right.description}</p>
+                <p className="homepage-text-secondary">{right.description}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Data Categories */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">How We Process Your Data</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">How We Process Your Data</h3>
           <div className="space-y-6">
             {dataCategories.map((category, index) => (
               <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{category.category}</h4>
+                <h4 className="text-lg font-semibold homepage-text-primary mb-3">{category.category}</h4>
                 <div className="grid md:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white mb-2">Examples:</h5>
-                    <ul className="space-y-1 text-gray-600 dark:text-gray-300">
+                    <h5 className="font-medium homepage-text-primary mb-2">Examples:</h5>
+                    <ul className="space-y-1 homepage-text-secondary">
                       {category.examples.map((example, exampleIndex) => (
                         <li key={exampleIndex} className="flex items-start space-x-2">
-                          <div className="w-1 h-1 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="w-1 h-1 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
                           <span>{example}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white mb-2">Purpose:</h5>
-                    <p className="text-gray-600 dark:text-gray-300">{category.purpose}</p>
+                    <h5 className="font-medium homepage-text-primary mb-2">Purpose:</h5>
+                    <p className="homepage-text-secondary">{category.purpose}</p>
                   </div>
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white mb-2">Legal Basis:</h5>
-                    <p className="text-gray-600 dark:text-gray-300">{category.legalBasis}</p>
+                    <h5 className="font-medium homepage-text-primary mb-2">Legal Basis:</h5>
+                    <p className="homepage-text-secondary">{category.legalBasis}</p>
                   </div>
                 </div>
               </div>
@@ -173,23 +173,23 @@ const GDPRPage = ({ onBack }) => {
         </div>
 
         {/* Data Retention */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Data Retention Periods</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Data Retention Periods</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Data Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Retention Period</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Reason</th>
+                  <th className="text-left py-3 px-4 font-semibold homepage-text-primary">Data Type</th>
+                  <th className="text-left py-3 px-4 font-semibold homepage-text-primary">Retention Period</th>
+                  <th className="text-left py-3 px-4 font-semibold homepage-text-primary">Reason</th>
                 </tr>
               </thead>
               <tbody>
                 {dataRetention.map((item, index) => (
                   <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
-                    <td className="py-3 px-4 text-gray-900 dark:text-white">{item.dataType}</td>
-                    <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{item.retentionPeriod}</td>
-                    <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{item.reason}</td>
+                    <td className="py-3 px-4 homepage-text-primary">{item.dataType}</td>
+                    <td className="py-3 px-4 homepage-text-secondary">{item.retentionPeriod}</td>
+                    <td className="py-3 px-4 homepage-text-secondary">{item.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -198,34 +198,34 @@ const GDPRPage = ({ onBack }) => {
         </div>
 
         {/* How to Exercise Your Rights */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">How to Exercise Your Rights</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">How to Exercise Your Rights</h3>
           <div className="space-y-6">
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Contact Us</h4>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">Contact Us</h4>
+              <p className="homepage-text-secondary mb-4">
                 To exercise any of your GDPR rights, please contact us at{' '}
-                <a href="mailto:privacy@thinklytics.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+                <a href="mailto:privacy@thinklytics.com" className="blue-gradient-text hover:underline">
                   privacy@thinklytics.com
                 </a>
               </p>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="homepage-text-secondary">
                 We will respond to your request within 30 days of receipt.
               </p>
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">What to Include</h4>
-              <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">What to Include</h4>
+              <ul className="space-y-2 homepage-text-secondary">
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
                   <span>Your full name and email address</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
                   <span>Specific right you want to exercise</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
                   <span>Any additional context or requirements</span>
                 </li>
               </ul>
@@ -234,7 +234,7 @@ const GDPRPage = ({ onBack }) => {
         </div>
 
         {/* Data Protection Officer */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-16">
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white mb-16">
           <h3 className="text-2xl font-bold mb-6">Data Protection Officer</h3>
           <div className="space-y-4">
             <p className="text-lg opacity-90">
@@ -250,25 +250,25 @@ const GDPRPage = ({ onBack }) => {
         </div>
 
         {/* Updates and Contact */}
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-8">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-8 border border-yellow-200 dark:border-yellow-800">
           <div className="flex items-start space-x-4">
             <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mt-1 flex-shrink-0" />
             <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Questions About GDPR?</h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
+              <h3 className="text-xl font-bold homepage-text-primary mb-4">Questions About GDPR?</h3>
+              <p className="homepage-text-secondary mb-4">
                 If you have any questions about our GDPR compliance or how we handle your personal data, 
                 please don't hesitate to contact us.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <a
                   href="mailto:privacy@thinklytics.com"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors text-center"
+                  className="homepage-cta-primary text-white px-6 py-3 rounded-lg font-medium transition-colors text-center"
                 >
                   Contact Privacy Team
                 </a>
                 <button
                   onClick={onBack}
-                  className="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="border-2 border-[var(--brand-60)] text-[var(--brand-60)] hover:bg-[var(--brand-60)] hover:text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
                   Back to Home
                 </button>

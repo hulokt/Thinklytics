@@ -104,32 +104,32 @@ export const InfiniteMovingCards = ({
           if (isTestimonial) {
             return (
               <li
-                className="w-[350px] max-w-full relative rounded-2xl border border-b-0 flex-shrink-0 border-gray-200 dark:border-white/10 px-8 py-6 md:w-[450px] bg-white dark:bg-white/5 backdrop-blur-sm shadow-lg"
+                className="w-[400px] max-w-full relative rounded-2xl border border-b-0 flex-shrink-0 border-gray-200 dark:border-white/10 px-10 py-8 md:w-[500px] bg-white dark:bg-white/5 backdrop-blur-sm shadow-lg"
                 key={key}
               >
                 <blockquote>
-                  <div className="flex gap-1 mb-2">
+                  <div className="flex gap-1 mb-3">
                     {Array(item.stars)
                       .fill(0)
                       .map((_, i) => (
                         <Star
                           key={i}
-                          className="w-4 h-4 text-amber-500 fill-amber-500"
+                          className="w-5 h-5 text-amber-500 fill-amber-500"
                         />
                       ))}
                   </div>
-                  <span className="relative z-20 text-sm leading-[1.6] text-gray-700 dark:text-gray-200 font-normal">
+                  <span className="relative z-20 text-base leading-[1.7] text-gray-700 dark:text-gray-200 font-normal">
                     {item.quote}
                   </span>
-                  <div className="relative z-20 mt-6 flex flex-row items-center">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="relative z-20 mt-8 flex flex-row items-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base">
                       {item.avatar}
                     </div>
                     <span className="flex flex-col gap-1 ml-4">
-                      <span className="text-sm leading-[1.6] text-gray-800 dark:text-gray-100 font-medium">
+                      <span className="text-base leading-[1.6] text-gray-800 dark:text-gray-100 font-medium">
                         {item.name}
                       </span>
-                      <span className="text-xs leading-[1.6] text-gray-600 dark:text-gray-400 font-normal">
+                      <span className="text-sm leading-[1.6] text-gray-600 dark:text-gray-400 font-normal">
                         {item.title}
                       </span>
                     </span>

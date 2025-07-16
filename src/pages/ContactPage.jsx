@@ -63,18 +63,18 @@ const ContactPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Contact Us</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Contact Us</h1>
           </div>
         </div>
       </div>
@@ -82,11 +82,11 @@ const ContactPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Get in
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Touch</span>
+            <span className="homepage-gradient-text"> Touch</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Have questions about Thinklytics? Need help with your SAT preparation? 
             We're here to help you succeed. Reach out to us anytime.
           </p>
@@ -94,21 +94,21 @@ const ContactPage = ({ onBack }) => {
 
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Contact Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Send us a Message</h3>
+          <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+            <h3 className="text-2xl font-bold homepage-text-primary mb-6">Send us a Message</h3>
             
             {isSubmitted ? (
               <div className="text-center py-8">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Message Sent!</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="text-xl font-semibold homepage-text-primary mb-2">Message Sent!</h4>
+                <p className="homepage-text-secondary">
                   Thank you for reaching out. We'll get back to you within 24 hours.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium homepage-text-secondary mb-2">
                     Name
                   </label>
                   <input
@@ -116,13 +116,13 @@ const ContactPage = ({ onBack }) => {
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent"
                     placeholder="Your full name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium homepage-text-secondary mb-2">
                     Email
                   </label>
                   <input
@@ -130,20 +130,20 @@ const ContactPage = ({ onBack }) => {
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent"
                     placeholder="your.email@example.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium homepage-text-secondary mb-2">
                     Subject
                   </label>
                   <select
                     value={formData.subject}
                     onChange={(e) => handleInputChange('subject', e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent"
                   >
                     <option value="">Select a subject</option>
                     <option value="general">General Inquiry</option>
@@ -155,7 +155,7 @@ const ContactPage = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium homepage-text-secondary mb-2">
                     Message
                   </label>
                   <textarea
@@ -163,14 +163,14 @@ const ContactPage = ({ onBack }) => {
                     onChange={(e) => handleInputChange('message', e.target.value)}
                     required
                     rows={6}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent resize-none"
                     placeholder="Tell us how we can help you..."
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+                  className="w-full homepage-cta-primary text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 hover:shadow-xl"
                 >
                   <Send className="w-5 h-5" />
                   <span>Send Message</span>
@@ -182,20 +182,20 @@ const ContactPage = ({ onBack }) => {
           {/* Contact Information */}
           <div className="space-y-8">
             {/* Contact Details */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Contact Information</h3>
+            <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+              <h3 className="text-2xl font-bold homepage-text-primary mb-6">Contact Information</h3>
               <div className="space-y-6">
                 {contactInfo.map((info, index) => (
                   <div key={index} className="flex items-start space-x-4">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                        <info.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                        <info.icon className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{info.title}</h4>
-                      <p className="text-blue-600 dark:text-blue-400 font-medium mb-1">{info.value}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{info.description}</p>
+                      <h4 className="text-lg font-semibold homepage-text-primary mb-1">{info.title}</h4>
+                      <p className="blue-gradient-text font-medium mb-1">{info.value}</p>
+                      <p className="text-sm homepage-text-secondary">{info.description}</p>
                     </div>
                   </div>
                 ))}
@@ -203,28 +203,28 @@ const ContactPage = ({ onBack }) => {
             </div>
 
             {/* Business Hours */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Business Hours</h3>
+            <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+              <h3 className="text-2xl font-bold homepage-text-primary mb-6">Business Hours</h3>
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
-                  <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <Clock className="w-6 h-6 text-[var(--brand-60)]" />
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Monday - Friday</p>
-                    <p className="text-gray-600 dark:text-gray-400">9:00 AM - 6:00 PM EST</p>
+                    <p className="font-medium homepage-text-primary">Monday - Friday</p>
+                    <p className="homepage-text-secondary">9:00 AM - 6:00 PM EST</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <Clock className="w-6 h-6 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Saturday</p>
-                    <p className="text-gray-600 dark:text-gray-400">10:00 AM - 4:00 PM EST</p>
+                    <p className="font-medium homepage-text-primary">Saturday</p>
+                    <p className="homepage-text-secondary">10:00 AM - 4:00 PM EST</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <Clock className="w-6 h-6 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Sunday</p>
-                    <p className="text-gray-600 dark:text-gray-400">Closed</p>
+                    <p className="font-medium homepage-text-primary">Sunday</p>
+                    <p className="homepage-text-secondary">Closed</p>
                   </div>
                 </div>
               </div>
@@ -234,24 +234,24 @@ const ContactPage = ({ onBack }) => {
 
         {/* FAQ Section */}
         <div className="mt-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Frequently Asked Questions</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Frequently Asked Questions</h3>
           <div className="grid md:grid-cols-2 gap-6">
             {faqs.map((faq, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{faq.question}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{faq.answer}</p>
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <h4 className="text-lg font-semibold homepage-text-primary mb-3">{faq.question}</h4>
+                <p className="homepage-text-secondary">{faq.answer}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* CTA Section */}
-        <div className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+        <div className="mt-16 blue-gradient-bg rounded-2xl p-8 text-white text-center">
           <h3 className="text-2xl font-bold mb-4">Ready to Get Started?</h3>
           <p className="text-lg mb-6 opacity-90">
             Join thousands of students who are already improving their SAT scores with Thinklytics.
           </p>
-          <button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
+          <button className="bg-white text-[var(--brand-60)] hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
             Start Free Trial
           </button>
         </div>

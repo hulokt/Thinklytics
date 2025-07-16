@@ -14,11 +14,9 @@ import AnimatedButton from './ui/animated-button';
 import { useAuth } from '../contexts/AuthContext';
 import { awardPoints, incrementEditCounter, handleHighScore, POINTS_CONFIG } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
 import { formatRelativeTime } from '../lib/utils';
-import logoImage from "/logo.png";
+import { exportQuestionsAsPDF } from '../utils/pdfExport';
 
 // Helper: Levenshtein distance for fuzzy matching of question types
 const levenshteinDistance = (a = "", b = "") => {
@@ -1456,485 +1454,23 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   };
 
   // Export questions as PDF
-  const exportQuestionsAsPDF = async () => {
+  const handleExportQuestionsAsPDF = async () => {
     // Filter out hidden questions from export
     const exportableQuestions = filteredQuestions.filter(q => !q.hidden);
-    
-    if (exportableQuestions.length === 0) {
-      alert('No visible questions to export!');
-      return;
-    }
 
     setIsExporting(true);
     setExportSuccess(false);
 
     try {
-      // --- PAGE & LAYOUT CONSTANTS ---
-      const inch = 25.4;
-      const pageWidth = 8.5 * inch;
-      const pageHeight = 11 * inch;
-      const marginX = 0.5 * inch; // smaller margins for better centering (was 0.75)
-      const marginY = 1 * inch;
-      const gutter = 0.5 * inch;
-      const colWidth = 3.5 * inch;
-      const contentWidth = pageWidth - 2 * marginX;
-      const contentHeight = pageHeight - 2 * marginY;
-      const questionBoxSize = 0.15 * inch; // even smaller number box (was 0.2)
-      const grayBarHeight = questionBoxSize;
-      const dividerX = marginX + colWidth + gutter / 2;
-      const answerIndent = 0.25 * inch;
-      const questionSpacing = 0.5 * inch;
-      const directionsBoxPadY = 0.25 * inch;
-      const directionsBoxPadX = 0.5 * inch;
-
-      // --- FONTS & COLORS ---
-      const COLORS = {
-        black: '#000000',
-        white: '#FFFFFF',
-        blue: '#2563eb',
-        indigo: '#4f46e5',
-        gray: '#d1d5db',
-        grayLight: '#e5e7eb', // slightly darker for header bar
-        grayBar: '#d1d5db', // lighter grey bar (was #9ca3af)
-        text: '#111827',
-        subtitleBorder: '#60a5fa',
-        underline: '#1e3a8a',
-        directionsBox: '#000',
-        directionsText: '#fff',
-        divider: '#d1d5db',
-        code: '#6b7280',
-      };
-      const FONTS = {
-        inter: 'helvetica',
-        noto: 'helvetica',
-        georgia: 'times',
-        serif: 'times',
-      };
-
-      // --- PDF INIT ---
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [pageWidth, pageHeight],
-      });
-      let page = 1;
-
-      // --- COVER PAGE ---
-      pdf.setFillColor(COLORS.white);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      // Top-left Thinklytics logo
-      try {
-        const logoImg = await loadImage(logoImage);
-        pdf.addImage(logoImg, 'PNG', marginX, marginY - 4, 16, 16);
-      } catch {}
-
-      // Top-right barcode placeholder (simple thick lines)
-      const bcX = pageWidth - marginX - 20;
-      const bcY = marginY - 4;
-      pdf.setFillColor(COLORS.black);
-      for (let i = 0; i < 10; i++) {
-        const w = (i % 2 === 0) ? 1 : 0.5;
-        pdf.rect(bcX + i * 1.5, bcY, w, 18, 'F');
-      }
-
-      // Main title – "The" small, "Thinklytics" big underline, Practice Test #1 stack
-      const titleY = marginY + 30;
-      pdf.setFont(FONTS.georgia, 'bold');
-      pdf.setFontSize(60);
-      pdf.setTextColor(COLORS.text);
-      pdf.text('Thinklytics', marginX, titleY);
-
-      // Blue underline
-      pdf.setDrawColor(COLORS.blue);
-      pdf.setLineWidth(1.8);
-      pdf.line(marginX, titleY + 2, marginX + 80, titleY + 2);
-
-      // Practice Test line
-      pdf.setFontSize(48);
-      pdf.text('Practice', marginX, titleY + 25);
-      pdf.text('Test', marginX, titleY + 45);
-
-      // Pencil icon (✏️) to the right of title
-      pdf.setFont(FONTS.serif, 'normal');
-      pdf.setFontSize(40);
-      pdf.text('✏', marginX + 95, titleY + 30);
-
-      // Start benefit sections below Practice Test text
-      let currentY = titleY + 60;
-
-      const drawSectionHeader = (title) => {
-        pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(14); // smaller header
-        pdf.setTextColor(COLORS.blue);
-        pdf.text(title, marginX, currentY);
-        currentY += 6;
-        pdf.setDrawColor(COLORS.blue);
-        pdf.setLineWidth(0.8);
-        pdf.line(marginX, currentY, marginX + 90, currentY);
-        currentY += 8;
-        pdf.setFont(FONTS.inter, 'normal');
-        pdf.setFontSize(9); // smaller body text
-        pdf.setTextColor(COLORS.text);
-      };
-
-      const drawBullets = (lines) => {
-        const bulletFontSize = 9;
-        const lineHeight = bulletFontSize * 0.3528 * 1.15; // convert pt to mm * line-height
-        pdf.setFontSize(bulletFontSize);
-        lines.forEach(line => {
-          const wrapped = pdf.splitTextToSize(`• ${line}`, contentWidth - 8);
-          pdf.text(wrapped, marginX + 4, currentY, { maxWidth: contentWidth - 8, lineHeightFactor: 1.15 });
-          currentY += wrapped.length * lineHeight + 1;
-        });
-        currentY += 2;
-      };
-
-      // Why Practice Tests Work
-      drawSectionHeader('Why Practice Tests Work');
-      drawBullets([
-        'Flexible Practice – work on your own schedule with adaptive tests.',
-        'Focused Improvement – target weak areas with customized sets.',
-        'Real Test Experience – simulate official timing & interface.'
-      ]);
-
-      // How Practice Tests Help You Succeed – Preparation
-      drawSectionHeader('How Practice Tests Help You Succeed');
-      pdf.setFont(FONTS.inter, 'bold');
-      pdf.text('For Test Preparation', marginX + 2, currentY);
-      currentY += 6;
-      pdf.setFont(FONTS.inter, 'normal');
-      drawBullets([
-        'Build familiarity with SAT formats and timing',
-        'Identify and address knowledge gaps',
-        'Develop efficient test-taking strategies',
-        'Improve time-management skills',
-        'Boost confidence through repetition'
-      ]);
-
-      // Performance tracking
-      pdf.setFont(FONTS.inter, 'bold');
-      pdf.text('For Performance Tracking', marginX + 2, currentY);
-      currentY += 6;
-      pdf.setFont(FONTS.inter, 'normal');
-      drawBullets([
-        'Monitor improvement across sections',
-        'Track progress on specific question types',
-        'Identify recurring error patterns',
-        'Set and achieve score goals',
-        'Generate detailed reports for applications'
-      ]);
-
-      // How to Use Practice Tests Effectively
-      drawSectionHeader('How to Use Practice Tests Effectively');
-      const steps = [
-        'Create Your Test – choose questions by topic & difficulty.',
-        'Take Your Time – pause and resume whenever needed.',
-        'Review and Edit – double-check answers, flag doubts.',
-        'Analyze Results – study analytics to plan next steps.'
-      ];
-      steps.forEach((step, idx) => {
-        pdf.setFont(FONTS.inter, 'bold');
-        pdf.text(`${idx + 1}.`, marginX + 2, currentY);
-        pdf.setFont(FONTS.inter, 'normal');
-        pdf.text(step, marginX + 10, currentY);
-        currentY += 6;
-      });
-
-      // Footer shield + code
-      pdf.setDrawColor(COLORS.black);
-      pdf.setLineWidth(0.6);
-      const footerY = pageHeight - marginY + 2;
-      pdf.rect(marginX, footerY, 22, 10, 'D');
-      pdf.setFontSize(10);
-      pdf.text('THK', marginX + 11, footerY + 6, { align: 'center' });
-      pdf.setFont(FONTS.inter, 'normal');
-      pdf.setTextColor(COLORS.code);
-      pdf.text('THK-PT1', pageWidth - marginX, footerY + 6, { align: 'right' });
-      pdf.addPage();
-      page++;
-
-      // --- QUESTIONS: TWO-COLUMN ROW LAYOUT ---
-      const lineHeight = 3.5; // mm (approx for 9 pt * 1.2)
-
-      const drawDivider = () => {
-        pdf.setDrawColor(COLORS.divider);
-        pdf.setLineWidth(0.3); // thinner line (was 0.8)
-        // Draw dotted line by creating small line segments
-        const dashLength = 2; // mm
-        const gapLength = 2; // mm
-        const totalLength = dashLength + gapLength;
-        let y = marginY;
-        
-        while (y < pageHeight - marginY) {
-          const endY = Math.min(y + dashLength, pageHeight - marginY);
-          pdf.line(dividerX, y, dividerX, endY);
-          y += totalLength;
-        }
-      };
-      drawDivider();
-
-      let currentRowY = marginY;
-
-      // Helper to measure full block height
-      const measureQuestionHeight = async (question) => {
-        // compute heights similarly to previous logic
-        const textWidth = colWidth;
-        const toMm = (pt) => pt * 0.3528;
-
-        pdf.setFont(FONTS.georgia, 'normal');
-        pdf.setFontSize(9);
-        const passageLines = pdf.splitTextToSize(question.passageText || '', textWidth);
-        const passageH = passageLines.length * toMm(9) * 1.2;
-
-        pdf.setFont(FONTS.georgia, 'bold');
-        const questionLines = pdf.splitTextToSize(question.questionText || '', textWidth);
-        const questionH = questionLines.length * toMm(9) * 1.2;
-
-        pdf.setFont(FONTS.georgia, 'normal');
-        const choices = ['A', 'B', 'C', 'D'];
-        let answersH = 0;
-        for (const ch of choices) {
-          const lines = pdf.splitTextToSize(`${ch}) ${question.answerChoices[ch] || ''}`, textWidth);
-          answersH += lines.length * toMm(9) * 1.15 + 2;
-        }
-
-        // Image height
-        let imgH = 0;
-        if (question.passageImage) {
-          try {
-            const img = await loadImage(question.passageImage);
-            const imgW = textWidth;
-            imgH = imgW * (img.height / img.width) + 2;
-          } catch {}
-        }
-
-        const blockH = Math.max(questionBoxSize, passageH + imgH + questionH + answersH + 12);
-        return { passageLines, questionLines, answersH, blockH, passageH, questionH, imgH };
-      };
-
-      // render helper (uses cached measure)
-      const renderQuestion = async (measurement, question, colIndex, startY, questionNumber) => {
-        const startX = colIndex === 0 ? marginX : marginX + colWidth + gutter;
-        const boxX = startX;
-        const textX = startX;
-        let cursorY = startY;
-
-        // Header bar
-        pdf.setFillColor(COLORS.black);
-        pdf.rect(boxX, cursorY, questionBoxSize, questionBoxSize, 'F');
-        pdf.setFillColor(COLORS.grayBar);
-        pdf.rect(boxX + questionBoxSize, cursorY, colWidth - questionBoxSize, questionBoxSize, 'F');
-
-        // Centered number
-        pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(6); // smaller font size for smaller box (was 7)
-        pdf.setTextColor(COLORS.white);
-        const numFontHeight = 6 * 0.3528; // adjusted for new font size
-        pdf.text(String(questionNumber), boxX + questionBoxSize / 2, cursorY + questionBoxSize / 2 + numFontHeight / 2 - 0.2, { align: 'center' });
-
-        cursorY += questionBoxSize + 2;
-
-        // Passage
-        pdf.setFont(FONTS.georgia, 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(COLORS.text);
-        pdf.text(measurement.passageLines, textX, cursorY + 2, { maxWidth: colWidth, lineHeightFactor: 1.2 });
-        cursorY += measurement.passageH + 4;
-
-        // Image
-        if (question.passageImage && measurement.imgH > 0) {
-          try {
-            const imgType = question.passageImage.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-            pdf.addImage(question.passageImage, imgType, textX, cursorY, colWidth, measurement.imgH);
-            cursorY += measurement.imgH + 2;
-          } catch {}
-        }
-
-        // Question text (not bold)
-        pdf.setFont(FONTS.georgia, 'normal'); // removed bold
-        pdf.text(measurement.questionLines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.2 });
-        cursorY += measurement.questionH + 3;
-
-        // Choices
-        pdf.setFont(FONTS.georgia, 'normal');
-        const choices = ['A','B','C','D'];
-        for (const ch of choices) {
-          const lines = pdf.splitTextToSize(`${ch}) ${question.answerChoices[ch] || ''}`, colWidth);
-          pdf.text(lines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.15 });
-          cursorY += lines.length * lineHeight + 2;
-        }
-      };
-
-      let questionNumber = 1;
-      for (let idx = 0; idx < exportableQuestions.length; idx += 2) {
-        const leftQ = exportableQuestions[idx];
-        const rightQ = exportableQuestions[idx + 1] || null;
-
-        // Measure both (async images) – sequential await
-        const leftMeasure = await measureQuestionHeight(leftQ);
-        let rightMeasure = null;
-        if (rightQ) rightMeasure = await measureQuestionHeight(rightQ);
-
-        const rowHeight = Math.max(leftMeasure.blockH, rightMeasure ? rightMeasure.blockH : 0);
-
-        // New page if not enough space
-        if (currentRowY + rowHeight > pageHeight - marginY) {
-          // Add page number and continue arrow before adding new page
-          if (page > 1) { // Not first page
-            const bottomLabelY = pageHeight - marginY + 8; // unified vertical position
-
-            // Page number (bold, centered)
-            pdf.setFont(FONTS.georgia, 'bold');
-            pdf.setFontSize(12);
-            pdf.setTextColor(COLORS.text);
-            pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
-
-            // Continue indicator on right (not last page)
-            if (idx + 2 < exportableQuestions.length) {
-              const text = 'Continue';
-              pdf.setFont(FONTS.georgia, 'bold');
-              pdf.setFontSize(12);
-              pdf.setTextColor(COLORS.text);
-
-              // Position the text a bit inside from the right edge
-              const textX = pageWidth - marginX - 8; // 8 mm inset
-              pdf.text(text, textX, bottomLabelY, { align: 'right' });
-
-              // Draw simple arrow (horizontal line + arrow head) right next to the text
-              const textWidth = pdf.getTextWidth(text);
-              const arrowStartX = textX + 2; // 2mm gap after text (since align right, arrow will be to the right)
-              const arrowY = bottomLabelY - 1.5; // refined alignment
-              const arrowLen = 6; // mm
-              pdf.setDrawColor(COLORS.text);
-              pdf.setLineWidth(1);
-              // Shaft
-              pdf.line(arrowStartX, arrowY, arrowStartX + arrowLen, arrowY);
-              // Arrow head
-              pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY - 2);
-              pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY + 2);
-            }
-          }
-          
-          pdf.addPage();
-          page++;
-          drawDivider();
-          currentRowY = marginY;
-        }
-
-        // Render left
-        await renderQuestion(leftMeasure, leftQ, 0, currentRowY, questionNumber);
-        questionNumber++;
-
-        // Render right if exists
-        if (rightQ) {
-          await renderQuestion(rightMeasure, rightQ, 1, currentRowY, questionNumber);
-          questionNumber++;
-        }
-
-        // Move to next row
-        currentRowY += rowHeight + 6; // spacing between rows
-      }
+      const result = await exportQuestionsAsPDF(exportableQuestions, 'Thinklytics_SAT_Question_Bank');
       
-      // Add page number and continue arrow to the last page with questions
-      if (page > 1) { // Not first page
-        const bottomLabelY = pageHeight - marginY + 8; // unified vertical position
-
-        // Page number (bold, centered)
-        pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(12);
-        pdf.setTextColor(COLORS.text);
-        pdf.text(String(page), pageWidth / 2, bottomLabelY, { align: 'center' });
-        
-        // Continue indicator because answer key follows
-        const text = 'Continue';
-        pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(12);
-        pdf.setTextColor(COLORS.text);
-        const textX = pageWidth - marginX - 8;
-        pdf.text(text, textX, bottomLabelY, { align: 'right' });
-        const arrowStartX = textX + 2;
-        const arrowY = bottomLabelY - 1.5;
-        const arrowLen = 6;
-        pdf.setDrawColor(COLORS.text);
-        pdf.setLineWidth(1);
-        pdf.line(arrowStartX, arrowY, arrowStartX + arrowLen, arrowY);
-        pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY - 2);
-        pdf.line(arrowStartX + arrowLen, arrowY, arrowStartX + arrowLen - 2, arrowY + 2);
-      }
-      
-      // --- ANSWER KEY ---
-      pdf.addPage();
-      page++;
-      
-      // Answer Key Header
-      pdf.setFont(FONTS.georgia, 'bold');
-      pdf.setFontSize(20);
-      pdf.setTextColor(COLORS.text);
-      pdf.text('Answer Key', marginX, marginY);
-      
-      // Underline
-      pdf.setDrawColor(COLORS.underline);
-      pdf.setLineWidth(2);
-      pdf.line(marginX, marginY + 6, marginX + 50, marginY + 6);
-      
-      // Answer grid (8 columns)
-      const answersPerRow = 8;
-      const answerColWidth = (contentWidth - 20) / answersPerRow;
-      const answerRowHeight = 12;
-      let answerY = marginY + 20;
-      let answerX = marginX;
-      let answerNum = 1;
-      
-      for (let i = 0; i < exportableQuestions.length; i++) {
-        const q = exportableQuestions[i];
-        
-        // New row if needed
-        if (answerNum > 1 && (answerNum - 1) % answersPerRow === 0) {
-          answerY += answerRowHeight + 5;
-          answerX = marginX;
-        }
-        
-        // New page if needed
-        if (answerY + answerRowHeight + 10 > pageHeight - marginY) {
-          pdf.addPage();
-          page++;
-          answerY = marginY + 20;
-          answerX = marginX;
-        }
-        
-        // Calculate position
-        const col = (answerNum - 1) % answersPerRow;
-        const currentX = marginX + (col * answerColWidth);
-        
-        // Answer box
-        pdf.setFillColor(COLORS.white);
-        pdf.setDrawColor(COLORS.divider);
-        pdf.setLineWidth(0.5);
-        pdf.roundedRect(currentX, answerY, answerColWidth - 2, answerRowHeight, 3, 3, 'FD');
-        
-        // Question number
-        pdf.setFont(FONTS.georgia, 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(COLORS.text);
-        pdf.text(`${answerNum}.`, currentX + 3, answerY + 8);
-        
-        // Correct answer
-        pdf.setFont(FONTS.georgia, 'bold');
-        pdf.setFontSize(10);
-        pdf.setTextColor(COLORS.blue);
-        pdf.text(q.correctAnswer, currentX + answerColWidth - 8, answerY + 8, { align: 'center' });
-        
-        answerNum++;
-      }
-      
-      // Save
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `Thinklytics_SAT_Question_Bank_${timestamp}.pdf`;
-      pdf.save(filename);
+      if (result.success) {
         setIsExporting(false);
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 3000);
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       alert(`Error generating PDF: ${error.message}`);
       setIsExporting(false);
@@ -2275,7 +1811,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                 <button
                   onClick={async () => {
                     setShowExportModal(false);
-                    await exportQuestionsAsPDF();
+                    await handleExportQuestionsAsPDF();
                   }}
                   disabled={isExporting}
                   className="w-full px-6 py-3 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all duration-300 hover:shadow-lg font-medium flex items-center justify-center space-x-2"
@@ -2327,11 +1863,11 @@ Reading and Writing,Standard English Conventions,Boundaries`}
       )}
 
       <div className="flex-1 overflow-auto">
-        <div className="w-full px-3 sm:px-6 py-4 h-full pb-20 sm:pb-6">
-          <div className="max-w-7xl mx-auto h-full">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-full">
+        <div className="w-full px-3 sm:px-6 py-4 lg:h-full pb-20 sm:pb-6">
+          <div className="max-w-7xl mx-auto lg:h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:h-full">
           {/* Form Section - Modern Design */}
-          <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 flex flex-col h-full overflow-hidden hover:shadow-xl transition-all duration-300 relative min-h-[400px] md:min-h-[500px]">
+          <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 flex flex-col lg:h-full overflow-hidden hover:shadow-xl transition-all duration-300 relative min-h-[400px] md:min-h-[500px]">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 rounded-t-2xl"></div>
             
             <div className="p-4 sm:p-6 border-b border-gray-200/50 dark:border-gray-700/50 flex-shrink-0 transition-colors duration-300">
@@ -2352,8 +1888,8 @@ Reading and Writing,Standard English Conventions,Boundaries`}
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-              <div className="p-3 sm:p-4 space-y-3 flex-1 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex flex-col lg:h-full overflow-hidden">
+              <div className="p-3 sm:p-4 space-y-3 flex-1 lg:overflow-y-auto">
               {/* Section Tabs - Modern Design */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Section <span className="text-red-500">*</span></label>
@@ -2701,7 +2237,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
           </div>
 
           {/* Questions List Section with AnimatedList */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden transition-colors duration-300 min-h-[400px] md:min-h-[500px]">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col lg:h-full overflow-hidden transition-colors duration-300 min-h-[400px] md:min-h-[500px]">
             <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 transition-colors duration-300">
               <div className="flex flex-col gap-3">
                 {/* Header Row */}
@@ -2792,7 +2328,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
             </div>
 
             {/* Animated Questions List - Takes up remaining space */}
-            <div className="p-3 sm:p-4 flex-1 overflow-hidden">
+            <div className="p-3 sm:p-4 flex-1 lg:overflow-hidden">
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -2809,7 +2345,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                   <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Create your first question using the form.</p>
                 </div>
               ) : (
-                <div className="h-full relative">
+                <div className="lg:h-full relative">
                   <AnimatedList
                     items={questionItems}
                     onItemSelect={handleQuestionSelect}

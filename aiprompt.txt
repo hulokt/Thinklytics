@@ -1,0 +1,629 @@
+# ULTRA-DETAILED AI PROMPT FOR RECREATING SATLOG WEBSITE
+
+## PROJECT OVERVIEW
+Create a comprehensive SAT practice and analytics web application called "SatLog" (also branded as "Thinklytics"). This is a React-based single-page application with user authentication, question management, quiz taking, analytics dashboard, calendar integration, and gamification features. The app must be pixel-perfect, functionally identical, and include all complex logic and UI interactions.
+
+## TECH STACK & DEPENDENCIES
+```json
+{
+  "dependencies": {
+    "@radix-ui/react-label": "^2.1.7",
+    "@supabase/supabase-js": "^2.50.0",
+    "clsx": "^2.1.1",
+    "jspdf-font": "^1.0.7",
+    "lucide-react": "^0.460.0",
+    "react": "^18.2.0",
+    "react-calendar": "^4.4.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.6.2",
+    "tailwind-merge": "^2.6.0",
+    "uuid": "^11.1.0"
+  },
+  "optionalDependencies": {
+    "@react-three/fiber": "^8.15.19",
+    "@tabler/icons-react": "^3.34.0",
+    "@types/three": "^0.177.0",
+    "chart.js": "^4.4.0",
+    "framer-motion": "^12.18.1",
+    "fuse.js": "^6.6.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "mathlive": "^0.105.3",
+    "motion": "^12.19.1",
+    "react-chartjs-2": "^5.2.0",
+    "three": "^0.177.0"
+  }
+}
+```
+
+Use Vite as build tool, Vitest for testing, Tailwind CSS for styling, Supabase for backend/auth, Chart.js for analytics visualization, jsPDF for PDF export.
+
+## FILE STRUCTURE (EXACT)
+```
+SatLog/
+├── infra/
+│   ├── docker-compose.yml
+│   └── volumes/
+│       ├── api/kong.yml
+│       └── db/
+│           ├── init/01-schema.sql
+│           ├── jwt.sql
+│           └── roles.sql
+├── public/
+│   ├── 404.html
+│   ├── auth-callback-redirect.html
+│   ├── favicon.svg
+│   ├── logo.png
+│   └── manifest.json
+├── src/
+│   ├── components/
+│   │   ├── ui/ (all reusable UI components)
+│   │   ├── AccountPage.jsx
+│   │   ├── AnalyticsPage.jsx
+│   │   ├── AnimatedList.jsx
+│   │   ├── AnimatedQuestionList.jsx
+│   │   ├── CalendarPage.jsx
+│   │   ├── CallToAction.jsx
+│   │   ├── Footer.jsx
+│   │   ├── Header.jsx
+│   │   ├── Homepage.jsx
+│   │   ├── LoginPage.jsx
+│   │   ├── MembershipSection.jsx
+│   │   ├── Navbar.jsx
+│   │   ├── PointsAnimation.jsx
+│   │   ├── Profile.jsx
+│   │   ├── QASection.jsx
+│   │   ├── QuestionLogger.jsx
+│   │   ├── QuestionSelector.jsx
+│   │   ├── QuizHistory.jsx
+│   │   ├── QuizManager.jsx
+│   │   ├── QuizPage.jsx
+│   │   ├── SidebarLayout.jsx
+│   │   ├── SignupPage.jsx
+│   │   └── VirtualizedList.jsx
+│   ├── contexts/
+│   │   ├── AuthContext.tsx
+│   │   └── DarkModeContext.jsx
+│   ├── hooks/
+│   │   └── useUserData.ts
+│   ├── lib/
+│   │   ├── supabaseClient.ts
+│   │   ├── userPoints.js
+│   │   ├── utils.js
+│   │   └── utils.ts
+│   ├── pages/ (static pages: About, Pricing, Features, etc.)
+│   ├── utils/
+│   │   ├── LazyComponents.jsx
+│   │   ├── lightweightSearch.js
+│   │   ├── localStorage.js
+│   │   ├── memoryOptimization.js
+│   │   └── pdfExport.js
+│   ├── data.js
+│   ├── index.css
+│   ├── main.jsx
+│   └── vite-env.d.ts
+├── index.html
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── vite.config.js
+└── vitest.config.js
+```
+
+## SUPABASE DATABASE SCHEMA
+Create a PostgreSQL database with the following exact schema:
+
+```sql
+-- Main user data table
+CREATE TABLE IF NOT EXISTS user_data (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    data_type VARCHAR(50) NOT NULL,
+    data JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, data_type)
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_data_user_id ON user_data(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_data_type ON user_data(data_type);
+CREATE INDEX IF NOT EXISTS idx_user_data_updated_at ON user_data(updated_at);
+
+-- Row Level Security
+ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+
+-- Policies (users can only access their own data)
+CREATE POLICY "Users can view own data" ON user_data FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own data" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own data" ON user_data FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own data" ON user_data FOR DELETE USING (auth.uid() = user_id);
+
+-- Functions
+CREATE OR REPLACE FUNCTION upsert_user_data(p_user_id UUID, p_data_type VARCHAR(50), p_data JSONB)
+RETURNS user_data AS $$
+DECLARE result user_data;
+BEGIN
+    INSERT INTO user_data (user_id, data_type, data) VALUES (p_user_id, p_data_type, p_data)
+    ON CONFLICT (user_id, data_type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+    RETURNING * INTO result;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Additional helper functions for get_user_data, delete_user_data, get_all_user_data
+```
+
+## AUTHENTICATION CONTEXT (AuthContext.tsx)
+Create React Context for authentication using Supabase Auth:
+
+```tsx
+interface AuthContextType {
+  user: User | null
+  session: Session | null
+  loading: boolean
+  signUp: (email: string, password: string, options?: { data?: any }) => Promise<{ user: User | null; error: AuthError | null }>
+  signIn: (email: string, password: string) => Promise<{ user: User | null; error: AuthError | null }>
+  signOut: () => Promise<{ error: AuthError | null }>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
+}
+```
+
+Handle session persistence, auto-login, and auth state changes. Provide hooks for components to access auth state.
+
+## DATA PERSISTENCE PATTERN (useUserData.ts)
+Create a custom hook that handles all data persistence:
+
+```typescript
+const DATA_TYPES = {
+  QUESTIONS: 'questions',
+  QUIZ_HISTORY: 'quiz_history', 
+  IN_PROGRESS_QUIZZES: 'in_progress_quizzes',
+  QUESTION_ANSWERS: 'question_answers',
+  ALL_QUIZZES: 'all_quizzes',
+  CALENDAR_EVENTS: 'calendar_events'
+}
+
+function useUserData<T>(dataType: DataType): {
+  data: T | null
+  loading: boolean
+  error: string | null
+  upsertData: (newData: T) => Promise<boolean>
+  deleteData: () => Promise<boolean>
+  refreshData: () => Promise<void>
+}
+```
+
+Implement circuit breaker pattern, retry logic, automatic fallback to localStorage when Supabase fails, and optimistic updates.
+
+## COLOR SCHEME & THEMING
+Implement dual theme system (light/dark mode):
+
+**Light Theme Colors:**
+- Primary: #3B82F6 (blue-500)
+- Primary hover: #2563EB (blue-600)
+- Background: #FFFFFF
+- Secondary background: #F8FAFC (slate-50)
+- Text primary: #1E293B (slate-800)
+- Text secondary: #64748B (slate-500)
+- Border: #E2E8F0 (slate-200)
+- Success: #10B981 (emerald-500)
+- Warning: #F59E0B (amber-500)
+- Error: #EF4444 (red-500)
+
+**Dark Theme Colors:**
+- Primary: #3B82F6 (blue-500)
+- Primary hover: #60A5FA (blue-400)
+- Background: #0F172A (slate-900)
+- Secondary background: #1E293B (slate-800)
+- Text primary: #F1F5F9 (slate-100)
+- Text secondary: #94A3B8 (slate-400)
+- Border: #334155 (slate-700)
+- Success: #10B981 (emerald-500)
+- Warning: #F59E0B (amber-500)
+- Error: #EF4444 (red-500)
+
+Use CSS custom properties and Tailwind's dark: prefix for theme switching.
+
+## SIDEBAR LAYOUT (SidebarLayout.jsx)
+Create a responsive sidebar layout with:
+
+**Desktop Sidebar (fixed left, 256px width):**
+- Logo at top with click handler to navigate home
+- Navigation items with icons: Question Logger, Quiz Selector, Quiz History, Analytics, Calendar
+- User profile section at bottom with points display
+- Account and logout buttons
+- Dark mode toggle
+- Smooth hover animations and active states
+
+**Mobile: Hamburger menu with slide-out overlay**
+- Same navigation items
+- Close button in top right
+- Backdrop blur when open
+
+**Styling Details:**
+- Sidebar background: `bg-white dark:bg-slate-900`
+- Border: `border-r border-slate-200 dark:border-slate-700`
+- Navigation items: hover effects with background color change
+- Active item: blue accent border on left side
+- Icons: use Lucide React icons (FileText, PlayCircle, History, BarChart, Calendar, User, LogOut)
+
+## HOMEPAGE COMPONENT (Homepage.jsx)
+Create marketing landing page with:
+
+**Hero Section:**
+- Gradient background with particle effects
+- Main heading: "Master the SAT with Intelligent Practice"
+- Subtitle explaining the platform
+- Two CTA buttons: "Get Started Free" and "View Demo"
+- Hero image/illustration on right side
+
+**Features Section:**
+- Grid of 6 feature cards with icons and descriptions:
+  1. Question Logger with import/export
+  2. Adaptive Quizzes
+  3. Performance Analytics
+  4. Study Calendar
+  5. Progress Tracking
+  6. AI-Powered Insights
+
+**Social Proof Section:**
+- Statistics: "10,000+ Questions Practiced", "500+ Students", etc.
+- Testimonials carousel
+
+**Pricing Section:**
+- Free tier highlighting
+- Premium features preview
+
+**FAQ Section:**
+- Collapsible accordion with common questions
+
+Use Framer Motion for scroll animations, intersection observers for fade-ins.
+
+## QUESTION LOGGER (QuestionLogger.jsx)
+Most complex component - create comprehensive question management system:
+
+**Form Fields (Exact Layout):**
+- Section dropdown: Math, Reading and Writing
+- Domain dropdown (changes based on section)
+- Question Type dropdown (changes based on domain)
+- Difficulty: Easy, Medium, Hard
+- Question text: Large textarea with paste handling
+- Answer choices: 4 text inputs (A, B, C, D)
+- Correct answer: Radio buttons
+- Explanation: Textarea
+- Passage: Textarea with image paste support
+
+**Functionality:**
+- Real-time validation with error highlighting
+- CSV import with intelligent parsing and normalization
+- Bulk operations: select multiple questions, bulk delete
+- Export to PDF and CSV formats
+- Question search and filtering
+- Edit existing questions inline
+- Duplicate detection
+- Auto-save drafts to localStorage
+
+**CSV Import Logic:**
+- Parse CSV with configurable delimiters
+- Normalize section names ("Math" variations, "Reading and Writing" variations)
+- Fuzzy matching for domains and question types
+- Batch import with progress indicator
+- Error handling for malformed data
+- Preview mode before confirming import
+
+**PDF Export:**
+- Use jsPDF with custom formatting
+- Include question numbers, sections, explanations
+- Proper page breaks and margins
+- Header with app branding
+
+**UI Layout:**
+- Left panel: Form inputs (40% width)
+- Right panel: Question list with search/filter (60% width)
+- Animated question list with virtual scrolling for performance
+- Floating action buttons for bulk operations
+
+## QUESTION SELECTOR (QuestionSelector.jsx)
+Create quiz preparation interface:
+
+**Filtering System:**
+- Section filter (All, Math, Reading and Writing)
+- Domain filter (changes based on section)
+- Question Type filter (changes based on domain)
+- Difficulty filter (All, Easy, Medium, Hard)
+- Status filter (All, Unanswered, Correct, Incorrect, Flagged)
+- Search box with fuzzy matching
+
+**Question List:**
+- Virtualized list for performance with large datasets
+- Checkbox selection for each question
+- Question preview on hover
+- Status indicators (colored dots)
+- Bulk selection controls
+
+**Actions:**
+- "Select All" / "Deselect All" buttons
+- "Start Quiz" button (disabled if no questions selected)
+- "Add to Calendar" for scheduling
+- "Export Selected" to PDF
+
+**Quiz Configuration:**
+- Number of questions selector
+- Time limit option
+- Shuffle questions toggle
+- Show explanations toggle
+
+## QUIZ PAGE (QuizPage.jsx)
+Create immersive quiz-taking experience:
+
+**Layout:**
+- Header: Timer, question counter, progress bar
+- Main content: Current question display
+- Sidebar: Question navigation grid
+- Footer: Previous/Next buttons, Flag question, Finish quiz
+
+**Question Display:**
+- Question text with proper formatting
+- Answer choices as clickable buttons (A, B, C, D)
+- Elimination mode toggle (cross out wrong answers)
+- Flag question toggle
+
+**Navigation Grid:**
+- Grid of question numbers (5 per row)
+- Color coding: unanswered (gray), answered (blue), flagged (orange), current (green)
+- Click to jump to specific question
+
+**Timer:**
+- Countdown display in MM:SS format
+- Color changes as time runs low (green → yellow → red)
+- Auto-submit when time expires
+
+**Progress Tracking:**
+- Save answers to localStorage in real-time
+- Resume functionality for interrupted quizzes
+- Progress bar showing completion percentage
+
+**State Management:**
+- Track current question index
+- Store user answers
+- Handle flagged questions
+- Manage elimination marks
+
+## QUIZ HISTORY (QuizHistory.jsx)
+Display completed and in-progress quizzes:
+
+**Quiz List:**
+- Table/card view of all quizzes
+- Columns: Quiz #, Date, Score, Time, Questions, Actions
+- Sorting by date, score, etc.
+- Search/filter functionality
+
+**Quiz Details Modal:**
+- Question-by-question breakdown
+- Show user's answer vs correct answer
+- Performance statistics
+- Replay option
+
+**Edit Functionality:**
+- Allow editing answers after completion
+- Recalculate score automatically
+- Show changes with visual indicators
+
+**Actions:**
+- Delete quiz with confirmation
+- Export quiz results to PDF
+- Resume in-progress quizzes
+- Reset quiz numbering
+
+## ANALYTICS PAGE (AnalyticsPage.jsx)
+Comprehensive performance dashboard:
+
+**Key Metrics Cards:**
+- Total questions practiced
+- Overall accuracy percentage
+- Average quiz score
+- Study streak counter
+- Time spent studying
+
+**Charts (using Chart.js):**
+1. **Performance Over Time:** Line chart showing accuracy trends
+2. **Section Breakdown:** Donut chart of Math vs Reading/Writing performance
+3. **Domain Analysis:** Bar chart of performance by domain
+4. **Difficulty Analysis:** Stacked bar chart by difficulty level
+5. **Question Type Performance:** Horizontal bar chart
+6. **Weekly Activity:** Calendar heatmap of practice sessions
+
+**Filtering:**
+- Date range picker (Last 7 days, 30 days, 3 months, All time)
+- Section filter
+- Custom date range selection
+
+**PDF Export:**
+- Generate comprehensive analytics report
+- Include all charts as images
+- Statistical summaries
+- Recommendations based on performance
+
+**Chart Styling:**
+- Consistent color palette matching app theme
+- Responsive sizing
+- Dark mode support
+- Smooth animations
+
+## CALENDAR PAGE (CalendarPage.jsx)
+Study planning and scheduling:
+
+**Calendar Component:**
+- Use react-calendar library
+- Custom tile styling for events
+- Month/week/day views
+- Navigation between months
+
+**Event Types:**
+1. **Scheduled Quizzes:** Created from question selector
+2. **Completed Quizzes:** Historical quiz data
+3. **Custom Events:** User-added study sessions
+4. **Notes:** Daily study notes
+
+**Event Display:**
+- Color coding by event type
+- Event dots on calendar tiles
+- Event list for selected day
+- Quick action buttons (Start Quiz, Edit, Delete)
+
+**Event Creation:**
+- Modal form for new events
+- Date/time selection
+- Event type selection
+- Notes field
+
+**Integration:**
+- Link to quiz selector for creating scheduled quizzes
+- Launch quiz directly from calendar events
+- Track completion status
+
+## GAMIFICATION SYSTEM (userPoints.js)
+Point-based motivation system:
+
+**Point Awards:**
+- Add question: 10 points
+- Complete quiz: 20 points + bonus for perfect score
+- Daily login streak: 5 points per day
+- High score achievement: 50 points
+- Edit/improve question: 5 points
+
+**User Stats Tracking:**
+- Total points earned
+- Current streak
+- Best streak
+- Achievements unlocked
+- Leaderboard ranking
+
+**Achievements:**
+- First Question Added
+- First Quiz Completed
+- Perfect Score
+- Study Streak (7, 30, 100 days)
+- Power User (various milestones)
+
+**Visual Feedback:**
+- Animated point awards
+- Achievement unlocked notifications
+- Progress bars for next milestone
+- Leaderboard display
+
+## RESPONSIVE DESIGN
+**Mobile Optimization:**
+- Sidebar collapses to hamburger menu
+- Forms stack vertically
+- Touch-friendly button sizes (minimum 44px)
+- Swipe gestures for quiz navigation
+- Optimized typography scaling
+
+**Tablet:**
+- Adjusted sidebar width
+- Two-column layouts where appropriate
+- Touch interactions
+
+**Desktop:**
+- Full sidebar layout
+- Keyboard shortcuts
+- Hover states and tooltips
+- Multi-column layouts
+
+## ANIMATIONS & INTERACTIONS
+**Page Transitions:**
+- Fade in/out between routes
+- Slide animations for modals
+- Smooth state changes
+
+**List Animations:**
+- Staggered fade-in for question lists
+- Smooth sorting/filtering transitions
+- Loading skeletons
+
+**Micro-interactions:**
+- Button hover effects
+- Form validation feedback
+- Progress indicators
+- Success/error state animations
+
+## PERFORMANCE OPTIMIZATIONS
+**Code Splitting:**
+- Lazy load routes and heavy components
+- Dynamic imports for charts and PDF export
+
+**Virtualization:**
+- Use virtual scrolling for large question lists
+- Paginated data loading
+
+**Caching:**
+- localStorage for offline functionality
+- Memoized calculations
+- Debounced search inputs
+
+**Bundle Optimization:**
+- Tree shaking for unused code
+- Optimized images and assets
+- Compressed builds
+
+## ERROR HANDLING & EDGE CASES
+**Network Errors:**
+- Offline detection
+- Retry mechanisms
+- Graceful fallbacks to localStorage
+
+**Validation Errors:**
+- Real-time form validation
+- Clear error messages
+- Prevent invalid submissions
+
+**Data Corruption:**
+- Backup and restore mechanisms
+- Data integrity checks
+- Migration handling
+
+## ACCESSIBILITY (WCAG 2.1 AA)
+- Semantic HTML structure
+- ARIA labels and roles
+- Keyboard navigation support
+- Screen reader compatibility
+- Color contrast compliance
+- Focus management
+
+## ENVIRONMENT VARIABLES
+```
+VITE_SUPABASE_URL=your-supabase-project-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+## DEPLOYMENT CONFIGURATION
+- GitHub Pages deployment with SPA routing
+- Build optimization for production
+- Environment-specific configurations
+- Error tracking and monitoring
+
+## EXACT CSS STYLING REQUIREMENTS
+
+**Global Styles (index.css):**
+- Custom scrollbar styling for both themes
+- Form input styling with focus states
+- Button animations and hover effects
+- Typography hierarchy
+- Utility classes for gradients and effects
+
+**Component-specific Styles:**
+- Question box styling with status indicators
+- Sidebar navigation active states
+- Modal and overlay styling
+- Chart container responsive layouts
+- Mobile-specific adjustments
+
+**Animation Keyframes:**
+- Fade in animations
+- Spin animations for loading
+- Pulse effects for notifications
+- Slide transitions for mobile menu
+
+This prompt contains every detail needed to recreate the SatLog application exactly as it exists, including all functionality, styling, data structures, and user interactions. Follow this specification precisely to build an identical application. 

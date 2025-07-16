@@ -67,7 +67,7 @@ const MembershipSection = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl mb-4">
             Choose Your 
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent"> Learning Path</span>
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> Learning Path</span>
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             From basic tracking to comprehensive SAT mastery, we have a plan that fits your goals and budget.
@@ -80,13 +80,13 @@ const MembershipSection = () => {
               key={plan.name}
               className={`relative rounded-3xl p-8 transition-all duration-500 hover:scale-105 hover:shadow-2xl ${
                 plan.popular 
-                  ? 'bg-gradient-to-b from-blue-50 to-purple-50 dark:from-blue-600/20 dark:to-purple-600/20 border-2 border-blue-500/70 dark:border-blue-500/50 shadow-xl' 
+                  ? 'bg-gradient-to-b from-blue-50 to-cyan-50 dark:from-blue-600/20 dark:to-cyan-600/20 border-2 border-blue-500/70 dark:border-cyan-500/50 shadow-xl' 
                   : 'bg-white dark:bg-white/5 backdrop-blur-sm border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10'
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
                     Most Popular
                   </div>
                 </div>
@@ -95,7 +95,7 @@ const MembershipSection = () => {
               <div className="text-center mb-8">
                 <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
                   plan.popular 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600' 
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500' 
                     : 'bg-gradient-to-r from-gray-600 to-gray-700'
                 }`}>
                   <plan.icon className="w-8 h-8 text-white" />
@@ -112,7 +112,7 @@ const MembershipSection = () => {
                 <Button
                   className={`w-full mb-6 ${
                     plan.buttonVariant === 'default'
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white border-0'
                       : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-transparent'
                   }`}
                   variant={plan.buttonVariant}

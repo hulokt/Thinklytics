@@ -6,12 +6,15 @@ import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import AccountPage from './components/AccountPage';
 import Profile from './components/Profile';
-import QuestionLogger from './components/QuestionLogger';
 import QuestionSelector from './components/QuestionSelector';
-import QuizPage from './components/QuizPage';
 import QuizHistory from './components/QuizHistory';
-import AnalyticsPage from './components/AnalyticsPage';
-import CalendarPage from './components/CalendarPage';
+// Lazy load heavy components
+import { 
+  QuestionLogger, 
+  QuizPage, 
+  AnalyticsPage, 
+  CalendarPage 
+} from './utils/LazyComponents';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { useQuestions, useCalendarEvents } from './hooks/useUserData';

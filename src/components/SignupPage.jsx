@@ -3,64 +3,34 @@ import { motion } from 'framer-motion';
 import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, User, Lock, CheckCircle, Mail as MailIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Navbar from './Navbar';
+import ParticleUpflow from './ui/ParticleUpflow';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
+  const { isDarkMode } = useDarkMode();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Full name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!validatePassword(formData.password)) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    // Confirm password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const validate = () => {
+    const errs = {};
+    if (!formData.firstName) errs.firstName = 'First name is required';
+    if (!formData.lastName) errs.lastName = 'Last name is required';
+    if (!formData.email) errs.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'Please enter a valid email address';
+    if (!formData.password) errs.password = 'Password is required';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleInputChange = (field, value) => {
@@ -83,14 +53,14 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
     }
   };
 
+  const isEmailValid = (email) => {
+    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
+    if (!validate()) return;
+    setLoading(true);
     setSignupError(''); // Clear any previous signup errors
     
     try {
@@ -112,11 +82,11 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
         setSignupError(error.message || 'Signup failed. Please try again.');
       }
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // Success UI Component
+  // Success UI Component with modern design
   const EmailConfirmationSuccess = () => (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -124,22 +94,32 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
       transition={{ duration: 0.5 }}
       className="max-w-md w-full"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-        <div className="text-center mb-8">
+      <div className={`rounded-2xl shadow-2xl p-8 backdrop-blur-sm relative before:absolute before:inset-0 before:rounded-2xl before:blur-2xl before:z-0 ${
+        isDarkMode 
+          ? 'bg-[#111827] border border-blue-900/40 before:bg-[radial-gradient(circle,rgba(40,160,255,0.32)_0%,transparent_80%)] shadow-blue-500/30' 
+          : 'bg-white/80 border border-blue-200/50 before:bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_80%)] shadow-blue-500/20'
+      }`}>
+        <div className="text-center mb-8 relative z-10">
           <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
+            className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+              isDarkMode ? 'bg-green-900/20' : 'bg-green-100'
+            }`}
           >
-            <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+            <CheckCircle className={`w-10 h-10 ${
+              isDarkMode ? 'text-green-400' : 'text-green-600'
+            }`} />
           </motion.div>
           
           <motion.h2 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-2xl font-bold text-gray-900 dark:text-white mb-3 transition-colors duration-300"
+            className={`text-2xl font-bold mb-3 ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}
           >
             Check Your Email!
           </motion.h2>
@@ -148,7 +128,7 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-gray-600 dark:text-gray-400 transition-colors duration-300"
+            className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}
           >
             We've sent a confirmation link to:
           </motion.p>
@@ -157,9 +137,15 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+            className={`mt-3 p-3 rounded-lg border ${
+              isDarkMode 
+                ? 'bg-blue-900/20 border-blue-700' 
+                : 'bg-blue-50 border-blue-200'
+            }`}
           >
-            <p className="text-blue-700 dark:text-blue-300 font-medium text-sm break-all">
+            <p className={`font-medium text-sm break-all ${
+              isDarkMode ? 'text-blue-300' : 'text-blue-700'
+            }`}>
               {userEmail}
             </p>
           </motion.div>
@@ -169,11 +155,19 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="space-y-4"
+          className="space-y-4 relative z-10"
         >
-          <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
-            <MailIcon className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-green-700 dark:text-green-300">
+          <div className={`flex items-start space-x-3 p-4 rounded-lg border ${
+            isDarkMode 
+              ? 'bg-green-900/20 border-green-700' 
+              : 'bg-green-50 border-green-200'
+          }`}>
+            <MailIcon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+              isDarkMode ? 'text-green-400' : 'text-green-600'
+            }`} />
+            <div className={`text-sm ${
+              isDarkMode ? 'text-green-300' : 'text-green-700'
+            }`}>
               <p className="font-medium mb-1">Next Steps:</p>
               <ul className="space-y-1 text-xs">
                 <li>• Check your email inbox (and spam folder)</li>
@@ -190,14 +184,22 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
                 setSignupError('');
                 setErrors({});
               }}
-              className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               Try Different Email
             </button>
             
             <button
               onClick={onSwitchToLogin}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                isDarkMode 
+                  ? 'bg-[#28A0FF] hover:bg-[#3ab6ff] text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
             >
               Go to Sign In
             </button>
@@ -208,9 +210,11 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="mt-6 text-center"
+          className="mt-6 text-center relative z-10"
         >
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className={`text-xs ${
+            isDarkMode ? 'text-gray-500' : 'text-gray-600'
+          }`}>
             Didn't receive the email? Check your spam folder or contact support.
           </p>
         </motion.div>
@@ -221,7 +225,11 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
   // If email was sent, show success UI
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">
+      <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gradient-to-b from-[#061429] via-[#040d1c] to-black' 
+          : 'bg-gradient-to-b from-blue-50 via-indigo-50 to-white'
+      }`}>
         {/* Minimal Navbar */}
         <Navbar minimal={true} onLogin={onBack} />
         {/* Main Content */}
@@ -233,197 +241,219 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">
-      {/* Minimal Navbar */}
-      <Navbar minimal={true} onLogin={onBack} />
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-md w-full"
-        >
-          {/* Signup Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-            <div className="text-center mb-8">
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"
-              >
-                <BookOpen className="w-8 h-8 text-white" />
-              </motion.div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
-                Create Your Account
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                Welcome to Thinklytics! Join thousands of students improving their SAT scores.
-              </p>
-            </div>
+    <div className={`relative min-h-screen w-full flex flex-col overflow-hidden transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-b from-[#061429] via-[#040d1c] to-black text-white' 
+        : 'bg-gradient-to-b from-blue-50 via-indigo-50 to-white text-gray-900'
+    }`}>
+      {/* Navbar */}
+      <Navbar />
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Signup Error Display */}
-              {signupError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-600 rounded-lg p-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <p className="text-red-700 dark:text-red-300 text-sm font-medium">
-                      {signupError}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+      {/* Star field */}
+      <div className={`absolute inset-0 pointer-events-none ${
+        isDarkMode 
+          ? 'bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]' 
+          : 'bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]'
+      }`}></div>
 
-              {/* Name Field */}
-              <LabelInputContainer>
-                <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
-                <Input
-                  id="name"
+      {/* Radial glow */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className={`w-[700px] h-[500px] rounded-full blur-3xl ${
+          isDarkMode 
+            ? 'bg-[radial-gradient(circle,rgba(40,160,255,0.45)_0%,transparent_70%)]' 
+            : 'bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_70%)]'
+        }`}></div>
+      </div>
+
+      {/* Particle Animation */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none w-full flex justify-center">
+        <ParticleUpflow width={320} height={320} />
+      </div>
+
+      {/* Content */}
+      <main className="flex-1 w-full flex flex-col items-center justify-center px-4 pt-24 pb-8 relative min-h-screen">
+        {/* Top Label */}
+        <p className={`text-sm font-medium tracking-widest mb-2 ${
+          isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+        }`}>SIGN UP</p>
+
+        {/* Heading */}
+        <h1 className={`text-center font-semibold text-2xl sm:text-3xl md:text-4xl leading-tight max-w-4xl ${
+          isDarkMode ? 'text-white' : 'text-gray-900'
+        }`}>
+          Create Your Account and Start Your SAT Journey
+        </h1>
+
+        {/* Subheading */}
+        <p className={`max-w-xl text-center mt-4 ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Join thousands of students improving their SAT scores with AI-powered analytics and personalized practice.
+        </p>
+
+        {/* Form Card */}
+        <div className={`mt-12 w-full max-w-md rounded-2xl shadow-2xl px-6 py-8 backdrop-blur-sm relative before:absolute before:inset-0 before:rounded-2xl before:blur-2xl before:z-0 ${
+          isDarkMode 
+            ? 'bg-[#111827] border border-blue-900/40 before:bg-[radial-gradient(circle,rgba(40,160,255,0.32)_0%,transparent_80%)] shadow-blue-500/30' 
+            : 'bg-white/80 border border-blue-200/50 before:bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_80%)] shadow-blue-500/20'
+        }`}>
+          <form className="flex flex-col space-y-6 relative" onSubmit={handleSubmit} autoComplete="off" noValidate>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>First Name</label>
+                <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter your full name"
-                  icon={<User className="w-4 h-4" />}
-                  error={errors.name}
+                  placeholder="Enter your first name"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.firstName 
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                  value={formData.firstName}
+                  onChange={e => handleInputChange('firstName', e.target.value)}
                 />
-                {errors.name && (
-                  <span className="text-red-500 text-sm mt-1">{errors.name}</span>
+                {errors.firstName && (
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.firstName}</span>
+                  </div>
                 )}
-              </LabelInputContainer>
-
-              {/* Email Field */}
-              <LabelInputContainer>
-                <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
-                <Input
-                  id="email"
+              </div>
+              <div>
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Last Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter your last name"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.lastName 
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                  value={formData.lastName}
+                  onChange={e => handleInputChange('lastName', e.target.value)}
+                />
+                {errors.lastName && (
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.lastName}</span>
+                  </div>
+                )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Email</label>
+                <input
                   type="email"
+                  placeholder="Enter your email"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.email || (formData.email && !isEmailValid(formData.email))
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter your email address"
-                  icon={<Mail className="w-4 h-4" />}
-                  error={errors.email}
+                  onChange={e => handleInputChange('email', e.target.value)}
+                  onBlur={(e) => {
+                    if (e.target.value && !isEmailValid(e.target.value)) {
+                      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                    }
+                  }}
                 />
                 {errors.email && (
-                  <span className="text-red-500 text-sm mt-1">{errors.email}</span>
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.email}</span>
+                  </div>
                 )}
-              </LabelInputContainer>
-
-              {/* Password Field */}
-              <LabelInputContainer>
-                <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.password 
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  placeholder="Create a password (min. 6 characters)"
-                  icon={<Lock className="w-4 h-4" />}
-                  error={errors.password}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  }
+                  onChange={e => handleInputChange('password', e.target.value)}
                 />
                 {errors.password && (
-                  <span className="text-red-500 text-sm mt-1">{errors.password}</span>
-                )}
-              </LabelInputContainer>
-
-              {/* Confirm Password Field */}
-              <LabelInputContainer>
-                <Label htmlFor="confirmPassword">Confirm Password <span className="text-red-500">*</span></Label>
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  placeholder="Confirm your password"
-                  icon={<Lock className="w-4 h-4" />}
-                  error={errors.confirmPassword}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  }
-                />
-                {errors.confirmPassword && (
-                  <span className="text-red-500 text-sm mt-1">{errors.confirmPassword}</span>
-                )}
-              </LabelInputContainer>
-
-              {/* Submit Button */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all ${
-                  isSubmitting 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating Account...</span>
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.password}</span>
                   </div>
-                ) : (
-                  'Create Account'
                 )}
-              </motion.button>
-            </form>
-
-            {/* Requirements */}
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700 text-center font-medium mb-2">Password Requirements:</p>
-              <ul className="text-xs text-blue-600 space-y-1">
-                <li>• At least 6 characters long</li>
-                <li>• All fields are required</li>
-                <li>• Valid email format</li>
-                <li>• Passwords must match</li>
-              </ul>
+              </div>
             </div>
-
-            {/* Switch to Login */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{' '}
-                <button
-                  onClick={onSwitchToLogin}
-                  className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                >
-                  Sign in here
-                </button>
-              </p>
-            </div>
-          </div>
-
-          {/* Security Note */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              Your data is securely stored in the cloud with Supabase authentication.
+            <button
+              type="submit"
+              className={`w-full py-3 rounded-full font-bold uppercase tracking-wide shadow-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-[#28A0FF] hover:bg-[#3ab6ff] text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              disabled={loading}
+            >
+              {loading ? 'Signing Up...' : 'Sign Up'}
+            </button>
+            <p className={`text-center text-xs mt-2 ${
+              isDarkMode ? 'text-gray-500' : 'text-gray-600'
+            }`}>
+              By signing up you agree to our{' '}
+              <a href="#" className={`underline ${
+                isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+              }`}>Terms</a> and{' '}
+              <a href="#" className={`underline ${
+                isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+              }`}>Privacy Policy</a>
             </p>
-          </div>
-        </motion.div>
-      </div>
+          </form>
+        </div>
+        <p className={`mt-8 text-sm ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Already have an account?{' '}
+          <button onClick={onSwitchToLogin} className={`font-medium ${
+            isDarkMode 
+              ? 'text-[#28A0FF] hover:text-[#3ab6ff]' 
+              : 'text-blue-600 hover:text-blue-700'
+          }`}>
+            Log in
+          </button>
+        </p>
+      </main>
     </div>
   );
 };

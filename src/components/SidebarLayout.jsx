@@ -56,35 +56,35 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
       label: "Question Logger",
       href: "/questions",
       icon: (
-        <IconFileText className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
+        <IconFileText className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Quiz",
       href: "/selector",
       icon: (
-        <IconPlayCircle className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
+        <IconPlayCircle className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Quiz History",
       href: "/history",
       icon: (
-        <IconHistory className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
+        <IconHistory className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Analytics",
       href: "/analytics",
       icon: (
-        <IconBarChart className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
+        <IconBarChart className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
       label: "Calendar",
       href: "/calendar",
       icon: (
-        <CalendarIcon className="h-5 w-5 shrink-0 text-gray-700 dark:text-gray-300 transition-colors duration-300" />
+        <CalendarIcon className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
   ];
@@ -98,7 +98,7 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
     >
       <SidebarProvider open={open} setOpen={setOpen}>
         <Sidebar open={open} setOpen={setOpen}>
-          <SidebarBody className="justify-between gap-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300">
+          <SidebarBody className="justify-between gap-10 bg-gray-900 border-r border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
               {(() => {
                 console.log('🏠 Sidebar state - open:', open);
@@ -127,8 +127,8 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                     }}
                     className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md transition-colors duration-300 ${
                       location.pathname === link.href
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                        ? 'bg-blue-900/30 text-blue-300'
+                        : 'text-gray-300 hover:bg-blue-900/20'
                     }`}
                   >
                     <div className="shrink-0">
@@ -152,7 +152,7 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
-                className="flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                className="flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 text-gray-300 hover:bg-blue-900/20"
               >
                 <div className="shrink-0">
                   {isDarkMode ? (
@@ -184,12 +184,12 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                 }}
                 className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 ${
                   location.pathname === '/profile'
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                    ? 'bg-blue-900/30 text-blue-300'
+                    : 'text-gray-300 hover:bg-blue-900/20'
                 }`}
               >
                 <div className={`${!open ? 'mr-2' : ''}`}>
-                  <IconStar className="text-yellow-600 dark:text-yellow-400 h-5 w-5 flex-shrink-0 transition-colors duration-300" />
+                  <IconStar className="text-yellow-400 h-5 w-5 flex-shrink-0 transition-colors duration-300" />
                 </div>
                 <motion.div
                   initial={false}
@@ -197,10 +197,10 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                   transition={{ duration: 0.3 }}
                   className="origin-left whitespace-nowrap overflow-hidden ml-2"
                 >
-                  <span className="flex text-sm font-medium text-gray-800 dark:text-white">
+                  <span className="flex text-sm font-medium text-white">
                     My Rank
                   </span>
-                  <span className="flex text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex text-xs text-gray-400">
                     View Points & Stats
                   </span>
                 </motion.div>
@@ -217,21 +217,21 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                 }}
                 className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 ${
                   location.pathname === '/account'
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                    ? 'bg-blue-900/30 text-blue-300'
+                    : 'text-gray-300 hover:bg-blue-900/20'
                 }`}
               >
-                <IconUser className="text-neutral-700 dark:text-gray-300 h-5 w-5 flex-shrink-0 transition-colors duration-300" />
+                <IconUser className="text-gray-300 h-5 w-5 flex-shrink-0 transition-colors duration-300" />
                 <motion.div
                   initial={false}
                   animate={open ? { opacity: 1, scaleX: 1 } : { opacity: 0, scaleX: 0 }}
                   transition={{ duration: 0.3 }}
                   className="origin-left whitespace-nowrap overflow-hidden ml-2"
                 >
-                  <span className="flex text-sm font-medium text-gray-800 dark:text-white">
+                  <span className="flex text-sm font-medium text-white">
                     {userData.name}
                   </span>
-                  <span className="flex text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex text-xs text-gray-400">
                     {userData.email}
                   </span>
                 </motion.div>
@@ -245,9 +245,9 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                     setOpen(false);
                   }
                 }}
-                className="hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400 py-2 px-3 transition-colors duration-300"
+                className="hover:bg-red-900/20 rounded-lg text-red-400 py-2 px-3 transition-colors duration-300"
               >
-                <IconLogout className={`h-5 w-5 shrink-0 text-red-600 dark:text-red-400 transition-colors duration-300 ${!open ? 'mr-2' : ''}`} />
+                <IconLogout className={`h-5 w-5 shrink-0 text-red-400 transition-colors duration-300 ${!open ? 'mr-2' : ''}`} />
               </button>
             </div>
           </SidebarBody>
@@ -270,7 +270,7 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
+      className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
       <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
       <motion.div
@@ -296,7 +296,7 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
+      className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
     >
       <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
     </button>

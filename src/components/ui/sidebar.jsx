@@ -50,7 +50,7 @@ export const DesktopSidebar = ({ className, children, ...props }) => {
     <>
       <motion.div
         className={cn(
-          "h-full px-4 py-4 hidden md:flex md:flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-[300px] flex-shrink-0 transition-colors duration-300",
+          "h-full px-4 py-4 hidden md:flex md:flex-col bg-gray-900 border-r border-gray-700 w-[300px] flex-shrink-0 transition-colors duration-300",
           className
         )}
         animate={{
@@ -72,7 +72,7 @@ export const MobileSidebar = ({ className, children, ...props }) => {
     <>
       <div
         className={cn(
-          "h-14 px-4 py-2 flex flex-row md:hidden items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 w-full flex-shrink-0 transition-colors duration-300"
+          "h-14 px-4 py-2 flex flex-row md:hidden items-center justify-between bg-gray-900 border-b border-gray-700 w-full flex-shrink-0 transition-colors duration-300"
         )}
       >
         {/* Logo for mobile */}
@@ -83,12 +83,12 @@ export const MobileSidebar = ({ className, children, ...props }) => {
         
         <div className="flex justify-end z-20">
           <button
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-700 transition-colors duration-200"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >
             <svg
-              className="text-gray-700 dark:text-gray-300 w-5 h-5 transition-colors duration-300"
+              className="text-gray-300 w-5 h-5 transition-colors duration-300"
               width="24"
               height="24"
               viewBox="0 0 24 24"
@@ -116,17 +116,17 @@ export const MobileSidebar = ({ className, children, ...props }) => {
                 ease: "easeInOut",
               }}
               className={cn(
-                "fixed h-full w-full inset-0 bg-white dark:bg-gray-800 p-4 z-[100] flex flex-col justify-between overflow-hidden transition-colors duration-300",
+                "fixed h-full w-full inset-0 bg-gray-900 p-4 z-[100] flex flex-col justify-between overflow-hidden transition-colors duration-300",
                 className
               )}
               {...props}
             >
               <div
-                className="absolute right-4 top-4 z-50 text-gray-700 dark:text-gray-300 transition-colors duration-300"
+                className="absolute right-4 top-4 z-50 text-gray-300 transition-colors duration-300"
                 onClick={() => setOpen(!open)}
               >
                 <button
-                  className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                  className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-700 transition-colors duration-200"
                   aria-label="Close menu"
                 >
                   <svg
@@ -176,7 +176,7 @@ export const SidebarLink = ({ link, className, ...props }) => {
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-gray-700 dark:text-gray-300 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className="text-gray-300 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
       >
         {link.label}
       </motion.span>

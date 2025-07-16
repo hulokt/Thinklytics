@@ -95,18 +95,18 @@ const HelpCenterPage = ({ onBack }) => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Help Center</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Help Center</h1>
           </div>
         </div>
       </div>
@@ -114,14 +114,14 @@ const HelpCenterPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl homepage-feature-icon mb-6">
+            <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             How Can We
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Help?</span>
+            <span className="homepage-gradient-text"> Help?</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Find answers to common questions, learn how to use our features, and get the support you need 
             to make the most of Thinklytics.
           </p>
@@ -130,13 +130,13 @@ const HelpCenterPage = ({ onBack }) => {
         {/* Search Bar */}
         <div className="max-w-2xl mx-auto mb-12">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 homepage-text-muted w-5 h-5" />
             <input
               type="text"
               placeholder="Search for help articles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent"
             />
           </div>
         </div>
@@ -149,8 +149,8 @@ const HelpCenterPage = ({ onBack }) => {
               onClick={() => setSelectedCategory(category.id)}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 selectedCategory === category.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'homepage-cta-primary text-white'
+                  : 'homepage-card homepage-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {category.name}
@@ -160,21 +160,21 @@ const HelpCenterPage = ({ onBack }) => {
 
         {/* FAQ Section */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">
             Frequently Asked Questions
           </h3>
           <div className="max-w-4xl mx-auto space-y-6">
             {filteredFaqs.map((faq, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{faq.question}</h4>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{faq.answer}</p>
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <h4 className="text-lg font-semibold homepage-text-primary mb-3">{faq.question}</h4>
+                <p className="homepage-text-secondary leading-relaxed">{faq.answer}</p>
               </div>
             ))}
             {filteredFaqs.length === 0 && (
               <div className="text-center py-12">
-                <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No results found</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <Search className="w-16 h-16 homepage-text-muted mx-auto mb-4" />
+                <h4 className="text-xl font-semibold homepage-text-primary mb-2">No results found</h4>
+                <p className="homepage-text-secondary">
                   Try adjusting your search terms or browse our categories above.
                 </p>
               </div>
@@ -184,20 +184,20 @@ const HelpCenterPage = ({ onBack }) => {
 
         {/* Support Channels */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">
             Get in Touch
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {supportChannels.map((channel, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-4">
-                  <channel.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg text-center homepage-hover-glow">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg homepage-feature-icon mb-4">
+                  <channel.icon className="w-6 h-6 text-white" />
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{channel.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{channel.description}</p>
+                <h4 className="text-lg font-semibold homepage-text-primary mb-2">{channel.title}</h4>
+                <p className="homepage-text-secondary text-sm mb-4">{channel.description}</p>
                 <a
                   href={channel.href}
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="inline-block homepage-cta-primary text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   {channel.action}
                 </a>
@@ -207,38 +207,38 @@ const HelpCenterPage = ({ onBack }) => {
         </div>
 
         {/* Quick Links */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Quick Links</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Quick Links</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900 dark:text-white">Getting Started</h4>
+              <h4 className="font-semibold homepage-text-primary">Getting Started</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Creating Your First Question</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Understanding Analytics</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Setting Up Your Profile</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Creating Your First Question</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Understanding Analytics</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Setting Up Your Profile</a></li>
               </ul>
             </div>
             <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900 dark:text-white">Features</h4>
+              <h4 className="font-semibold homepage-text-primary">Features</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Question Logging</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Quiz Creation</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Progress Tracking</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Question Logging</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Quiz Creation</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Progress Tracking</a></li>
               </ul>
             </div>
             <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900 dark:text-white">Account</h4>
+              <h4 className="font-semibold homepage-text-primary">Account</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Settings</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Data Export</a></li>
-                <li><a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Account Deletion</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Privacy Settings</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Data Export</a></li>
+                <li><a href="#" className="blue-gradient-text hover:underline">Account Deletion</a></li>
               </ul>
             </div>
           </div>
         </div>
 
         {/* CTA Section */}
-        <div className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+        <div className="mt-16 blue-gradient-bg rounded-2xl p-8 text-white text-center">
           <h3 className="text-2xl font-bold mb-4">Still Need Help?</h3>
           <p className="text-lg mb-6 opacity-90">
             Our support team is here to help you succeed. Don't hesitate to reach out!
@@ -246,13 +246,13 @@ const HelpCenterPage = ({ onBack }) => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="mailto:support@thinklytics.com"
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors"
+              className="bg-white text-[var(--brand-60)] hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors"
             >
               Contact Support
             </a>
             <button
               onClick={onBack}
-              className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-medium transition-colors"
+              className="border-2 border-white text-white hover:bg-white hover:text-[var(--brand-60)] px-8 py-3 rounded-lg font-medium transition-colors"
             >
               Back to Home
             </button>

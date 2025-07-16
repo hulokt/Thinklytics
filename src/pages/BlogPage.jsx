@@ -1,99 +1,87 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Search, Calendar, Clock, User, Tag, ArrowRight } from 'lucide-react';
-import logoImage from "/logo.png";
+import { ArrowLeft, Calendar, User, ArrowRight, BookOpen, Target, TrendingUp, Search } from 'lucide-react';
 
 const BlogPage = ({ onBack }) => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const categories = [
-    { id: 'all', name: 'All Posts' },
-    { id: 'study-tips', name: 'Study Tips' },
-    { id: 'test-strategies', name: 'Test Strategies' },
-    { id: 'math', name: 'Math' },
-    { id: 'reading', name: 'Reading & Writing' },
-    { id: 'motivation', name: 'Motivation' }
+    { id: 'all', name: 'All Posts', count: 12 },
+    { id: 'tips', name: 'Study Tips', count: 5 },
+    { id: 'strategy', name: 'Strategy', count: 4 },
+    { id: 'updates', name: 'Updates', count: 3 }
   ];
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: "10 Proven Strategies to Improve Your SAT Math Score",
-      excerpt: "Discover the most effective techniques used by top-scoring students to master the SAT Math section...",
-      author: "Dr. Sarah Chen",
-      date: "2024-01-15",
-      readTime: "8 min read",
-      category: "Math",
-      tags: ["SAT Math", "Strategies", "Study Tips"],
-      image: logoImage,
-    },
+  const featuredPost = {
+    id: 1,
+    title: "How to Improve Your SAT Score by 200+ Points in 3 Months",
+    excerpt: "Discover proven strategies and techniques that thousands of students have used to dramatically improve their SAT scores.",
+    author: "Dr. Sarah Chen",
+    date: "2024-12-10",
+    category: "Strategy",
+    readTime: "8 min read",
+    image: "/logo.png"
+  };
+
+  const posts = [
     {
       id: 2,
-      title: "Understanding SAT Reading: A Complete Guide",
-      excerpt: "Master the art of reading comprehension with our comprehensive guide to the SAT Reading section...",
-      author: "Dr. Emily Watson",
-      date: "2024-01-12",
+      title: "The Ultimate Guide to SAT Math Section",
+      excerpt: "Master algebra, geometry, and statistics with our comprehensive guide to the SAT math section.",
+      author: "Michael Rodriguez",
+      date: "2024-12-08",
+      category: "tips",
       readTime: "12 min read",
-      category: "Reading",
-      tags: ["SAT Reading", "Comprehension", "Guide"],
-      image: logoImage
+      image: "/logo.png"
     },
     {
       id: 3,
-      title: "The Science Behind Effective SAT Preparation",
-      excerpt: "Learn how cognitive science and educational psychology can enhance your SAT study routine...",
-      author: "Michael Rodriguez",
-      date: "2024-01-10",
+      title: "Reading Comprehension Strategies That Actually Work",
+      excerpt: "Learn effective techniques for tackling the most challenging reading passages on the SAT.",
+      author: "Dr. Emily Watson",
+      date: "2024-12-05",
+      category: "tips",
       readTime: "10 min read",
-      category: "Science",
-      tags: ["Study Science", "Psychology", "Learning"],
-      image: logoImage
+      image: "/logo.png"
     },
     {
       id: 4,
-      title: "Writing and Language: Common Mistakes to Avoid",
-      excerpt: "Identify and fix the most common errors students make in the SAT Writing and Language section...",
-      author: "Dr. Sarah Chen",
-      date: "2024-01-08",
+      title: "Common SAT Essay Mistakes to Avoid",
+      excerpt: "Avoid these critical errors that can hurt your essay score and learn what graders really look for.",
+      author: "Jennifer Kim",
+      date: "2024-12-03",
+      category: "tips",
       readTime: "6 min read",
-      category: "Writing",
-      tags: ["SAT Writing", "Grammar", "Common Mistakes"],
-      image: logoImage
+      image: "/logo.png"
     },
     {
       id: 5,
-      title: "Creating Your Perfect SAT Study Schedule",
-      excerpt: "Design a personalized study plan that fits your lifestyle and maximizes your learning potential...",
-      author: "Dr. Emily Watson",
-      date: "2024-01-05",
-      readTime: "9 min read",
-      category: "Planning",
-      tags: ["Study Schedule", "Planning", "Organization"],
-      image: logoImage
+      title: "New Features: AI-Powered Question Analysis",
+      excerpt: "Introducing our latest AI technology that provides personalized insights into your practice questions.",
+      author: "Thinklytics Team",
+      date: "2024-12-01",
+      category: "updates",
+      readTime: "4 min read",
+      image: "/logo.png"
     },
     {
       id: 6,
-      title: "Test Day Strategies: What to Do Before, During, and After",
-      excerpt: "Essential tips to ensure you're at your best on test day and can perform to your full potential...",
-      author: "Michael Rodriguez",
-      date: "2024-01-03",
+      title: "Test Day Preparation: A Complete Checklist",
+      excerpt: "Everything you need to know to feel confident and prepared on SAT test day.",
+      author: "Dr. Sarah Chen",
+      date: "2024-11-28",
+      category: "strategy",
       readTime: "7 min read",
-      category: "Test Day",
-      tags: ["Test Day", "Preparation", "Performance"],
-      image: logoImage
+      image: "/logo.png"
     }
   ];
 
-  const filteredPosts = blogPosts.filter(post => {
+  const filteredPosts = posts.filter(post => {
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
-
-  const featuredPost = blogPosts.find(post => post.featured);
-  const regularPosts = filteredPosts.filter(post => !post.featured);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -104,18 +92,18 @@ const BlogPage = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Blog</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Blog</h1>
           </div>
         </div>
       </div>
@@ -123,41 +111,43 @@ const BlogPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             SAT Success
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Insights</span>
+            <span className="homepage-gradient-text"> Stories</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Expert tips, strategies, and insights to help you master the SAT and achieve your college dreams. 
-            Written by our team of education experts and successful students.
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
+            Expert insights, proven strategies, and success stories to help you achieve your best SAT score.
           </p>
         </div>
 
         {/* Search and Filter */}
         <div className="mb-12">
-          <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+          <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
+            {/* Search */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 homepage-text-secondary" />
               <input
                 type="text"
                 placeholder="Search articles..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 homepage-card homepage-text-primary focus:ring-2 focus:ring-[var(--brand-60)] focus:border-transparent"
               />
             </div>
+
+            {/* Categories */}
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedCategory === category.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'homepage-cta-primary text-white'
+                      : 'homepage-card homepage-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {category.name}
+                  {category.name} ({category.count})
                 </button>
               ))}
             </div>
@@ -165,127 +155,116 @@ const BlogPage = ({ onBack }) => {
         </div>
 
         {/* Featured Post */}
-        {featuredPost && selectedCategory === 'all' && searchQuery === '' && (
-          <div className="mb-16">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Featured Article</h3>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-              <div className="md:flex">
-                <div className="md:w-1/3">
-                  <img 
-                    src={featuredPost.image} 
-                    alt={featuredPost.title}
-                    className="w-full h-64 md:h-full object-cover"
-                  />
+        <div className="mb-16">
+          <div className="homepage-card rounded-2xl shadow-xl overflow-hidden homepage-hover-glow">
+            <div className="md:flex">
+              <div className="md:w-1/2">
+                <img
+                  src={featuredPost.image}
+                  alt={featuredPost.title}
+                  className="w-full h-64 md:h-full object-cover"
+                />
+              </div>
+              <div className="md:w-1/2 p-8">
+                <div className="flex items-center space-x-4 mb-4">
+                  <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] text-white text-sm font-medium">
+                    Featured
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 homepage-text-secondary text-sm">
+                    {featuredPost.category}
+                  </span>
                 </div>
-                <div className="md:w-2/3 p-8">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-full">
-                      Featured
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(featuredPost.date)}
-                    </span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                    {featuredPost.title}
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                    {featuredPost.excerpt}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center space-x-1">
-                        <User className="w-4 h-4" />
-                        <span>{featuredPost.author}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{featuredPost.readTime}</span>
-                      </div>
+                
+                <h3 className="text-2xl font-bold homepage-text-primary mb-4">
+                  {featuredPost.title}
+                </h3>
+                
+                <p className="homepage-text-secondary mb-6 leading-relaxed">
+                  {featuredPost.excerpt}
+                </p>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm homepage-text-secondary">
+                    <div className="flex items-center space-x-1">
+                      <User className="w-4 h-4" />
+                      <span>{featuredPost.author}</span>
                     </div>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2">
-                      <span>Read More</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>{formatDate(featuredPost.date)}</span>
+                    </div>
+                    <span>{featuredPost.readTime}</span>
                   </div>
+                  
+                  <button className="homepage-cta-primary text-white px-6 py-2 rounded-lg font-medium hover:shadow-xl transition-all duration-200 flex items-center space-x-2">
+                    <span>Read More</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Blog Posts Grid */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-            {searchQuery ? 'Search Results' : 'Latest Articles'}
-          </h3>
-          {regularPosts.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {regularPosts.map((post) => (
-                <article key={post.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                  <img 
-                    src={post.image} 
-                    alt={post.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-6">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-full">
-                        {categories.find(cat => cat.id === post.category)?.name}
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(post.date)}
-                      </span>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredPosts.map((post) => (
+            <article key={post.id} className="homepage-card rounded-xl shadow-lg overflow-hidden homepage-hover-glow">
+              <img
+                src={post.image}
+                alt={post.title}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-6">
+                <div className="flex items-center space-x-2 mb-3">
+                  <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 homepage-text-secondary text-xs">
+                    {post.category}
+                  </span>
+                  <span className="homepage-text-secondary text-xs">{post.readTime}</span>
+                </div>
+                
+                <h3 className="text-xl font-semibold homepage-text-primary mb-3 line-clamp-2">
+                  {post.title}
+                </h3>
+                
+                <p className="homepage-text-secondary mb-4 line-clamp-3">
+                  {post.excerpt}
+                </p>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm homepage-text-secondary">
+                    <div className="flex items-center space-x-1">
+                      <User className="w-4 h-4" />
+                      <span>{post.author}</span>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2">
-                      {post.title}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
-                      {post.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center space-x-1">
-                          <User className="w-4 h-4" />
-                          <span>{post.author}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-4 h-4" />
-                          <span>{post.readTime}</span>
-                        </div>
-                      </div>
-                      <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors">
-                        Read More →
-                      </button>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>{formatDate(post.date)}</span>
                     </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No articles found</h4>
-              <p className="text-gray-600 dark:text-gray-300">
-                Try adjusting your search terms or browse our categories above.
-              </p>
-            </div>
-          )}
+                  
+                  <button className="blue-gradient-text hover:underline font-medium">
+                    Read More
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
 
         {/* Newsletter Signup */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+        <div className="mt-16 blue-gradient-bg rounded-2xl p-8 text-center text-white">
           <h3 className="text-2xl font-bold mb-4">Stay Updated</h3>
           <p className="text-lg mb-6 opacity-90">
-            Get the latest SAT tips and strategies delivered to your inbox every week.
+            Get the latest SAT tips, strategies, and success stories delivered to your inbox.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <input
               type="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
+              className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50"
             />
-            <button className="bg-white text-blue-600 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-colors">
+            <button className="bg-white text-[var(--brand-60)] hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-colors">
               Subscribe
             </button>
           </div>

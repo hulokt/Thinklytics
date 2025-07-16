@@ -46,7 +46,7 @@ const AnimatedQuestionList = ({
   // Check if we're on mobile
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 640);
+      setIsMobile(window.innerWidth <= 768);
     };
     
     checkMobile();

@@ -20,6 +20,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const [quizInitialized, setQuizInitialized] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
+  const [eliminationMode, setEliminationMode] = useState(false);
+  const [eliminatedOptions, setEliminatedOptions] = useState({});
 
   // Use refs to capture current values for cleanup function
   const quizDataRef = useRef(null);
@@ -30,6 +32,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const showResultsRef = useRef(false);
   const isFinishingRef = useRef(false);
   const hasUnsavedChangesRef = useRef(false);
+  const eliminationModeRef = useRef(false);
+  const eliminatedOptionsRef = useRef({});
 
   // Update refs when state changes
   useEffect(() => {
@@ -63,6 +67,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   useEffect(() => {
     hasUnsavedChangesRef.current = hasUnsavedChanges;
   }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    eliminationModeRef.current = eliminationMode;
+  }, [eliminationMode]);
+
+  useEffect(() => {
+    eliminatedOptionsRef.current = eliminatedOptions;
+  }, [eliminatedOptions]);
 
   // Get user for display name and points
   const { user } = useAuth();
@@ -210,6 +222,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           userAnswers: currentUserAnswers,
           currentQuestionIndex: currentQuestionIdx,
           flaggedQuestions: Array.from(currentFlaggedQuestions),
+          eliminationMode: eliminationModeRef.current,
+          eliminatedOptions: eliminatedOptionsRef.current,
           lastUpdated: new Date().toISOString(),
           timeSpent: currentElapsedTime
         };
@@ -286,6 +300,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       setUserAnswers(initialQuizData.userAnswers || {});
       setCurrentQuestionIndex(initialQuizData.currentQuestionIndex || 0);
       setFlaggedQuestions(new Set(initialQuizData.flaggedQuestions || []));
+      setEliminationMode(initialQuizData.eliminationMode || false);
+      setEliminatedOptions(initialQuizData.eliminatedOptions || {});
       setQuizInitialized(true);
       return;
     }
@@ -388,6 +404,24 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       }
       return newSet;
     });
+  };
+
+  const toggleEliminationMode = () => {
+    setEliminationMode(prev => !prev);
+  };
+
+  const handleEliminateOption = (option) => {
+    if (!currentQuestion) return;
+    
+    const questionId = currentQuestion.id;
+    const currentEliminated = eliminatedOptions[questionId] || [];
+    
+    setEliminatedOptions(prev => ({
+      ...prev,
+      [questionId]: currentEliminated.includes(option)
+        ? currentEliminated.filter(o => o !== option)
+        : [...currentEliminated, option]
+    }));
   };
 
   const navigateToQuestion = (index) => {
@@ -573,6 +607,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           userAnswers: currentUserAnswers,
           currentQuestionIndex: currentQuestionIndexRef.current,
           flaggedQuestions: Array.from(flaggedQuestionsRef.current),
+          eliminationMode: eliminationModeRef.current,
+          eliminatedOptions: eliminatedOptionsRef.current,
           lastUpdated: new Date().toISOString(),
           timeSpent: currentElapsedTime
         };
@@ -754,16 +790,22 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <div className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-6 lg:p-8 w-full max-w-5xl transition-colors duration-300">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Section 1: Reading and Writing Module 1</h3>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-                  <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                    <span className="w-3 h-3 border-2 border-dashed border-gray-400 dark:border-gray-500 mr-2 transition-colors duration-300"></span>
-                    <span>Unanswered</span>
-                  </div>
-                  <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                    <span className="material-icons text-base mr-1 text-red-500">bookmark</span>
-                    <span>For Review</span>
-                  </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                  <span className="w-3 h-3 border-2 border-dashed border-gray-400 dark:border-gray-500 mr-2 transition-colors duration-300"></span>
+                  <span>Unanswered</span>
                 </div>
+                <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                  <span className="material-icons text-base mr-1 text-red-500">bookmark</span>
+                  <span>For Review</span>
+                </div>
+                {eliminationMode && (
+                  <div className="flex items-center text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                    <span className="material-icons text-base mr-1 text-red-500">close</span>
+                    <span>Eliminated</span>
+                  </div>
+                )}
+              </div>
               </div>
 
               {/* Progress Bar */}
@@ -788,6 +830,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                   const isAnswered = userAnswers[question.id];
                   const isCurrent = index === currentQuestionIndex;
                   const isFlagged = flaggedQuestions.has(question.id);
+                  const questionEliminatedOptions = eliminatedOptions[question.id] || [];
+                  const hasEliminatedOptions = questionEliminatedOptions.length > 0;
                   
                   return (
                     <div
@@ -813,6 +857,11 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                       {isFlagged && (
                         <span className="material-icons absolute top-0.5 sm:top-1 right-0.5 sm:right-1 text-red-500 text-xs">
                           flag
+                        </span>
+                      )}
+                      {hasEliminatedOptions && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-gray-400 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✕</span>
                         </span>
                       )}
                     </div>
@@ -933,6 +982,66 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         .dark .question-option.selected:hover {
           background-color: #1e40af;
           border-color: #2563eb;
+        }
+        
+        /* Eliminated option styles */
+        .question-option.eliminated {
+          opacity: 0.3;
+          pointer-events: none;
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+          position: relative;
+          overflow: visible !important;
+        }
+        .dark .question-option.eliminated {
+          opacity: 0.3;
+          pointer-events: none;
+          background-color: #374151;
+          border-color: #4b5563;
+          position: relative;
+          overflow: visible !important;
+        }
+        .question-option.eliminated::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: -20px !important;
+          right: -10px !important;
+          height: 2px;
+          background-color: #374151 !important;
+          transform: translateY(-50%);
+          z-index: 15 !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+        }
+        .dark .question-option.eliminated::after {
+          background-color: #9ca3af !important;
+        }
+        .question-option.eliminated .option-letter {
+          background-color: #9ca3af;
+          color: #6b7280;
+          border-color: #9ca3af;
+        }
+        .dark .question-option.eliminated .option-letter {
+          background-color: #6b7280;
+          color: #9ca3af;
+          border-color: #6b7280;
+        }
+        .question-option.eliminated:hover {
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+          opacity: 0.3;
+        }
+        .dark .question-option.eliminated:hover {
+          background-color: #374151;
+          border-color: #4b5563;
+          opacity: 0.3;
+        }
+        
+        /* ABC button styles */
+        .btn-default.btn-line-black.undo-btn {
+          position: relative;
+          overflow: hidden;
         }
         .option-letter {
           display: inline-flex;
@@ -1136,6 +1245,30 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           background-color: #374151;
           color: #d1d5db;
         }
+        
+        /* Questions with eliminated options */
+        .question-box.has-eliminated {
+          border-color: #9ca3af;
+          background-color: #f3f4f6;
+        }
+        .dark .question-box.has-eliminated {
+          border-color: #6b7280;
+          background-color: #4b5563;
+        }
+        .question-box.has-eliminated:hover,
+        .question-box.has-eliminated:focus,
+        .question-box.has-eliminated:active,
+        .question-box.has-eliminated:focus-visible {
+          border-color: #9ca3af !important;
+          background-color: #f3f4f6 !important;
+        }
+        .dark .question-box.has-eliminated:hover,
+        .dark .question-box.has-eliminated:focus,
+        .dark .question-box.has-eliminated:active,
+        .dark .question-box.has-eliminated:focus-visible {
+          border-color: #6b7280 !important;
+          background-color: #4b5563 !important;
+        }
       `}</style>
 
       {/* Header */}
@@ -1232,11 +1365,16 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </button>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
-                <span className="material-icons">zoom_out_map</span>
-              </button>
-              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
-                <span className="material-icons">abc</span>
+              <button 
+                onClick={toggleEliminationMode}
+                className="btn-default btn-line-black undo-btn text-xs sm:text-sm font-medium px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center relative"
+                style={{ minWidth: '38px', minHeight: '26px', height: '26px', padding: '0 10px' }}
+              >
+                <span style={{ position: 'relative', zIndex: 1 }}>ABC</span>
+                {/* Diagonal X line overlay */}
+                <svg width="100%" height="100%" viewBox="0 0 38 26" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+                  <line x1="2" y1="24" x2="36" y2="2" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
             </div>
           </div>
@@ -1244,20 +1382,40 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 transition-colors duration-300">
               {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
             </p>
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-2 sm:space-y-3" style={{ overflow: 'visible' }}>
               {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
                 const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                 const isSelected = userAnswers[currentQuestion.id] === option;
+                const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
                 
                 return (
-                  <div 
-                    key={index}
-                    onClick={() => handleAnswerSelect(option)}
-                    className={`question-option ${isSelected ? 'selected' : ''}`}
-                    style={{ padding: '0.5rem 0.75rem' }}
-                  >
-                    <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem' }}>{optionLetter}</span>
-                    <span className="text-sm sm:text-base">{option}</span>
+                  <div key={index} className="flex items-center space-x-3" style={{ overflow: 'visible' }}>
+                    <div 
+                      onClick={() => handleAnswerSelect(option)}
+                      className={`question-option min-w-0 ${isSelected ? 'selected' : ''} ${isEliminated ? 'eliminated' : ''}`}
+                      style={{ 
+                        padding: '0.5rem 0.75rem',
+                        width: eliminationMode ? 'calc(100% - 80px)' : '100%',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
+                      <span className="text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                    </div>
+                    
+                    {eliminationMode && (
+                      <button
+                        onClick={() => handleEliminateOption(option)}
+                        className={`elimination-btn rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ${
+                          isEliminated
+                            ? 'bg-gray-400 border-gray-400 text-white px-2 py-1'
+                            : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 w-6 h-6'
+                        }`}
+                      >
+                        {isEliminated ? 'undo' : optionLetter}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -1293,7 +1451,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 pb-4 border-b border-gray-300 dark:border-gray-600 transition-colors duration-300 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 pb-4 border-b border-gray-300 dark:border-gray-600 transition-colors duration-300 text-xs">
                   <div className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
                     <span className="material-icons text-base mr-2 text-blue-600">location_on</span>
                     <span>Current</span>

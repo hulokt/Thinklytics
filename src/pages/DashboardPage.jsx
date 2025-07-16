@@ -1,194 +1,254 @@
 import React from 'react';
-import { ArrowLeft, TrendingUp, Target, Calendar, BookOpen, Award, Clock, BarChart3, Eye, Zap, Shield } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, BookOpen, Award, Calendar, Clock, Target } from 'lucide-react';
 
 const DashboardPage = ({ onBack }) => {
-  const features = [
+  const stats = [
+    { icon: Users, value: '15,247', label: 'Total Students', change: '+12%' },
+    { icon: BookOpen, value: '3,891', label: 'Active Sessions', change: '+8%' },
+    { icon: Award, value: '89%', label: 'Avg. Score Improvement', change: '+3%' },
+    { icon: Target, value: '1,420', label: 'Avg. Score Increase', change: '+15%' }
+  ];
+
+  const recentActivity = [
     {
-      icon: BarChart3,
-      title: "Real-Time Analytics",
-      description: "Track your performance across all SAT sections with detailed analytics that show your strengths and weaknesses. See your accuracy rates, question completion trends, and improvement over time."
+      type: 'quiz_completed',
+      user: 'Sarah Johnson',
+      action: 'completed Math Quiz #12',
+      score: '92%',
+      time: '2 hours ago'
     },
     {
-      icon: Target,
-      title: "Progress Tracking",
-      description: "Monitor your study goals and achievements with visual progress indicators. Set weekly and monthly targets for questions logged, study time, and quiz completion."
+      type: 'high_score',
+      user: 'Michael Chen',
+      action: 'achieved new high score',
+      score: '1540',
+      time: '3 hours ago'
     },
     {
-      icon: TrendingUp,
-      title: "Performance Insights",
-      description: "Get intelligent insights about your learning patterns. Identify which question types you struggle with most and receive personalized recommendations for improvement."
+      type: 'study_streak',
+      user: 'Emily Rodriguez',
+      action: 'reached 30-day study streak',
+      score: null,
+      time: '5 hours ago'
     },
     {
-      icon: Clock,
-      title: "Study Time Analytics",
-      description: "Track how much time you spend studying each section and optimize your study schedule. See patterns in your most productive study times and sessions."
+      type: 'question_added',
+      user: 'Alex Thompson',
+      action: 'added 15 new questions',
+      score: null,
+      time: '1 day ago'
     }
   ];
 
-  const benefits = [
-    {
-      icon: Eye,
-      title: "Visual Progress",
-      description: "See your improvement over time with interactive charts and graphs that make it easy to understand your progress at a glance."
-    },
-    {
-      icon: Zap,
-      title: "Instant Feedback",
-      description: "Get immediate feedback on your performance with real-time updates and notifications about your achievements and areas for improvement."
-    },
-    {
-      icon: Shield,
-      title: "Data-Driven Decisions",
-      description: "Make informed decisions about your study strategy based on comprehensive analytics and performance metrics."
-    }
+  const topPerformers = [
+    { name: 'Sarah Johnson', score: 1580, improvement: '+340' },
+    { name: 'Michael Chen', score: 1540, improvement: '+290' },
+    { name: 'Emily Rodriguez', score: 1520, improvement: '+280' },
+    { name: 'Alex Thompson', score: 1510, improvement: '+270' },
+    { name: 'Jessica Lee', score: 1500, improvement: '+260' }
   ];
 
-  const dashboardCapabilities = [
-    "View your overall SAT score progression over time",
-    "Analyze performance by section (Math, Reading, Writing)",
-    "Track accuracy rates for different question types",
-    "Monitor study time and session productivity",
-    "Set and track personalized study goals",
-    "Export your progress reports for college applications",
-    "Compare your performance to target scores",
-    "Identify patterns in your learning behavior"
+  const upcomingFeatures = [
+    {
+      title: 'AI-Powered Question Generation',
+      description: 'Automatically generate practice questions based on user performance',
+      status: 'In Development',
+      eta: 'Q1 2025'
+    },
+    {
+      title: 'Advanced Analytics Dashboard',
+      description: 'Enhanced reporting and insights for educators and administrators',
+      status: 'Planning',
+      eta: 'Q2 2025'
+    },
+    {
+      title: 'Mobile App Launch',
+      description: 'Native iOS and Android applications for on-the-go studying',
+      status: 'Design Phase',
+      eta: 'Q3 2025'
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard Features</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Dashboard</h1>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <BarChart3 className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Your Personal
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Analytics Hub</span>
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold homepage-text-primary mb-4">
+            Platform
+            <span className="homepage-gradient-text"> Overview</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Our comprehensive dashboard provides you with deep insights into your SAT preparation journey. 
-            Track your progress, identify areas for improvement, and make data-driven decisions to maximize your score potential.
+          <p className="text-lg homepage-text-secondary max-w-2xl mx-auto">
+            Monitor platform performance, user engagement, and key metrics in real-time.
           </p>
         </div>
 
-        {/* Core Features */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Core Dashboard Features</h3>
-          <div className="grid md:grid-cols-2 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                    <feature.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {stats.map((stat, index) => (
+            <div key={index} className="homepage-card p-6 rounded-xl shadow-lg homepage-hover-glow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                  <stat.icon className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                  {stat.change}
+                </span>
+              </div>
+              <div className="text-2xl font-bold homepage-text-primary mb-1">{stat.value}</div>
+              <div className="text-sm homepage-text-secondary">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Recent Activity */}
+          <div className="lg:col-span-2">
+            <div className="homepage-card rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold homepage-text-primary mb-6">Recent Activity</h3>
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <div className="w-10 h-10 rounded-full homepage-feature-icon flex items-center justify-center">
+                      {activity.type === 'quiz_completed' && <BookOpen className="w-5 h-5 text-white" />}
+                      {activity.type === 'high_score' && <Award className="w-5 h-5 text-white" />}
+                      {activity.type === 'study_streak' && <TrendingUp className="w-5 h-5 text-white" />}
+                      {activity.type === 'question_added' && <Target className="w-5 h-5 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold homepage-text-primary">{activity.user}</span>
+                        <span className="homepage-text-secondary">{activity.action}</span>
+                        {activity.score && (
+                          <span className="blue-gradient-text font-medium">({activity.score})</span>
+                        )}
+                      </div>
+                      <div className="text-sm homepage-text-secondary mt-1">{activity.time}</div>
+                    </div>
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{feature.title}</h4>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Performers */}
+          <div>
+            <div className="homepage-card rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold homepage-text-primary mb-6">Top Performers</h3>
+              <div className="space-y-4">
+                {topPerformers.map((performer, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500' : 
+                        index === 1 ? 'bg-gray-400' : 
+                        index === 2 ? 'bg-amber-600' : 
+                        'bg-gray-300'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="font-semibold homepage-text-primary">{performer.name}</div>
+                        <div className="text-sm homepage-text-secondary">{performer.improvement}</div>
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold blue-gradient-text">
+                      {performer.score}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Features */}
+        <div className="mt-12">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Upcoming Features</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {upcomingFeatures.map((feature, index) => (
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold homepage-text-primary">{feature.title}</h4>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    feature.status === 'In Development' ? 'bg-blue-100 text-blue-700' :
+                    feature.status === 'Planning' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-purple-100 text-purple-700'
+                  }`}>
+                    {feature.status}
+                  </span>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dashboard Capabilities */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">What You Can Do With Your Dashboard</h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {dashboardCapabilities.map((capability, index) => (
-              <div key={index} className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700 dark:text-gray-300">{capability}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Benefits */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Why Our Dashboard Works</h3>
-          <div className="grid md:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                  <benefit.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                <p className="homepage-text-secondary mb-4">{feature.description}</p>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4 homepage-text-secondary" />
+                  <span className="text-sm homepage-text-secondary">ETA: {feature.eta}</span>
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{benefit.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{benefit.description}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-16">
-          <h3 className="text-2xl font-bold mb-6">How the Dashboard Helps You Succeed</h3>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h4 className="text-lg font-semibold mb-4">For Students</h4>
-              <ul className="space-y-3 text-sm opacity-90">
-                <li>• Understand your learning patterns and optimize study time</li>
-                <li>• Focus on your weakest areas with targeted practice</li>
-                <li>• Track improvement and stay motivated with visual progress</li>
-                <li>• Make informed decisions about test preparation strategies</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">For Parents & Tutors</h4>
-              <ul className="space-y-3 text-sm opacity-90">
-                <li>• Monitor student progress and identify areas needing attention</li>
-                <li>• Provide targeted support based on detailed analytics</li>
-                <li>• Track study consistency and time management</li>
-                <li>• Celebrate achievements and milestones together</li>
-              </ul>
-            </div>
+        {/* Quick Actions */}
+        <div className="mt-12 homepage-card rounded-xl shadow-lg p-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6 text-center">Quick Actions</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button className="homepage-cta-primary text-white p-4 rounded-lg font-medium hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2">
+              <Users className="w-5 h-5" />
+              <span>Manage Users</span>
+            </button>
+            <button className="homepage-cta-secondary p-4 rounded-lg font-medium hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2">
+              <BookOpen className="w-5 h-5" />
+              <span>Content Library</span>
+            </button>
+            <button className="homepage-cta-secondary p-4 rounded-lg font-medium hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2">
+              <TrendingUp className="w-5 h-5" />
+              <span>Analytics</span>
+            </button>
+            <button className="homepage-cta-secondary p-4 rounded-lg font-medium hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2">
+              <Award className="w-5 h-5" />
+              <span>Reports</span>
+            </button>
           </div>
         </div>
 
-        {/* Getting Started */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Getting Started with Your Dashboard</h3>
-          <div className="space-y-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">1</div>
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Start Logging Questions</h4>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Begin by logging your SAT practice questions. The more data you provide, the more accurate your analytics will be.
-                </p>
-              </div>
+        {/* System Status */}
+        <div className="mt-12 blue-gradient-bg rounded-2xl p-8 text-white text-center">
+          <h3 className="text-2xl font-bold mb-4">System Status</h3>
+          <p className="text-lg mb-6 opacity-90">
+            All systems are operational and running smoothly.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span>Database: Online</span>
             </div>
-            <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">2</div>
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Review Your Analytics</h4>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Check your dashboard regularly to see your progress, identify patterns, and understand your performance trends.
-                </p>
-              </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span>API: Healthy</span>
             </div>
-            <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">3</div>
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Adjust Your Strategy</h4>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Use the insights from your dashboard to refine your study plan and focus on areas that need the most attention.
-                </p>
-              </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span>CDN: Active</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span>Monitoring: Active</span>
             </div>
           </div>
         </div>

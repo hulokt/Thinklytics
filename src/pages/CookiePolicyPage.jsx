@@ -1,310 +1,304 @@
 import React from 'react';
-import { ArrowLeft, Shield, Settings, Info, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Cookie, Shield, Settings, Eye } from 'lucide-react';
 
 const CookiePolicyPage = ({ onBack }) => {
   const cookieTypes = [
     {
-      title: "Essential Cookies",
       icon: Shield,
-      description: "These cookies are necessary for the website to function properly and cannot be disabled.",
-      examples: [
-        "Authentication cookies to keep you logged in",
-        "Security cookies to protect against fraud",
-        "Session cookies to maintain your preferences"
-      ],
-      necessary: true
+      title: 'Essential Cookies',
+      description: 'Required for the website to function properly and cannot be disabled.',
+      examples: ['Authentication', 'Security', 'Form submissions'],
+      required: true
     },
     {
-      title: "Analytics Cookies",
-      icon: Info,
-      description: "These cookies help us understand how visitors interact with our website by collecting and reporting information anonymously.",
-      examples: [
-        "Google Analytics to track page views",
-        "Performance monitoring to improve site speed",
-        "User behavior analysis to enhance features"
-      ],
-      necessary: false
+      icon: Eye,
+      title: 'Analytics Cookies',
+      description: 'Help us understand how visitors interact with our website.',
+      examples: ['Google Analytics', 'Performance metrics', 'Usage statistics'],
+      required: false
     },
     {
-      title: "Functional Cookies",
       icon: Settings,
-      description: "These cookies enable enhanced functionality and personalization, such as remembering your preferences.",
-      examples: [
-        "Language preference settings",
-        "Theme and display preferences",
-        "Study progress tracking"
-      ],
-      necessary: false
+      title: 'Functional Cookies',
+      description: 'Remember your preferences and settings for a better experience.',
+      examples: ['Language preferences', 'Theme settings', 'Saved preferences'],
+      required: false
     },
     {
-      title: "Marketing Cookies",
-      icon: AlertTriangle,
-      description: "These cookies are used to track visitors across websites to display relevant advertisements.",
-      examples: [
-        "Social media integration cookies",
-        "Advertising network cookies",
-        "Retargeting and remarketing cookies"
-      ],
-      necessary: false
+      icon: Cookie,
+      title: 'Marketing Cookies',
+      description: 'Used to track visitors across websites to display relevant ads.',
+      examples: ['Advertising networks', 'Social media tracking', 'Remarketing'],
+      required: false
     }
   ];
 
-  const cookieDetails = [
-    {
-      name: "session_id",
-      purpose: "Maintains your login session",
-      duration: "Session",
-      type: "Essential"
-    },
-    {
-      name: "csrf_token",
-      purpose: "Protects against cross-site request forgery",
-      duration: "Session",
-      type: "Essential"
-    },
-    {
-      name: "_ga",
-      purpose: "Google Analytics tracking",
-      duration: "2 years",
-      type: "Analytics"
-    },
-    {
-      name: "_gid",
-      purpose: "Google Analytics session tracking",
-      duration: "24 hours",
-      type: "Analytics"
-    },
-    {
-      name: "theme_preference",
-      purpose: "Remembers your dark/light mode preference",
-      duration: "1 year",
-      type: "Functional"
-    },
-    {
-      name: "study_progress",
-      purpose: "Tracks your study session progress",
-      duration: "Session",
-      type: "Functional"
-    }
-  ];
+  const lastUpdated = 'December 15, 2024';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Cookie Policy</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Cookie Policy</h1>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl homepage-feature-icon mb-6">
+            <Cookie className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Cookie
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Policy</span>
+          <h2 className="text-4xl font-bold homepage-text-primary mb-4">
+            Cookie Policy
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            This policy explains how we use cookies and similar technologies on our website 
-            to provide you with the best possible experience.
+          <p className="text-lg homepage-text-secondary max-w-2xl mx-auto">
+            Learn about how we use cookies and similar technologies to enhance your experience on Thinklytics.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-            Last updated: December 2024
+          <p className="text-sm homepage-text-secondary mt-4">
+            Last updated: {lastUpdated}
           </p>
         </div>
 
-        {/* What Are Cookies Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">What Are Cookies?</h3>
-          <div className="space-y-4 text-gray-600 dark:text-gray-300">
-            <p>
-              Cookies are small text files that are stored on your device when you visit our website. 
-              They help us provide you with a better experience by remembering your preferences, 
-              analyzing how you use our site, and personalizing content.
-            </p>
-            <p>
-              We use both session cookies (which expire when you close your browser) and persistent cookies 
-              (which remain on your device for a set period of time).
-            </p>
-          </div>
+        {/* Introduction */}
+        <div className="homepage-card rounded-xl p-8 shadow-lg mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-4">What Are Cookies?</h3>
+          <p className="homepage-text-secondary mb-4">
+            Cookies are small text files that are stored on your device when you visit a website. They help websites 
+            remember information about your visit, which can make your next visit easier and the site more useful to you.
+          </p>
+          <p className="homepage-text-secondary">
+            We use cookies and similar technologies to improve your experience on our platform, analyze usage patterns, 
+            and provide personalized content and features.
+          </p>
         </div>
 
         {/* Cookie Types */}
-        <div className="mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Types of Cookies We Use</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            {cookieTypes.map((type, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                    <type.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Types of Cookies We Use</h3>
+          <div className="space-y-6">
+            {cookieTypes.map((cookie, index) => (
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                    <cookie.icon className="w-6 h-6 text-white" />
                   </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{type.title}</h4>
-                    {type.necessary && (
-                      <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-medium rounded-full">
-                        Necessary
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h4 className="text-lg font-semibold homepage-text-primary">{cookie.title}</h4>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        cookie.required 
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      }`}>
+                        {cookie.required ? 'Required' : 'Optional'}
                       </span>
-                    )}
+                    </div>
+                    <p className="homepage-text-secondary mb-4">{cookie.description}</p>
+                    <div>
+                      <h5 className="font-medium homepage-text-primary mb-2">Examples:</h5>
+                      <ul className="space-y-1">
+                        {cookie.examples.map((example, i) => (
+                          <li key={i} className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full"></div>
+                            <span className="homepage-text-secondary text-sm">{example}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">{type.description}</p>
-                <div className="space-y-2">
-                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Examples:</h5>
-                  <ul className="space-y-1">
-                    {type.examples.map((example, exampleIndex) => (
-                      <li key={exampleIndex} className="flex items-start space-x-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="text-sm text-gray-600 dark:text-gray-300">{example}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Cookie Details Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Detailed Cookie Information</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Cookie Name</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Purpose</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Duration</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cookieDetails.map((cookie, index) => (
-                  <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
-                    <td className="py-3 px-4 font-mono text-sm text-gray-900 dark:text-white">{cookie.name}</td>
-                    <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{cookie.purpose}</td>
-                    <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{cookie.duration}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        cookie.type === 'Essential' 
-                          ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                          : cookie.type === 'Analytics'
-                          ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                          : 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                      }`}>
-                        {cookie.type}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Managing Cookies */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Managing Your Cookie Preferences</h3>
+        {/* How We Use Cookies */}
+        <div className="homepage-card rounded-xl p-8 shadow-lg mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">How We Use Cookies</h3>
           <div className="space-y-6">
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Browser Settings</h4>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                You can control and manage cookies through your browser settings. Most browsers allow you to:
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">1. Essential Site Functions</h4>
+              <p className="homepage-text-secondary mb-3">
+                We use essential cookies to enable core website functionality, including:
               </p>
-              <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <ul className="space-y-2">
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>View and delete existing cookies</span>
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">User authentication and account management</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>Block cookies from specific websites</span>
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Security and fraud prevention</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>Set preferences for different types of cookies</span>
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Shopping cart and quiz progress saving</span>
                 </li>
               </ul>
             </div>
+
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Cookie Consent</h4>
-              <p className="text-gray-600 dark:text-gray-300">
-                When you first visit our website, you'll see a cookie consent banner that allows you to 
-                choose which types of cookies you want to accept. You can change these preferences at any time 
-                by clicking the "Cookie Settings" link in our footer.
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">2. Analytics and Performance</h4>
+              <p className="homepage-text-secondary mb-3">
+                We use analytics cookies to understand how our website is used and to improve performance:
               </p>
+              <ul className="space-y-2">
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Track visitor behavior and usage patterns</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Identify popular content and features</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Monitor site performance and errors</span>
+                </li>
+              </ul>
             </div>
+
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Third-Party Cookies</h4>
-              <p className="text-gray-600 dark:text-gray-300">
-                Some cookies are set by third-party services that appear on our pages. We do not control 
-                these cookies and they are subject to the third party's privacy policy. You can manage 
-                these through your browser settings or by visiting the third party's website.
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">3. Personalization</h4>
+              <p className="homepage-text-secondary mb-3">
+                We use functional cookies to remember your preferences and provide a personalized experience:
               </p>
+              <ul className="space-y-2">
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Remember your language and region settings</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Save your theme and display preferences</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Customize content based on your interests</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
 
-        {/* Impact of Disabling Cookies */}
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-8 mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Impact of Disabling Cookies</h3>
-          <div className="space-y-4 text-gray-700 dark:text-gray-300">
-            <p>
-              While you can disable cookies, please note that doing so may affect the functionality of our website:
-            </p>
-            <ul className="space-y-2">
-              <li className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>You may need to log in repeatedly</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>Some features may not work properly</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>Your preferences may not be saved</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>We may not be able to provide personalized content</span>
-              </li>
-            </ul>
+        {/* Cookie Management */}
+        <div className="homepage-card rounded-xl p-8 shadow-lg mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Managing Your Cookie Preferences</h3>
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">Browser Settings</h4>
+              <p className="homepage-text-secondary mb-4">
+                Most web browsers allow you to control cookies through their settings. You can:
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Block all cookies or only third-party cookies</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Delete existing cookies from your device</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Set your browser to notify you when cookies are set</span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">Our Cookie Preferences</h4>
+              <p className="homepage-text-secondary mb-4">
+                We provide a cookie consent banner that allows you to:
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Accept or decline non-essential cookies</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Customize your preferences by cookie type</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                  <span className="homepage-text-secondary text-sm">Change your preferences at any time</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* Updates and Contact */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-          <h3 className="text-2xl font-bold mb-6">Questions About Cookies?</h3>
-          <div className="space-y-4">
-            <p className="text-lg opacity-90">
-              If you have any questions about our use of cookies or this cookie policy, please contact us at{' '}
-              <a href="mailto:privacy@thinklytics.com" className="underline hover:no-underline">
-                privacy@thinklytics.com
+        {/* Third-Party Cookies */}
+        <div className="homepage-card rounded-xl p-8 shadow-lg mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Third-Party Cookies</h3>
+          <p className="homepage-text-secondary mb-4">
+            We may use third-party services that set their own cookies. These include:
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">Google Analytics</h4>
+              <p className="homepage-text-secondary text-sm mb-2">
+                Used to analyze website traffic and user behavior.
+              </p>
+              <a href="#" className="blue-gradient-text text-sm hover:underline">
+                Learn more about Google's privacy policy
               </a>
-            </p>
-            <p className="opacity-90">
-              We may update this cookie policy from time to time to reflect changes in our practices or for other operational, 
-              legal, or regulatory reasons. We will notify you of any material changes by posting the updated policy on this page.
-            </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold homepage-text-primary mb-3">Social Media Platforms</h4>
+              <p className="homepage-text-secondary text-sm mb-2">
+                Integration with social media may set tracking cookies.
+              </p>
+              <a href="#" className="blue-gradient-text text-sm hover:underline">
+                View social media privacy policies
+              </a>
+            </div>
           </div>
-          <button
-            onClick={onBack}
-            className="mt-6 bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors"
-          >
-            Back to Home
-          </button>
+        </div>
+
+        {/* Contact Information */}
+        <div className="homepage-card rounded-xl p-8 shadow-lg mb-8">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Questions About Cookies?</h3>
+          <p className="homepage-text-secondary mb-4">
+            If you have any questions about our use of cookies or this Cookie Policy, please contact us:
+          </p>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full"></div>
+              <span className="homepage-text-secondary">Email: privacy@thinklytics.com</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full"></div>
+              <span className="homepage-text-secondary">Address: Tampa, Florida</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white text-center">
+          <h3 className="text-2xl font-bold mb-4">Manage Your Preferences</h3>
+          <p className="text-lg mb-6 opacity-90">
+            Take control of your privacy and customize your cookie preferences.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-white text-[var(--brand-60)] hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
+              Cookie Preferences
+            </button>
+            <button className="bg-white/10 text-white hover:bg-white/20 px-8 py-3 rounded-lg font-medium transition-colors">
+              Privacy Policy
+            </button>
+          </div>
         </div>
       </div>
     </div>

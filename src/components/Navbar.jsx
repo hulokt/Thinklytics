@@ -1,195 +1,162 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
-import { Moon, Sun, Menu, X, ArrowLeft } from "lucide-react";
+import { Moon, Sun, Menu, X, ArrowRight } from "lucide-react";
 import logoImage from "/logo.png";
+import { useDarkMode } from "../contexts/DarkModeContext";
 
-const Navbar = ({ onGetStarted, onLogin, minimal = false }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+const NAV_LINKS = [
+  { name: "Products", href: "/products", sectionId: "features" },
+  { name: "Customers", href: "/customers", sectionId: "testimonials" },
+  { name: "Pricing", href: "/pricing", sectionId: "pricing" },
+  { name: "Resources", href: "/resources", sectionId: "faq" },
+  { name: "Contact", href: "/contact" },
+];
+
+const Navbar = ({ onGetStarted }) => {
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Initialize theme from localStorage or default to dark
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme) {
-      const isDark = savedTheme === 'dark';
-      setIsDarkMode(isDark);
-      updateTheme(isDark);
-    } else if (prefersDark) {
-      setIsDarkMode(true);
-      updateTheme(true);
-    } else {
-      setIsDarkMode(false);
-      updateTheme(false);
-    }
-  }, []);
-
-  const updateTheme = (isDark) => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
-    }
-  };
-
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    updateTheme(newMode);
-    localStorage.setItem('theme', newMode ? 'dark' : 'light');
-    console.log("Dark mode toggled:", newMode);
-  };
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleNavigation = (path) => {
+  const handleNavigation = (link) => {
     setIsMobileMenuOpen(false);
-    if (path === '/home') {
-      scrollToTop();
-    } else {
-      navigate(path);
+    
+    // If we're on the homepage and the link has a sectionId, scroll to that section
+    if (location.pathname === "/home" && link.sectionId) {
+      const element = document.getElementById(link.sectionId);
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+        return;
+      }
     }
+    
+    // Otherwise, navigate to the href
+    navigate(link.href);
   };
-
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Features", path: "/features" },
-    { name: "Pricing", path: "/pricing" },
-    { name: "About", path: "/about" },
-  ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Logo - Clickable */}
-          <div 
-            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-            onClick={scrollToTop}
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-transparent backdrop-blur-md transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between py-3 lg:py-4">
+        {/* Left: Logo + Hamburger */}
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button
+            className="lg:hidden flex items-center justify-center w-10 h-10 text-gray-300 hover:text-white rounded-md focus:outline-none transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Open menu"
           >
-            <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover" />
-            <span className="text-gray-900 dark:text-white text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Thinklytics
-            </span>
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate("/home");
+            }}
+          >
+            <img src={logoImage} alt="Logo" className="w-8 h-8 rounded-lg object-cover dark:brightness-0 dark:invert" />
+            <span className="text-lg sm:text-xl font-bold whitespace-nowrap bg-gradient-to-r from-[var(--brand-60)] via-[var(--brand-50p)] to-[var(--brand-70)] bg-clip-text text-transparent dark:text-white">Thinklytics</span>
           </div>
-          {/* Minimal mode: only show Back to Home */}
-          {minimal ? (
-            <Button
-              variant="ghost"
-              onClick={onLogin} // This will be used for back to home
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center space-x-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Home</span>
-            </Button>
-          ) : (
-            <>
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-8">
-                {navItems.map((item) => (
-                  <button
-                    key={item.name}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation(item.path);
-                    }}
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 relative group cursor-pointer bg-transparent border-none p-0"
-                  >
-                    {item.name}
-                    <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></span>
-                  </button>
-                ))}
-              </div>
-              {/* Desktop Actions */}
-              <div className="hidden md:flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleDarkMode}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10"
-                >
-                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={onLogin}
-                  className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
-                >
-                  Sign In
-                </Button>
-                <Button 
-                  onClick={onGetStarted}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                >
-                  Get Started
-                </Button>
-              </div>
-              {/* Mobile Menu Button */}
-              <div className="md:hidden">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white w-14 h-14 flex items-center justify-center"
-                >
-                  {isMobileMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
-                </Button>
-              </div>
-            </>
-          )}
         </div>
-        {/* Mobile Menu (unchanged, only show in non-minimal mode) */}
-        {!minimal && isMobileMenuOpen && (
-          <div className="md:hidden py-8 border-t border-gray-200 dark:border-white/10 animate-fade-in bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
-            <div className="flex flex-col space-y-8">
-              {navItems.map((item) => (
+
+        {/* Center: Nav links in pill */}
+        <div className="hidden lg:flex flex-1 justify-center">
+          <div className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gray-800/80 dark:bg-[var(--bg-lv2)] shadow-md border border-gray-700 dark:border-[var(--border-grey)]">
+            {NAV_LINKS.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
                 <button
-                  key={item.name}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation(item.path);
-                  }}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 px-4 py-4 text-xl font-medium cursor-pointer rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 bg-transparent border-none w-full text-left"
+                  key={link.name}
+                  onClick={() => handleNavigation(link)}
+                  className={
+                    `relative px-4 py-1.5 rounded-full text-base font-medium transition-colors duration-200 text-gray-200 hover:text-white focus:outline-none ` +
+                    (isActive ? "font-bold text-white" : "")
+                  }
+                  style={{ background: "none" }}
                 >
-                  {item.name}
+                  <span>{link.name}</span>
+                  <span
+                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 h-1 w-5/6 rounded-full transition-all duration-200 pointer-events-none ` +
+                      (isActive
+                        ? "bg-gradient-to-r from-[var(--brand-60)] via-[var(--brand-50p)] to-[var(--brand-70)] opacity-100"
+                        : "opacity-0 group-hover:opacity-100")
+                    }
+                  ></span>
                 </button>
-              ))}
-              <div className="flex items-center justify-between pt-8 border-t border-gray-200 dark:border-white/10">
-                <Button
-                  variant="ghost"
-                  onClick={toggleDarkMode}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 w-16 h-16 flex items-center justify-center"
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Light/dark toggle + CTA */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            onClick={toggleDarkMode}
+            className="flex items-center justify-center w-10 h-10 text-[var(--brand-70)] hover:text-[var(--brand-60)] rounded-full focus:outline-none transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+          <Button
+            onClick={onGetStarted}
+            className="hidden sm:flex bg-[var(--brand-60)] hover:bg-[var(--brand-70)] text-white px-4 sm:px-6 py-2 rounded-full font-medium text-sm sm:text-base transition-colors duration-200 items-center gap-2 shadow"
+          >
+            <span>Start now</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden absolute top-full left-0 right-0 bg-gray-900/95 dark:bg-[var(--bg-lv1)]/95 border-b border-gray-800 dark:border-[var(--border-grey)] shadow-xl animate-fade-in z-50 backdrop-blur-md">
+          <div className="flex flex-col items-stretch gap-1 py-4 px-4">
+            {NAV_LINKS.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
+                <button
+                  key={link.name}
+                  onClick={() => handleNavigation(link)}
+                  className={
+                    `relative w-full text-left px-4 py-3 rounded-lg text-base font-medium transition-colors duration-200 text-gray-200 hover:text-white hover:bg-gray-800/50 dark:hover:bg-[var(--bg-lv2)]/50 focus:outline-none ` +
+                    (isActive ? "font-bold text-white bg-gray-800/50 dark:bg-[var(--bg-lv2)]/50" : "")
+                  }
+                  style={{ background: "none" }}
                 >
-                  {isDarkMode ? <Sun className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
-                </Button>
-                <div className="flex space-x-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={onLogin}
-                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 text-lg font-medium"
-                  >
-                    Sign In
-                  </Button>
-                  <Button 
-                    onClick={onGetStarted}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 text-lg font-medium"
-                  >
-                    Get Started
-                  </Button>
-                </div>
-              </div>
+                  <span>{link.name}</span>
+                  <span
+                    className={`absolute left-1/2 -translate-x-1/2 bottom-1 h-1 w-5/6 rounded-full transition-all duration-200 pointer-events-none ` +
+                      (isActive
+                        ? "bg-gradient-to-r from-[var(--brand-60)] via-[var(--brand-50p)] to-[var(--brand-70)] opacity-100"
+                        : "opacity-0 group-hover:opacity-100")
+                    }
+                  ></span>
+                </button>
+              );
+            })}
+            <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-800 dark:border-[var(--border-grey)]">
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center justify-center w-10 h-10 text-[var(--brand-70)] hover:text-[var(--brand-60)] rounded-full focus:outline-none transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <Button
+                onClick={onGetStarted}
+                className="bg-[var(--brand-60)] hover:bg-[var(--brand-70)] text-white px-6 py-2 rounded-full font-medium text-base transition-colors duration-200 flex items-center gap-2 shadow"
+              >
+                <span>Start now</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 };

@@ -6,7 +6,34 @@
 :root {
   --radio-dot-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(17,20,24)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3ccircle cx=%278%27 cy=%278%27 r=%273%27/%3e%3c/svg%3e');
   --select-button-svg: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(96,117,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e');
+  
+  /* Blue Dark Theme Variables */
+  --bg-lv0: #010811;
+  --bg-lv1: #030d1c;
+  --bg-lv2: #0b1423;
+  --grey-50: #b1b4b7;
+  --grey-70: #fff;
+  --grey-40: #7f858b;
+  --grey-8: #ffffff14;
+  --grey-16: #ffffff29;
+  --grey-4: #ffffff0a;
+  --brand-50p: #09a4ff;
+  --brand-60: #22adff;
+  --brand-70: #3ab6ff;
+  --brand-10: #09a4ff1a;
+  --brand-20: #09a4ff33;
+  --border-grey: #212c3e;
+  --accent-green: #2f8b5d;
+  --accent-red: #d83b3b;
+  --link-primary: #2d62ff;
+  --text-primary: #fff;
+  --text-secondary: #b1b4b7;
+  --text-alternate: #7f858b;
   }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 @layer utilities {
@@ -17,6 +44,136 @@
     to {
       transform: translate(calc(-50% - 0.5rem)); /* 0.5rem is half the gap */
     }
+  }
+  .sidebar-bg {
+    background-color: #ffffff !important; /* light mode */
+  }
+  .dark .sidebar-bg {
+    background-color: #0f172a !important; /* slate-900 in Tailwind */
+  }
+  .navbar-bg {
+    background-color: rgba(255, 255, 255, 0.95) !important; /* light mode */
+  }
+  .dark .navbar-bg {
+    background-color: rgba(15, 23, 42, 0.95) !important; /* slate-900 with 95% opacity */
+  }
+  
+  /* Homepage Blue Theme */
+  .homepage-bg {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  .dark .homepage-bg {
+    background: linear-gradient(135deg, var(--bg-lv0) 0%, var(--bg-lv1) 50%, var(--bg-lv2) 100%);
+  }
+  
+  .homepage-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: #e2e8f0;
+  }
+  .dark .homepage-card {
+    background-color: var(--grey-8);
+    border-color: var(--border-grey);
+  }
+  
+  .homepage-text-primary {
+    color: #1e293b;
+  }
+  .dark .homepage-text-primary {
+    color: var(--text-primary);
+  }
+  
+  .homepage-text-secondary {
+    color: #64748b;
+  }
+  .dark .homepage-text-secondary {
+    color: var(--text-secondary);
+  }
+  
+  .homepage-text-muted {
+    color: #94a3b8;
+  }
+  .dark .homepage-text-muted {
+    color: var(--text-alternate);
+  }
+  
+  .homepage-gradient-text {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70), var(--brand-50p));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .dark .homepage-gradient-text {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70), var(--brand-50p));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  .homepage-cta-primary {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70));
+  }
+  .dark .homepage-cta-primary {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-50p));
+  }
+  
+  .homepage-cta-secondary {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: #e2e8f0;
+    color: #475569;
+  }
+  .dark .homepage-cta-secondary {
+    background-color: var(--grey-16);
+    border-color: var(--border-grey);
+    color: var(--text-primary);
+  }
+  
+  .homepage-feature-icon {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70));
+  }
+  .dark .homepage-feature-icon {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-50p));
+  }
+  
+  .homepage-hover-glow {
+    transition: all 0.3s ease;
+  }
+  .homepage-hover-glow:hover {
+    box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+  }
+  .dark .homepage-hover-glow:hover {
+    box-shadow: 0 20px 25px -5px rgba(9, 164, 255, 0.15), 0 10px 10px -5px rgba(9, 164, 255, 0.08);
+  }
+
+  /* Global Blue Gradient Overrides for Light Mode */
+  .blue-gradient-text {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70), var(--brand-50p));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  .blue-gradient-bg {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70));
+  }
+  
+  .blue-gradient-border {
+    border-image: linear-gradient(135deg, var(--brand-60), var(--brand-70)) 1;
+  }
+  
+  /* Blue gradient utilities for specific use cases */
+  .blue-gradient-text {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70), var(--brand-50p));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  .blue-gradient-bg {
+    background: linear-gradient(135deg, var(--brand-60), var(--brand-70));
+  }
+  
+  .blue-gradient-border {
+    border-image: linear-gradient(135deg, var(--brand-60), var(--brand-70)) 1;
   }
 }
 
@@ -124,20 +281,20 @@ button * {
 
 /* Dark Mode Scrollbar Styling */
 .dark ::-webkit-scrollbar-track {
-  background: #0a0f1e;
+  background: #0f172a;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #38bdf8;
-  border: 1px solid #1e293b;
+  background: #475569;
+  border: 1px solid #334155;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9;
+  background: #64748b;
 }
 
 .dark ::-webkit-scrollbar-corner {
-  background: #0a0f1e;
+  background: #0f172a;
 }
 
 /* Firefox Scrollbar Support */
@@ -147,7 +304,7 @@ button * {
 }
 
 .dark * {
-  scrollbar-color: #38bdf8 #0a0f1e;
+  scrollbar-color: #475569 #0f172a;
 }
 
 /* Quiz Navigation Styles - NO HOVER EFFECTS */
@@ -339,46 +496,19 @@ footer a:hover {
 @media (max-width: 640px) {
   /* Force all containers to allow scrolling */
   body,
-  #root,
-  .h-screen,
-  .min-h-screen,
-  .h-full,
-  .min-h-full,
-  .overflow-hidden,
-  [class*="h-screen"],
-  [class*="min-h-screen"],
-  [class*="h-full"],
-  [class*="overflow-hidden"],
-  div[class*="h-screen"],
-  div[class*="min-h-screen"],
-  div[class*="h-full"],
-  div[class*="overflow-hidden"],
-  .fixed,
-  [class*="fixed"],
-  div[class*="inset-0"] {
+  #root {
+    min-height: 100vh !important;
     height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
-  }
-  
-  /* Force flex containers to allow natural height */
-  .flex-1,
-  [class*="flex-1"],
-  .flex,
-  [class*="flex"] {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    flex-shrink: 0 !important;
   }
   
   /* Ensure main app containers allow scrolling */
   [class*="SidebarLayout"],
-  [class*="Dashboard"] {
-    height: auto !important;
+  [class*="Dashboard"],
+  .min-h-screen {
     min-height: 100vh !important;
+    height: auto !important;
     overflow: visible !important;
   }
   
@@ -391,41 +521,27 @@ footer a:hover {
   
   /* Add safe area for mobile bottom navigation */
   body {
-    padding-bottom: 100px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
   }
   
-  @supports (height: 100dvh) {
-    .h-screen,
-    .min-h-screen,
-    /* Target specific containers that might be using fixed heights */
-    [class*="h-screen"],
-    [class*="min-h-screen"],
-    /* Target the main app containers */
-    div[class*="h-screen"],
-    div[class*="min-h-screen"],
-    /* Target fixed positioning that might affect height */
-    .fixed,
-    [class*="fixed"],
-    /* Target specific layout containers */
-    div[class*="inset-0"] {
+  /* Ensure flex containers work properly on mobile */
+  .flex-1,
+  [class*="flex-1"] {
+    min-height: auto !important;
       height: auto !important;
-      min-height: auto !important;
-      max-height: none !important;
+  }
+  
+  /* Fix for any fixed positioning that might affect height */
+  .fixed,
+  [class*="fixed"] {
+    position: fixed !important;
     }
     
-    /* Ensure overflow is handled properly on mobile */
-    body,
-    #root {
-      overflow: visible !important;
-      overflow-y: auto !important;
-    }
-    
-    /* Fix for any flex containers that might be stretching beyond viewport */
-    .flex-1,
-    [class*="flex-1"] {
-      max-height: none !important;
-      height: auto !important;
-    }
+  /* Ensure proper z-index stacking */
+  nav,
+  [class*="navbar"],
+  [class*="Navbar"] {
+    z-index: 100 !important;
   }
 }
 
@@ -471,4 +587,43 @@ footer a:hover {
     padding-bottom: 0 !important;
     overflow: hidden !important;
   }
+}
+
+/* Autofill override for modern input look */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0F172A inset !important;
+  box-shadow: 0 0 0 1000px #0F172A inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+  border: 1px solid #28A0FF !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Light mode autofill override */
+:not(.dark) input:-webkit-autofill,
+:not(.dark) input:-webkit-autofill:focus,
+:not(.dark) input:-webkit-autofill:hover,
+:not(.dark) input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f9fafb inset !important;
+  box-shadow: 0 0 0 1000px #f9fafb inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  border: 1px solid #3b82f6 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Dark mode autofill override */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0F172A inset !important;
+  box-shadow: 0 0 0 1000px #0F172A inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+  border: 1px solid #28A0FF !important;
+  transition: background-color 5000s ease-in-out 0s;
 } 

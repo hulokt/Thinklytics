@@ -56,7 +56,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-slate-900 border-t border-white/10">
+    <footer className="bg-[#030a14] border-t border-white/10">
       {/* Newsletter Section */}
       <div className="py-16 px-6 border-b border-white/10">
         <div className="mx-auto max-w-7xl">
@@ -64,7 +64,7 @@ const Footer = () => {
             <div>
               <h3 className="text-3xl font-bold text-white mb-4">
                 Stay Updated with SAT 
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"> Success Tips</span>
+                <span className="blue-gradient-text"> Success Tips</span>
               </h3>
               <p className="text-gray-300 text-lg leading-relaxed">
                 Get weekly study strategies, test-taking tips, and exclusive content delivered to your inbox. 
@@ -78,7 +78,7 @@ const Footer = () => {
                   placeholder="Enter your email address"
                   className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-12"
                 />
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 h-12 text-white" style={{color: 'white'}}>
+                <Button className="blue-gradient-bg hover:opacity-90 px-8 h-12 text-white" style={{color: 'white'}}>
                   Subscribe
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -97,7 +97,7 @@ const Footer = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500/20 to-blue-600/20 mb-4 group-hover:scale-110 transition-transform duration-300">
                   <stat.icon className="w-6 h-6 text-blue-400" />
                 </div>
                 <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
@@ -115,8 +115,8 @@ const Footer = () => {
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-2 mb-6">
-                <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
-                <span className="text-white text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover brightness-0 invert" />
+                <span className="text-white text-2xl font-bold">
                   Thinklytics
                 </span>
               </div>

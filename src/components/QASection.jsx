@@ -40,12 +40,12 @@ const QASection = () => {
   };
 
   return (
-    <section className="py-20 px-6">
+    <section id="faq" className="py-20 px-6">
       <div className="mx-auto max-w-4xl">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl mb-4">
             Frequently Asked 
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent"> Questions</span>
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> Questions</span>
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Everything you need to know about our SAT analytics platform

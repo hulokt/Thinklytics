@@ -22,6 +22,27 @@ ChartJS.register(
 );
 
 const AnalyticsPage = ({ questions }) => {
+  // Add CSS to hide number input spinners
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+        background: transparent;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+      input[type="number"]::-webkit-outer-spin-button:hover,
+      input[type="number"]::-webkit-inner-spin-button:hover {
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
   const [analytics, setAnalytics] = useState({
     totalQuizzes: 0,
     completedQuizzes: 0,
@@ -42,8 +63,9 @@ const AnalyticsPage = ({ questions }) => {
   const { completedQuizzes, inProgressQuizzes } = useQuizManager();
   const { data: questionAnswers } = useQuestionAnswers();
 
-  // Time-range selector state ("all" | "week")
+  // Time-range selector state ("all" | "custom")
   const [timeRange, setTimeRange] = useState('all');
+  const [customDays, setCustomDays] = useState(7); // Can be number or empty string during editing
 
   // Ensure all data is properly formatted as arrays (store *all* data)
   const allCompletedQuizzesArray = Array.isArray(completedQuizzes) ? completedQuizzes : [];
@@ -51,26 +73,37 @@ const AnalyticsPage = ({ questions }) => {
   const questionsArray = Array.isArray(questions) ? questions : [];
   const questionAnswersObj = questionAnswers && typeof questionAnswers === 'object' ? questionAnswers : {};
 
-  // Helper: derive questions within current range (7 days vs all-time)
+  // Helper: derive questions within current range (custom days vs all-time)
   const nowTs = Date.now();
-  const weekAgoTs = nowTs - 7 * 24 * 60 * 60 * 1000;
-  const questionsInRange = timeRange === 'week'
-    ? questionsArray.filter(q => new Date(q.date || q.lastUpdated || q.createdAt || 0).getTime() >= weekAgoTs)
+  const validCustomDays = customDays === '' ? 1 : parseInt(customDays) || 1;
+  const customAgoTs = nowTs - validCustomDays * 24 * 60 * 60 * 1000;
+  const questionsInRange = timeRange === 'custom'
+    ? questionsArray.filter(q => {
+        const questionDate = new Date(q.date || q.lastUpdated || q.createdAt || 0).getTime();
+        return questionDate >= customAgoTs && questionDate > 0; // Exclude questions without proper timestamps
+      })
     : questionsArray;
 
   const generateAnalytics = useCallback(() => {
     // 🔎 Determine active data set based on selected time-range
     const now = Date.now();
-    const weekAgo = now - 7 * 24 * 60 * 60 * 1000; // 7-day window
+    const validCustomDays = customDays === '' ? 1 : parseInt(customDays) || 1;
+    const customAgo = now - validCustomDays * 24 * 60 * 60 * 1000; // custom-day window
 
     const completedQuizzesArray =
-      timeRange === 'week'
-        ? allCompletedQuizzesArray.filter(q => new Date(q.date || q.lastUpdated || q.endTime || 0).getTime() >= weekAgo)
+      timeRange === 'custom'
+        ? allCompletedQuizzesArray.filter(q => {
+            const quizDate = new Date(q.date || q.lastUpdated || q.endTime || 0).getTime();
+            return quizDate >= customAgo && quizDate > 0; // Exclude quizzes without proper timestamps
+          })
         : allCompletedQuizzesArray;
 
     const inProgressQuizzesArray =
-      timeRange === 'week'
-        ? allInProgressQuizzesArray.filter(q => new Date(q.date || q.lastUpdated || q.startTime || 0).getTime() >= weekAgo)
+      timeRange === 'custom'
+        ? allInProgressQuizzesArray.filter(q => {
+            const quizDate = new Date(q.date || q.lastUpdated || q.startTime || 0).getTime();
+            return quizDate >= customAgo && quizDate > 0; // Exclude quizzes without proper timestamps
+          })
         : allInProgressQuizzesArray;
 
     // Questions scoped to range (reuse questionsInRange but computed here to have local weekAgo)
@@ -83,9 +116,9 @@ const AnalyticsPage = ({ questions }) => {
         // Find the parent quiz (could be completed or in-progress depending on status)
         const parentQuiz = [...completedQuizzesArray, ...inProgressQuizzesArray].find(q => q.id === ans.quizId);
         if (!parentQuiz) return false;
-        if (timeRange === 'week') {
+        if (timeRange === 'custom') {
           const quizDate = new Date(parentQuiz.date || parentQuiz.lastUpdated || parentQuiz.endTime || parentQuiz.startTime || 0).getTime();
-          return quizDate >= weekAgo;
+          return quizDate >= customAgo && quizDate > 0; // Exclude quizzes without proper timestamps
         }
         return true;
       });
@@ -499,7 +532,481 @@ const AnalyticsPage = ({ questions }) => {
     if (allCompletedQuizzesArray !== undefined && questionAnswersObj !== undefined && allInProgressQuizzesArray !== undefined) {
       generateAnalytics();
     }
-  }, [allCompletedQuizzesArray.length, Object.keys(questionAnswersObj).length, questionsInRange.length, allInProgressQuizzesArray.length, generateAnalytics]);
+  }, [allCompletedQuizzesArray.length, Object.keys(questionAnswersObj).length, questionsInRange.length, allInProgressQuizzesArray.length, validCustomDays, generateAnalytics]);
+
+  // PDF Report Generation
+  const generatePDFReport = useCallback(async () => {
+    try {
+      // Import jsPDF dynamically
+      const { jsPDF } = await import('jspdf');
+      
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 20;
+      let yPosition = margin;
+
+      // Helper function to add new page if needed (kept for compatibility)
+      const checkNewPage = (requiredHeight = 20) => {
+        if (yPosition + requiredHeight > pageHeight - margin - 20) { // Account for footer
+          doc.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function for rounded rectangles (fallback for older jsPDF versions)
+      const safeRoundedRect = (x, y, w, h, r1, r2, style) => {
+        try {
+          if (typeof doc.roundedRect === 'function') {
+            doc.roundedRect(x, y, w, h, r1, r2, style);
+          } else {
+            doc.rect(x, y, w, h, style);
+          }
+        } catch (e) {
+          doc.rect(x, y, w, h, style);
+        }
+      };
+
+      // Helper function to add section header with modern styling
+      const addSectionHeader = (title, gradientColors = [[59, 130, 246], [37, 99, 235]], isFirstSection = false) => {
+        // Start new page for each section (except the first one)
+        if (!isFirstSection) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        
+        // Create gradient-like effect with multiple rectangles
+        const [color1, color2] = gradientColors;
+        for (let i = 0; i < 8; i++) {
+          const ratio = i / 7;
+          const r = Math.round(color1[0] * (1 - ratio) + color2[0] * ratio);
+          const g = Math.round(color1[1] * (1 - ratio) + color2[1] * ratio);
+          const b = Math.round(color1[2] * (1 - ratio) + color2[2] * ratio);
+          doc.setFillColor(r, g, b);
+          doc.rect(margin, yPosition + i, pageWidth - 2 * margin, 1, 'F');
+        }
+        
+        // Add subtle shadow
+        doc.setFillColor(0, 0, 0, 0.1);
+        doc.rect(margin + 2, yPosition + 8, pageWidth - 2 * margin, 1, 'F');
+        
+        // Add header text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, margin + 8, yPosition + 6);
+        
+        yPosition += 18;
+        doc.setTextColor(55, 65, 81); // Gray-700 for body text
+      };
+
+      // Helper function to add subsection header
+      const addSubsectionHeader = (title, iconColor = [59, 130, 246]) => {
+        // Add colored left border
+        doc.setFillColor(iconColor[0], iconColor[1], iconColor[2]);
+        doc.rect(margin, yPosition, 3, 12, 'F');
+        
+        // Add light background
+        doc.setFillColor(249, 250, 251); // Gray-50
+        doc.rect(margin + 5, yPosition, pageWidth - 2 * margin - 5, 12, 'F');
+        
+        // Add border
+        doc.setDrawColor(229, 231, 235); // Gray-200
+        doc.setLineWidth(0.5);
+        doc.rect(margin + 5, yPosition, pageWidth - 2 * margin - 5, 12, 'S');
+        
+        doc.setTextColor(iconColor[0], iconColor[1], iconColor[2]);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, margin + 10, yPosition + 8);
+        
+        yPosition += 16;
+        doc.setTextColor(55, 65, 81);
+      };
+
+      // Modern Title Page with analytics page styling
+      // Add top gradient banner
+      for (let i = 0; i < 8; i++) {
+        const ratio = i / 7;
+        const r = Math.round(59 * (1 - ratio) + 37 * ratio);
+        const g = Math.round(130 * (1 - ratio) + 99 * ratio);
+        const b = Math.round(246 * (1 - ratio) + 235 * ratio);
+        doc.setFillColor(r, g, b);
+        doc.rect(0, i, pageWidth, 1, 'F');
+      }
+      
+      // Main title with modern styling
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(59, 130, 246);
+      doc.text('SAT Analytics Report', pageWidth / 2, 35, { align: 'center' });
+      
+      // Subtitle with gradient effect
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(99, 102, 241); // Indigo-500
+      doc.text('Performance Insights & Question Type Analysis', pageWidth / 2, 50, { align: 'center' });
+      
+      // Generated date with styling
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128); // Gray-500
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth / 2, 62, { align: 'center' });
+      
+      // Add decorative elements
+      doc.setFillColor(59, 130, 246);
+      doc.circle(pageWidth / 2 - 30, 70, 2, 'F');
+      doc.circle(pageWidth / 2, 70, 2, 'F');
+      doc.circle(pageWidth / 2 + 30, 70, 2, 'F');
+      
+              // Add professional note
+        doc.setFillColor(243, 244, 246); // Gray-100
+        safeRoundedRect(margin + 10, 75, pageWidth - 2 * margin - 20, 8, 2, 2, 'F');
+        doc.setTextColor(107, 114, 128); // Gray-500
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'italic');
+        doc.text('This report provides comprehensive analytics of your SAT preparation progress', pageWidth / 2, 80, { align: 'center' });
+        
+        yPosition = 90;
+
+      // Summary Statistics with modern card design
+      addSectionHeader('Summary Statistics', [[34, 197, 94], [16, 185, 129]], true);
+      
+      const summaryStats = [
+        ['Total Questions', analytics.totalQuestions.toString(), [59, 130, 246]],
+        ['Completed Quizzes', analytics.completedQuizzes.toString(), [34, 197, 94]],
+        ['Average Score', `${analytics.averageScore}%`, [168, 85, 247]],
+        ['Total Study Time', `${analytics.totalStudyTime} minutes`, [245, 101, 101]],
+        ['Questions Attempted', analytics.answeredQuestions.toString(), [251, 191, 36]]
+      ];
+
+      // Create modern stat cards
+      summaryStats.forEach(([label, value, color], index) => {
+        const cardY = yPosition + (index * 18);
+        const cardWidth = pageWidth - 2 * margin - 10;
+        
+        // Card background
+        doc.setFillColor(249, 250, 251); // Gray-50
+        safeRoundedRect(margin + 5, cardY - 2, cardWidth, 15, 2, 2, 'F');
+        
+        // Colored left border
+        doc.setFillColor(color[0], color[1], color[2]);
+        safeRoundedRect(margin + 5, cardY - 2, 4, 15, 2, 2, 'F');
+        
+        // Label
+        doc.setTextColor(75, 85, 99); // Gray-600
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${label}:`, margin + 15, cardY + 7);
+        
+        // Value with color - right aligned at card's right edge
+        doc.setTextColor(color[0], color[1], color[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, margin + 5 + cardWidth - 5, cardY + 7, { align: 'right' });
+      });
+
+      yPosition += summaryStats.length * 18 + 15;
+
+      // Helper function to organize questions by weeks
+      const organizeQuestionsByWeeks = () => {
+        const weeks = [];
+        const questionsWithDates = questionsArray.filter(q => {
+          const date = new Date(q.date || q.lastUpdated || q.createdAt || 0).getTime();
+          return date > 0; // Only include questions with valid dates
+        });
+
+        if (questionsWithDates.length === 0) return weeks;
+
+        // Sort questions by date
+        questionsWithDates.sort((a, b) => {
+          const dateA = new Date(a.date || a.lastUpdated || a.createdAt).getTime();
+          const dateB = new Date(b.date || b.lastUpdated || b.createdAt).getTime();
+          return dateA - dateB;
+        });
+
+        const firstQuestionDate = new Date(questionsWithDates[0].date || questionsWithDates[0].lastUpdated || questionsWithDates[0].createdAt);
+        const lastQuestionDate = new Date(questionsWithDates[questionsWithDates.length - 1].date || questionsWithDates[questionsWithDates.length - 1].lastUpdated || questionsWithDates[questionsWithDates.length - 1].createdAt);
+
+        // Create weekly buckets
+        let currentWeekStart = new Date(firstQuestionDate);
+        currentWeekStart.setHours(0, 0, 0, 0);
+        
+        let weekNumber = 1;
+        while (currentWeekStart <= lastQuestionDate) {
+          const weekEnd = new Date(currentWeekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999);
+
+          const weekQuestions = questionsWithDates.filter(q => {
+            const questionDate = new Date(q.date || q.lastUpdated || q.createdAt);
+            return questionDate >= currentWeekStart && questionDate <= weekEnd;
+          });
+
+          if (weekQuestions.length > 0) {
+            weeks.push({
+              weekNumber,
+              startDate: new Date(currentWeekStart),
+              endDate: new Date(weekEnd),
+              questions: weekQuestions
+            });
+          }
+
+          currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+          weekNumber++;
+        }
+
+        return weeks;
+      };
+
+      const weeks = organizeQuestionsByWeeks();
+
+             // Helper function to calculate question type distribution for a set of questions
+       const calculateQuestionTypeDistribution = (questions, section) => {
+         const stats = {};
+
+         questions.forEach(question => {
+           if (section === 'Math' && question.section !== 'Math') return;
+           if (section === 'Reading & Writing' && question.section === 'Math') return;
+
+           const type = question.questionType || 'Unknown';
+           if (!stats[type]) {
+             stats[type] = { total: 0 };
+           }
+           stats[type].total++;
+         });
+
+         // Convert to array and sort by count (highest to lowest)
+         return Object.entries(stats)
+           .filter(([_, s]) => s.total > 0)
+           .map(([type, s]) => ({
+             type,
+             total: s.total
+           }))
+           .sort((a, b) => b.total - a.total);
+       };
+
+             // Weekly Reports
+       if (weeks.length > 0) {
+         weeks.forEach((week, index) => {
+           // Each week gets its own page
+           addSectionHeader(`Week ${week.weekNumber}: ${week.startDate.toLocaleDateString()} - ${week.endDate.toLocaleDateString()}`, [[107, 114, 128], [75, 85, 99]]);
+           
+           // Reading & Writing Question Types for this week (FIRST)
+           const rwDistribution = calculateQuestionTypeDistribution(week.questions, 'Reading & Writing');
+           if (rwDistribution.length > 0) {
+             addSubsectionHeader('Reading & Writing Question Types', [99, 102, 241]);
+             
+             // Limit to top 8 items to fit on one page
+             rwDistribution.slice(0, 8).forEach((item, i) => {
+               const itemY = yPosition;
+               
+               // Item background with alternating colors - aligned with header
+               const bgColor = i % 2 === 0 ? [249, 250, 251] : [255, 255, 255];
+               doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+               safeRoundedRect(margin + 5, itemY - 2, pageWidth - 2 * margin - 10, 10, 1, 1, 'F');
+               
+               // Rank circle
+               doc.setFillColor(99, 102, 241);
+               doc.circle(margin + 13, itemY + 3, 3, 'F');
+               doc.setTextColor(255, 255, 255);
+               doc.setFontSize(8);
+               doc.setFont('helvetica', 'bold');
+               doc.text((i + 1).toString(), margin + 13, itemY + 4, { align: 'center' });
+               
+               // Question type - truncate if too long
+               doc.setTextColor(55, 65, 81);
+               doc.setFontSize(9);
+               doc.setFont('helvetica', 'normal');
+               const truncatedType = item.type.length > 25 ? item.type.substring(0, 22) + '...' : item.type;
+               doc.text(truncatedType, margin + 20, itemY + 4);
+               
+               // Count with badge - positioned a bit left from right edge
+               doc.setFillColor(99, 102, 241);
+               safeRoundedRect(pageWidth - margin - 23, itemY - 0.5, 12, 6, 2, 2, 'F');
+               doc.setTextColor(255, 255, 255);
+               doc.setFontSize(7);
+               doc.setFont('helvetica', 'bold');
+               doc.text(`${item.total}`, pageWidth - margin - 17, itemY + 3, { align: 'center' });
+               
+               yPosition += 11;
+             });
+             yPosition += 8;
+           }
+
+           // Math Question Types for this week (SECOND)
+           const mathDistribution = calculateQuestionTypeDistribution(week.questions, 'Math');
+           if (mathDistribution.length > 0) {
+             addSubsectionHeader('Math Question Types', [168, 85, 247]);
+             
+             // Limit to top 8 items to fit on one page
+             mathDistribution.slice(0, 8).forEach((item, i) => {
+               const itemY = yPosition;
+               
+               // Item background with alternating colors - aligned with header
+               const bgColor = i % 2 === 0 ? [249, 250, 251] : [255, 255, 255];
+               doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+               safeRoundedRect(margin + 5, itemY - 2, pageWidth - 2 * margin - 10, 10, 1, 1, 'F');
+               
+               // Rank circle
+               doc.setFillColor(168, 85, 247);
+               doc.circle(margin + 13, itemY + 3, 3, 'F');
+               doc.setTextColor(255, 255, 255);
+               doc.setFontSize(8);
+               doc.setFont('helvetica', 'bold');
+               doc.text((i + 1).toString(), margin + 13, itemY + 4, { align: 'center' });
+               
+               // Question type - truncate if too long
+               doc.setTextColor(55, 65, 81);
+               doc.setFontSize(9);
+               doc.setFont('helvetica', 'normal');
+               const truncatedType = item.type.length > 25 ? item.type.substring(0, 22) + '...' : item.type;
+               doc.text(truncatedType, margin + 20, itemY + 4);
+               
+               // Count with badge - positioned a bit left from right edge
+               doc.setFillColor(168, 85, 247);
+               safeRoundedRect(pageWidth - margin - 23, itemY - 0.5, 12, 6, 2, 2, 'F');
+               doc.setTextColor(255, 255, 255);
+               doc.setFontSize(7);
+               doc.setFont('helvetica', 'bold');
+               doc.text(`${item.total}`, pageWidth - margin - 17, itemY + 3, { align: 'center' });
+               
+               yPosition += 11;
+             });
+           }
+         });
+       }
+
+                          // All-Time Report - Start on new page
+      addSectionHeader('All-Time Question Type Distribution', [[107, 114, 128], [75, 85, 99]]);
+      
+      // All-time Reading & Writing Distribution (FIRST)
+      const allTimeRWDistribution = calculateQuestionTypeDistribution(questionsArray, 'Reading & Writing');
+      if (allTimeRWDistribution.length > 0) {
+        addSubsectionHeader('Reading & Writing Question Types - All Time', [59, 130, 246]);
+        
+        // Show up to 30 items with compact spacing to fit on one page
+        allTimeRWDistribution.slice(0, 30).forEach((item, i) => {
+          const itemY = yPosition;
+          
+          // Item background with alternating colors - aligned with header
+          const bgColor = i % 2 === 0 ? [249, 250, 251] : [255, 255, 255];
+          doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+          safeRoundedRect(margin + 5, itemY - 1, pageWidth - 2 * margin - 10, 8, 1, 1, 'F');
+          
+          // Rank circle - smaller and closer to left
+          doc.setFillColor(99, 102, 241);
+          doc.circle(margin + 11, itemY + 2, 2.5, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text((i + 1).toString(), margin + 11, itemY + 3, { align: 'center' });
+          
+          // Question type - truncate if too long
+          doc.setTextColor(55, 65, 81);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          const truncatedType = item.type.length > 30 ? item.type.substring(0, 27) + '...' : item.type;
+          doc.text(truncatedType, margin + 17, itemY + 3);
+          
+          // Count with badge - positioned a bit left from right edge
+          doc.setFillColor(99, 102, 241);
+          safeRoundedRect(pageWidth - margin - 23, itemY - 0.5, 12, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${item.total}`, pageWidth - margin - 17, itemY + 3, { align: 'center' });
+          
+          yPosition += 8;
+        });
+        yPosition += 10;
+      }
+
+      // All-time Math Distribution (SECOND)
+      const allTimeMathDistribution = calculateQuestionTypeDistribution(questionsArray, 'Math');
+      if (allTimeMathDistribution.length > 0) {
+        addSubsectionHeader('Math Question Types - All Time', [168, 85, 247]);
+        
+        // Show up to 30 items with compact spacing to fit on one page
+        allTimeMathDistribution.slice(0, 30).forEach((item, i) => {
+          const itemY = yPosition;
+          
+          // Item background with alternating colors - aligned with header
+          const bgColor = i % 2 === 0 ? [249, 250, 251] : [255, 255, 255];
+          doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+          safeRoundedRect(margin + 5, itemY - 1, pageWidth - 2 * margin - 10, 8, 1, 1, 'F');
+          
+          // Rank circle - smaller and closer to left
+          doc.setFillColor(168, 85, 247);
+          doc.circle(margin + 11, itemY + 2, 2.5, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text((i + 1).toString(), margin + 11, itemY + 3, { align: 'center' });
+          
+          // Question type - truncate if too long
+          doc.setTextColor(55, 65, 81);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          const truncatedType = item.type.length > 30 ? item.type.substring(0, 27) + '...' : item.type;
+          doc.text(truncatedType, margin + 17, itemY + 3);
+          
+          // Count with badge - positioned a bit left from right edge
+          doc.setFillColor(168, 85, 247);
+          safeRoundedRect(pageWidth - margin - 23, itemY - 0.5, 12, 6, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${item.total}`, pageWidth - margin - 17, itemY + 3, { align: 'center' });
+          
+          yPosition += 8;
+        });
+      }
+
+      
+
+      // Add footer to all pages
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        
+        // Footer background
+        doc.setFillColor(249, 250, 251); // Gray-50
+        doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+        
+        // Footer gradient line
+        for (let j = 0; j < 2; j++) {
+          const ratio = j / 1;
+          const r = Math.round(59 * (1 - ratio) + 37 * ratio);
+          const g = Math.round(130 * (1 - ratio) + 99 * ratio);
+          const b = Math.round(246 * (1 - ratio) + 235 * ratio);
+          doc.setFillColor(r, g, b);
+          doc.rect(0, pageHeight - 15 + j, pageWidth, 1, 'F');
+        }
+        
+        // Page number
+        doc.setTextColor(107, 114, 128); // Gray-500
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+        
+        // Report branding
+        doc.text('SAT Analytics Report', margin, pageHeight - 6);
+        
+        // Generated timestamp
+        doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+      }
+
+      // Save the PDF
+      const fileName = `SAT_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      console.log('PDF report generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      alert('Error generating PDF report. Please make sure you have an internet connection and try again.');
+    }
+  }, [analytics, questionsArray, questionAnswersObj, allCompletedQuizzesArray]);
 
   // Chart configurations with modern styling
   const sectionChartData = {
@@ -969,19 +1476,73 @@ const AnalyticsPage = ({ questions }) => {
             <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">Analytics Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1 transition-colors duration-300">
               Track your performance and progress with advanced insights
+              {timeRange === 'custom' && customDays !== '' && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  (Showing last {customDays} day{customDays !== 1 ? 's' : ''})
+                </span>
+              )}
             </p>
           </div>
           {/* Time-range toggle */}
           <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Range:</span>
-            <button
-              onClick={() => setTimeRange('week')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-200 ${timeRange==='week' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-            >Last 7 Days</button>
+            <div className="flex items-center gap-2">
             <button
               onClick={() => setTimeRange('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-200 ${timeRange==='all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
             >All Time</button>
+              <div className={`flex items-center rounded-lg border transition-all duration-200 ${timeRange==='custom' ? 'bg-blue-600 border-blue-600 text-white shadow-md ring-2 ring-blue-300' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>
+                <button
+                  onClick={() => setTimeRange('custom')}
+                  className="px-2 min-w-0 py-1.5 text-xs font-medium transition-colors duration-200"
+                >
+                  Last
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={customDays}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string during editing
+                    if (value === '') {
+                      setCustomDays('');
+                      return;
+                    }
+                    // Parse and constrain the value
+                    const days = Math.max(1, Math.min(365, parseInt(value) || 1));
+                    setCustomDays(days);
+                  }}
+                  onBlur={(e) => {
+                    // Ensure we have a valid number when user leaves the field
+                    const value = e.target.value;
+                    if (value === '' || parseInt(value) < 1) {
+                      setCustomDays(1);
+                    }
+                  }}
+                  onFocus={() => setTimeRange('custom')}
+                  className={`w-12 py-1.5 text-xs text-center bg-transparent border-0 outline-none ${timeRange==='custom' ? 'text-white placeholder-blue-200' : 'text-gray-700 dark:text-gray-300'}`}
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'textfield'
+                  }}
+                />
+                <span className="px-3 py-1.5 text-xs font-medium">
+                  {customDays === 1 || customDays === '1' ? 'Day' : 'Days'}
+                </span>
+              </div>
+                             {/* Download Report Button */}
+               <button
+                 onClick={() => generatePDFReport()}
+                 className="px-3 py-1.5 rounded-lg text-xs font-medium border bg-gradient-to-r from-green-500 to-green-600 text-white border-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center gap-1 shadow-sm hover:shadow-md"
+               >
+                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                 </svg>
+                 Download Report
+               </button>
+            </div>
           </div>
         </div>
       </div>

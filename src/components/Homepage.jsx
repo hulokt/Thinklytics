@@ -24,6 +24,7 @@ import {
   ChevronUp,
   DollarSign,
   Star as LucideStar,
+  Sparkles,
 } from "lucide-react";
 import { ContainerTextFlip } from "./ui/container-text-flip";
 import { BentoGrid, BentoGridItem } from "./ui/BentoGrid";
@@ -36,49 +37,71 @@ import Navbar from "./Navbar";
 
 const Homepage = ({ onGetStarted, onLogin }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900 text-gray-900 dark:text-gray-50 transition-colors duration-300">
+    <div className="min-h-screen w-full homepage-bg homepage-text-primary transition-colors duration-300">
       {/* Navigation */}
       <Navbar onGetStarted={onGetStarted} onLogin={onLogin} />
 
-      {/* Hero Section */}
-      <section className="relative w-full flex flex-col items-center justify-center overflow-hidden pt-36 sm:pt-40 md:pt-48 pb-24 sm:pb-32 md:pb-40">
-        <div className="absolute inset-0 h-full w-full [background-image:linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        <div className="absolute pointer-events-none inset-0 flex items-center justify-center [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
-        <div className="relative z-10 text-center px-4">
-          <h1 className="text-4xl md:text-7xl font-bold mb-6 leading-tight">
-            Track Your SAT Mistakes and
+      {/* Hero Section - MODERNIZED */}
+      <section className="relative w-full flex flex-col items-center justify-center overflow-hidden pt-24 sm:pt-32 md:pt-40 pb-16 sm:pb-24 md:pb-32 min-h-screen">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:64px_64px]"></div>
+        <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_center,transparent_0%,rgba(59,130,246,0.03)_100%)]"></div>
+        
+        <div className="relative z-10 text-center px-4 sm:px-6 max-w-6xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full homepage-card border mb-8">
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-[var(--brand-60)]" />
+            <span className="text-sm font-medium text-blue-700 dark:text-[var(--brand-70)]">
+              AI-Powered SAT Prep Platform
+            </span>
+          </div>
+
+          {/* Main Heading */}
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 sm:mb-8 leading-[0.9] tracking-tight">
+            Master the SAT with
             <br />
             <ContainerTextFlip
-              words={["Improve Fast", "Boost Your Score", "Master Weak Areas"]}
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent"
+              words={["Smart Analytics", "AI Insights", "Data-Driven Prep"]}
+              className="homepage-gradient-text"
             />
           </h1>
-          <p className="mt-4 font-normal text-base md:text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
-            Log your wrong answers, review question types, and turn mistakes
-            into mastery with AI-powered insights and personalized practice.
+
+          {/* Subtitle */}
+          <p className="text-lg sm:text-xl md:text-2xl homepage-text-secondary max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4">
+            Transform your mistakes into mastery. Log questions, analyze patterns, and boost your score with intelligent insights and personalized practice.
           </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 sm:mb-16 px-4">
             <button
               onClick={onGetStarted}
-              className="relative inline-flex h-12 overflow-hidden rounded-lg p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 select-none touch-manipulation"
-              style={{ touchAction: 'manipulation' }}
+              className="group relative inline-flex items-center justify-center gap-3 h-14 w-full sm:w-auto px-6 sm:px-8 rounded-2xl homepage-cta-primary text-white font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
             >
-              <div className="absolute inset-0 rounded-lg overflow-hidden">
-                <div className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)] pointer-events-none" />
-              </div>
-              <div className="relative z-10 inline-flex h-full w-full cursor-pointer items-center justify-center rounded-lg bg-slate-950 px-8 py-1 text-sm font-medium text-white backdrop-blur-3xl select-none touch-manipulation">
-                Get Started Free
-              </div>
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[var(--brand-70)] via-[var(--brand-50p)] to-[var(--brand-60)] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <span className="relative z-10">Start Learning Free</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
             </button>
             <button
               onClick={onLogin}
-              className="relative inline-flex h-12 overflow-hidden rounded-lg p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 select-none touch-manipulation"
-              style={{ touchAction: 'manipulation' }}
+              className="inline-flex items-center justify-center gap-3 h-14 w-full sm:w-auto px-6 sm:px-8 rounded-2xl homepage-cta-secondary backdrop-blur-sm border font-semibold text-base sm:text-lg transition-all duration-300"
             >
-              <div className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-lg bg-gray-100/80 dark:bg-slate-700/80 px-8 py-1 text-sm font-medium text-slate-800 dark:text-white backdrop-blur-3xl border border-gray-300 dark:border-slate-600 select-none touch-manipulation">
-                Login
-              </div>
+              <span>Sign In</span>
             </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-2xl mx-auto px-4">
+            {[
+              { number: "10K+", label: "Students" },
+              { number: "150+", label: "Score Increase" },
+              { number: "95%", label: "Success Rate" }
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold homepage-text-primary mb-1">{stat.number}</div>
+                <div className="text-xs sm:text-sm homepage-text-muted">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -86,51 +109,53 @@ const Homepage = ({ onGetStarted, onLogin }) => {
       {/* Problem → Solution Strip */}
       <ProblemSolutionStrip />
 
-      {/* Live Dashboard Demo (Lottie/MP4 placeholder) */}
-      <DashboardDemo />
-
       {/* Infinite Scroll Logos */}
       <section className="py-20 md:py-24 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
-          <h3 className="text-center text-sm font-semibold text-gray-500 dark:text-slate-400 mb-6 tracking-wide">
+          <h3 className="text-center text-sm font-semibold homepage-text-muted mb-6 tracking-wide">
             AS SEEN IN TOP EDUCATIONAL RESOURCES
           </h3>
           <InfiniteMovingCards items={logos} direction="right" speed="slow" />
         </div>
       </section>
 
-      {/* Features Bento Grid */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 dark:from-white dark:via-blue-100 dark:to-indigo-100 bg-clip-text text-transparent">
-              A Smarter Way to Prepare
+      {/* Features Bento Grid - MODERNIZED */}
+      <section id="features" className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold homepage-gradient-text mb-6">
+              Everything You Need to Succeed
             </h2>
-            <p className="mt-4 text-base md:text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
-              Our platform is more than just a question log. It's an intelligent
-              system designed to help you learn from your mistakes.
+            <p className="text-xl homepage-text-secondary max-w-3xl mx-auto">
+              Comprehensive tools designed to help you identify weaknesses, track progress, and achieve your target score.
             </p>
           </div>
-          <BentoGrid className="max-w-4xl mx-auto">
-            {features.map((item, i) => (
-              <BentoGridItem
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, i) => (
+              <div
                 key={i}
-                title={item.title}
-                description={item.description}
-                header={item.header}
-                icon={item.icon}
-                className={item.className}
-              />
+                className="group relative p-8 rounded-3xl homepage-card backdrop-blur-sm border homepage-hover-glow transition-all duration-500"
+              >
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-[var(--brand-10)] dark:to-[var(--brand-20)] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl homepage-feature-icon flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-2xl font-bold homepage-text-primary mb-4">{feature.title}</h3>
+                  <p className="homepage-text-secondary leading-relaxed">{feature.description}</p>
+                </div>
+              </div>
             ))}
-          </BentoGrid>
+          </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 relative overflow-hidden">
+      <section id="testimonials" className="py-20 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 dark:from-white dark:via-purple-100 dark:to-pink-100 bg-clip-text text-transparent">
+            <h2 className="text-3xl md:text-5xl font-bold blue-gradient-text">
               Loved by Students Nationwide
             </h2>
             <p className="mt-4 text-base md:text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
@@ -222,14 +247,14 @@ const MockAiInsights = () => (
 );
 
 const MockFilterPills = () => (
-  <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-gradient-to-br from-pink-50 dark:from-white/5 to-pink-100 dark:to-white/10 p-3 flex flex-wrap gap-2 content-start">
-    <span className="bg-pink-200/50 dark:bg-pink-500/20 text-pink-900 dark:text-pink-200 rounded-full px-2.5 py-1 text-xs font-medium">
+  <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-gradient-to-br from-blue-50 dark:from-white/5 to-blue-100 dark:to-white/10 p-3 flex flex-wrap gap-2 content-start">
+    <span className="bg-blue-200/50 dark:bg-blue-500/20 text-blue-900 dark:text-blue-200 rounded-full px-2.5 py-1 text-xs font-medium">
       Reading
     </span>
-    <span className="bg-pink-200/50 dark:bg-pink-500/20 text-pink-900 dark:text-pink-200 rounded-full px-2.5 py-1 text-xs font-medium">
+    <span className="bg-blue-200/50 dark:bg-blue-500/20 text-blue-900 dark:text-blue-200 rounded-full px-2.5 py-1 text-xs font-medium">
       Math
     </span>
-    <span className="bg-pink-200/50 dark:bg-pink-500/20 text-pink-900 dark:text-pink-200 rounded-full px-2.5 py-1 text-xs font-medium">
+    <span className="bg-blue-200/50 dark:bg-blue-500/20 text-blue-900 dark:text-blue-200 rounded-full px-2.5 py-1 text-xs font-medium">
       Hard
     </span>
     <span className="bg-white/50 dark:bg-white/10 rounded-full px-2.5 py-1 text-xs text-gray-700 dark:text-gray-300">
@@ -243,39 +268,34 @@ const MockFilterPills = () => (
 
 const features = [
   {
-    title: "Effortless Question Logging",
-    description: "Quickly capture any question you get wrong. Just copy and paste.",
-    header: <MockQuestionList />,
-    icon: <ClipboardCopy className="h-4 w-4 text-neutral-500" />,
-    className: "md:col-span-1",
+    title: "Smart Question Logging",
+    description: "Instantly capture and categorize every question you get wrong with our intelligent tagging system.",
+    icon: <ClipboardCopy className="w-7 h-7 text-white" />,
   },
   {
-    title: "Personalized Quizzes",
-    description: "Generate practice quizzes from your error log to target your weaknesses.",
-    header: <MockPersonalizedQuiz />,
-    icon: <FileQuestion className="h-4 w-4 text-neutral-500" />,
-    className: "md:col-span-1",
+    title: "AI-Powered Analytics",
+    description: "Get deep insights into your performance patterns with advanced analytics and personalized recommendations.",
+    icon: <BrainCircuit className="w-7 h-7 text-white" />,
   },
   {
-    title: "AI-Powered Insights",
-    description: "Our AI analyzes your mistakes and provides actionable feedback.",
-    header: <MockAiInsights />,
-    icon: <BrainCircuit className="h-4 w-4 text-neutral-500" />,
-    className: "md:col-span-1",
+    title: "Personalized Practice",
+    description: "Generate custom quizzes from your error log to target your specific weaknesses and improve faster.",
+    icon: <FileQuestion className="w-7 h-7 text-white" />,
   },
   {
-    title: "Track Your Progress",
-    description: "Visualize your improvement with detailed performance analytics. See trends, score breakdowns, and more.",
-    header: <MockQuizChart />,
-    icon: <BarChart className="h-4 w-4 text-neutral-500" />,
-    className: "md:col-span-2",
+    title: "Progress Tracking",
+    description: "Visualize your improvement with detailed charts and track your journey to your target score.",
+    icon: <BarChart className="w-7 h-7 text-white" />,
   },
   {
-    title: "Focus on What Matters",
-    description: "Filter by section, domain, and question type to focus your prep.",
-    header: <MockFilterPills />,
-    icon: <Filter className="h-4 w-4 text-neutral-500" />,
-    className: "md:col-span-1",
+    title: "Smart Filtering",
+    description: "Filter by section, topic, difficulty, and more to focus your study sessions on what matters most.",
+    icon: <Filter className="w-7 h-7 text-white" />,
+  },
+  {
+    title: "Goal Setting",
+    description: "Set realistic targets and track your progress with intelligent goal recommendations based on your data.",
+    icon: <Target className="w-7 h-7 text-white" />,
   },
 ];
 
@@ -335,58 +355,38 @@ const testimonials = [
 
 // Problem → Solution Strip
 const ProblemSolutionStrip = () => (
-  <section className="relative z-20 -mt-16 sm:-mt-24 flex justify-center w-full">
-    <div className="max-w-3xl w-full px-4">
-      <div className="backdrop-blur-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-2xl rounded-2xl flex flex-col gap-6 py-8 px-4 sm:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {[
-            { solution: "Auto-logged mistakes" },
-            { solution: "Instant analytics" },
-            { solution: "Personalized quizzes" }
-          ].map((block, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center justify-center text-center p-6 rounded-xl bg-white dark:bg-white/5 backdrop-blur-sm border border-gray-200 dark:border-white/10 shadow-md transition-all duration-300 flex-1 min-h-[100px] hover:scale-105 hover:ring-2 hover:ring-sky-400/80 hover:shadow-[0_0_24px_4px_rgba(56,189,248,0.25)]"
-            >
-              <span className="text-lg font-bold text-blue-700 dark:text-blue-200 tracking-tight">{block.solution}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
-// Live Dashboard Demo (Lottie/MP4 placeholder)
-const DashboardDemo = () => (
-  <section className="w-full flex justify-center items-center py-5 sm:py-5 md:py-5 bg-transparent">
-    <div className="w-full max-w-5xl mx-auto flex flex-col items-center">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 dark:from-white dark:via-blue-100 dark:to-indigo-100 bg-clip-text text-transparent max-w-xl mx-auto text-nowrap mt-8">
-          SAT Success Starts Here
-        </h2>
-        <p className="mt-4 text-base md:text-lg text-gray-600 dark:text-slate-300 max-w-xl mx-auto">Explore the tools and features that help you master the SAT, track your progress, and boost your score.</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+  <section className="relative z-20 -mt-16 sm:-mt-24 flex justify-center w-full px-4">
+    <div className="max-w-4xl w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         {[
-          { icon: <FileQuestion className="w-10 h-10 text-blue-500 dark:text-blue-400" />, label: "Log Every Mistake" },
-          { icon: <BarChart className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />, label: "Track Your Progress" },
-          { icon: <BrainCircuit className="w-10 h-10 text-purple-500 dark:text-purple-400" />, label: "AI-Powered Insights" },
-          { icon: <ClipboardCopy className="w-10 h-10 text-orange-500 dark:text-orange-400" />, label: "Personalized Quizzes" },
-          { icon: <Star className="w-10 h-10 text-yellow-500 dark:text-yellow-400" />, label: "Master Weak Areas" },
-          { icon: <CheckCircle className="w-10 h-10 text-green-500 dark:text-green-400" />, label: "Instant Feedback" },
-          { icon: <Award className="w-10 h-10 text-pink-500 dark:text-pink-400" />, label: "Score Analytics" },
-          { icon: <Edit3 className="w-10 h-10 text-cyan-500 dark:text-cyan-400" />, label: "Smart Review Tools" },
-          { icon: <Target className="w-10 h-10 text-indigo-500 dark:text-indigo-400" />, label: "Set & Hit Your Goals" },
-        ].map((card, i) => (
+          { 
+            solution: "Auto-logged mistakes", 
+            icon: <ClipboardCopy className="w-6 h-6" />,
+            description: "Smart categorization"
+          },
+          { 
+            solution: "Instant analytics", 
+            icon: <BarChart className="w-6 h-6" />,
+            description: "Real-time insights"
+          },
+          { 
+            solution: "Personalized quizzes", 
+            icon: <FileQuestion className="w-6 h-6" />,
+            description: "Targeted practice"
+          }
+        ].map((block, i) => (
           <div
             key={i}
-            className="flex flex-col items-center justify-center text-center p-8 rounded-2xl bg-white dark:bg-white/5 backdrop-blur-sm border border-gray-200 dark:border-white/10 shadow-lg transition-all duration-300 group cursor-pointer hover:scale-105 hover:ring-2 hover:ring-sky-400/80 hover:shadow-[0_0_24px_4px_rgba(56,189,248,0.25)]"
+            className="group relative p-6 sm:p-8 rounded-3xl homepage-card backdrop-blur-sm border homepage-hover-glow transition-all duration-500 overflow-hidden"
           >
-            <div className="mb-4 group-hover:scale-110 transition-transform duration-300">
-              {card.icon}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-[var(--brand-10)] dark:to-[var(--brand-20)] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="relative z-10 text-center">
+              <div className="w-12 h-12 rounded-2xl homepage-feature-icon flex items-center justify-center mx-auto mb-4 text-white group-hover:scale-110 transition-transform duration-300">
+                {block.icon}
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold homepage-text-primary mb-2">{block.solution}</h3>
+              <p className="text-xs sm:text-sm homepage-text-muted">{block.description}</p>
             </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-300">{card.label}</span>
           </div>
         ))}
       </div>

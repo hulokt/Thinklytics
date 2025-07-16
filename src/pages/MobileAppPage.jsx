@@ -87,18 +87,18 @@ const MobileAppPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mobile Access</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Mobile Access</h1>
           </div>
         </div>
       </div>
@@ -106,14 +106,14 @@ const MobileAppPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <Smartphone className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl homepage-feature-icon mb-6">
+            <Smartphone className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Study
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Anywhere</span>
+            <span className="homepage-gradient-text"> Anywhere</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Our responsive web platform works perfectly on all your devices. No downloads required - just open your browser 
             and start studying on your phone, tablet, or computer.
           </p>
@@ -121,17 +121,17 @@ const MobileAppPage = ({ onBack }) => {
 
         {/* Core Features */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Why Our Platform Works Everywhere</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Why Our Platform Works Everywhere</h3>
           <div className="grid md:grid-cols-2 gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                    <feature.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{feature.title}</h4>
+                  <h4 className="text-lg font-semibold homepage-text-primary">{feature.title}</h4>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+                <p className="homepage-text-secondary">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -139,22 +139,22 @@ const MobileAppPage = ({ onBack }) => {
 
         {/* Device Support */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Works on All Your Devices</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Works on All Your Devices</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {deviceSupport.map((device, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
                 <div className="text-center mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                    <device.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                  <div className="w-16 h-16 rounded-xl homepage-feature-icon flex items-center justify-center mx-auto mb-4">
+                    <device.icon className="w-8 h-8 text-white" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{device.device}</h4>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">{device.description}</p>
+                  <h4 className="text-lg font-semibold homepage-text-primary mb-2">{device.device}</h4>
+                  <p className="homepage-text-secondary text-sm">{device.description}</p>
                 </div>
                 <div className="space-y-2">
                   {device.features.map((feature, featureIndex) => (
                     <div key={featureIndex} className="flex items-start space-x-2">
                       <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-gray-600 dark:text-gray-300">{feature}</span>
+                      <span className="text-xs homepage-text-secondary">{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -164,13 +164,13 @@ const MobileAppPage = ({ onBack }) => {
         </div>
 
         {/* Responsive Features */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Responsive Design Features</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6 text-center">Responsive Design Features</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {responsiveFeatures.map((feature, index) => (
               <div key={index} className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
+                <span className="homepage-text-secondary">{feature}</span>
               </div>
             ))}
           </div>
@@ -178,22 +178,22 @@ const MobileAppPage = ({ onBack }) => {
 
         {/* Benefits */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Benefits of Mobile Access</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Benefits of Mobile Access</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                  <benefit.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg text-center homepage-hover-glow">
+                <div className="w-16 h-16 rounded-xl homepage-feature-icon flex items-center justify-center mx-auto mb-4">
+                  <benefit.icon className="w-8 h-8 text-white" />
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{benefit.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{benefit.description}</p>
+                <h4 className="text-lg font-semibold homepage-text-primary mb-3">{benefit.title}</h4>
+                <p className="homepage-text-secondary">{benefit.description}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Accessibility */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-16">
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white mb-16">
           <h3 className="text-2xl font-bold mb-6">Accessibility for Everyone</h3>
           <p className="text-lg mb-6 opacity-90">
             We believe education should be accessible to all students, regardless of their abilities or the devices they use.
@@ -209,32 +209,32 @@ const MobileAppPage = ({ onBack }) => {
         </div>
 
         {/* Getting Started */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">How to Access on Any Device</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">How to Access on Any Device</h3>
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">1</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">1</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Open Your Browser</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Open Your Browser</h4>
+                <p className="homepage-text-secondary">
                   Use any modern web browser - Chrome, Safari, Firefox, or Edge on any device.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">2</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">2</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Navigate to Thinklytics</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Navigate to Thinklytics</h4>
+                <p className="homepage-text-secondary">
                   Go to our website and log in with your existing account credentials.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">3</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">3</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Start Studying</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Start Studying</h4>
+                <p className="homepage-text-secondary">
                   Access all your features - questions, practice tests, analytics, and study plans - optimized for your device.
                 </p>
               </div>

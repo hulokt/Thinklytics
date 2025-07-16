@@ -57,7 +57,9 @@ export class QuizManager {
       startTime: startTime,
       lastUpdated: startTime,
       status: QUIZ_STATUS.IN_PROGRESS,
-      timeSpent: 0
+      timeSpent: 0,
+      eliminatedOptions: {},
+      eliminationMode: false
     };
 
     return newQuiz;

@@ -50,18 +50,18 @@ const AboutPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">About Thinklytics</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">About Thinklytics</h1>
           </div>
         </div>
       </div>
@@ -69,11 +69,11 @@ const AboutPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Empowering Students to Achieve Their
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> SAT Goals</span>
+            <span className="homepage-gradient-text"> SAT Goals</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Thinklytics was born from a simple belief: every student deserves access to intelligent, 
             personalized SAT preparation that adapts to their unique learning style and goals.
           </p>
@@ -83,47 +83,47 @@ const AboutPage = ({ onBack }) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
           {stats.map((stat, index) => (
             <div key={index} className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-4">
-                <stat.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl homepage-feature-icon mb-4">
+                <stat.icon className="w-8 h-8 text-white" />
               </div>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stat.value}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+              <div className="text-3xl font-bold homepage-text-primary mb-2">{stat.value}</div>
+              <div className="text-sm homepage-text-secondary">{stat.label}</div>
             </div>
           ))}
         </div>
 
         {/* Mission Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Our Mission</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">Our Mission</h3>
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+              <p className="text-lg homepage-text-secondary leading-relaxed mb-6">
                 We're on a mission to democratize high-quality SAT preparation by combining 
                 advanced analytics with proven educational strategies. Our platform helps students 
                 understand their strengths and weaknesses, track their progress, and develop 
                 personalized study plans that maximize their potential.
               </p>
-              <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p className="text-lg homepage-text-secondary leading-relaxed">
                 By leveraging data-driven insights and adaptive learning technology, we're helping 
                 thousands of students achieve their college dreams and unlock new opportunities.
               </p>
             </div>
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                <p className="text-gray-600 dark:text-gray-300">Personalized learning paths based on individual performance</p>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                <p className="homepage-text-secondary">Personalized learning paths based on individual performance</p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                <p className="text-gray-600 dark:text-gray-300">Real-time analytics and progress tracking</p>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                <p className="homepage-text-secondary">Real-time analytics and progress tracking</p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                <p className="text-gray-600 dark:text-gray-300">Expert-curated content and strategies</p>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                <p className="homepage-text-secondary">Expert-curated content and strategies</p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                <p className="text-gray-600 dark:text-gray-300">Community support and peer learning</p>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2"></div>
+                <p className="homepage-text-secondary">Community support and peer learning</p>
               </div>
             </div>
           </div>
@@ -131,15 +131,15 @@ const AboutPage = ({ onBack }) => {
 
         {/* Values Section */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Our Values</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Our Values</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {values.map((value, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-4">
-                  <value.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg homepage-feature-icon mb-4">
+                  <value.icon className="w-6 h-6 text-white" />
                 </div>
-                <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{value.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{value.description}</p>
+                <h4 className="text-xl font-semibold homepage-text-primary mb-3">{value.title}</h4>
+                <p className="homepage-text-secondary">{value.description}</p>
               </div>
             ))}
           </div>
@@ -147,25 +147,25 @@ const AboutPage = ({ onBack }) => {
 
         {/* Team Section */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Our Team</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Our Team</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {team.map((member, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg text-center homepage-hover-glow">
                 <img 
                   src={member.image} 
                   alt={member.name}
                   className="w-20 h-20 rounded-full mx-auto mb-4 object-cover"
                 />
-                <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{member.name}</h4>
-                <p className="text-blue-600 dark:text-blue-400 font-medium mb-3">{member.role}</p>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">{member.bio}</p>
+                <h4 className="text-xl font-semibold homepage-text-primary mb-2">{member.name}</h4>
+                <p className="blue-gradient-text font-medium mb-3">{member.role}</p>
+                <p className="homepage-text-secondary text-sm">{member.bio}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Story Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white">
           <h3 className="text-2xl font-bold mb-6">Our Story</h3>
           <div className="grid md:grid-cols-2 gap-8">
             <div>

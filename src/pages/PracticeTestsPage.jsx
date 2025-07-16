@@ -81,18 +81,18 @@ const PracticeTestsPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <div className="min-h-screen homepage-bg transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="homepage-card shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg homepage-card hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 homepage-text-primary" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Practice Tests</h1>
+            <h1 className="text-3xl font-bold homepage-text-primary">Practice Tests</h1>
           </div>
         </div>
       </div>
@@ -100,14 +100,14 @@ const PracticeTestsPage = ({ onBack }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-6">
-            <Play className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl homepage-feature-icon mb-6">
+            <Play className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold homepage-text-primary mb-6">
             Master the SAT with
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Practice Tests</span>
+            <span className="homepage-gradient-text"> Practice Tests</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl homepage-text-secondary max-w-3xl mx-auto leading-relaxed">
             Create personalized practice tests, save your progress, and edit answers as you go. Our comprehensive 
             testing system helps you build confidence and improve your SAT performance through targeted practice.
           </p>
@@ -115,17 +115,17 @@ const PracticeTestsPage = ({ onBack }) => {
 
         {/* Core Features */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Practice Test Features</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Practice Test Features</h3>
           <div className="grid md:grid-cols-2 gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                    <feature.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 rounded-lg homepage-feature-icon flex items-center justify-center">
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{feature.title}</h4>
+                  <h4 className="text-lg font-semibold homepage-text-primary">{feature.title}</h4>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+                <p className="homepage-text-secondary">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -133,36 +133,36 @@ const PracticeTestsPage = ({ onBack }) => {
 
         {/* Test Types */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Types of Practice Tests</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Types of Practice Tests</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {testTypes.map((test, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{test.name}</h4>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{test.description}</p>
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg homepage-hover-glow">
+                <h4 className="text-lg font-semibold homepage-text-primary mb-2">{test.name}</h4>
+                <p className="homepage-text-secondary text-sm mb-4">{test.description}</p>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-sm">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <span className="text-gray-600 dark:text-gray-400">{test.duration}</span>
+                    <Clock className="w-4 h-4 text-[var(--brand-60)]" />
+                    <span className="homepage-text-muted">{test.duration}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
-                    <BookOpen className="w-4 h-4 text-blue-600" />
-                    <span className="text-gray-600 dark:text-gray-400">{test.questions}</span>
+                    <BookOpen className="w-4 h-4 text-[var(--brand-60)]" />
+                    <span className="homepage-text-muted">{test.questions}</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Best for: {test.bestFor}</p>
+                <p className="text-xs homepage-text-muted">Best for: {test.bestFor}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Capabilities */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">What You Can Do With Practice Tests</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 mb-16 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6 text-center">What You Can Do With Practice Tests</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {capabilities.map((capability, index) => (
               <div key={index} className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700 dark:text-gray-300">{capability}</span>
+                <div className="w-2 h-2 bg-gradient-to-r from-[var(--brand-60)] to-[var(--brand-70)] rounded-full mt-2 flex-shrink-0"></div>
+                <span className="homepage-text-secondary">{capability}</span>
               </div>
             ))}
           </div>
@@ -170,22 +170,22 @@ const PracticeTestsPage = ({ onBack }) => {
 
         {/* Benefits */}
         <div className="mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Why Practice Tests Work</h3>
+          <h3 className="text-2xl font-bold homepage-text-primary mb-8 text-center">Why Practice Tests Work</h3>
           <div className="grid md:grid-cols-3 gap-8">
             {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg text-center">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                  <benefit.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div key={index} className="homepage-card rounded-xl p-6 shadow-lg text-center homepage-hover-glow">
+                <div className="w-16 h-16 rounded-xl homepage-feature-icon flex items-center justify-center mx-auto mb-4">
+                  <benefit.icon className="w-8 h-8 text-white" />
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{benefit.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{benefit.description}</p>
+                <h4 className="text-lg font-semibold homepage-text-primary mb-3">{benefit.title}</h4>
+                <p className="homepage-text-secondary">{benefit.description}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* How It Works */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-16">
+        <div className="blue-gradient-bg rounded-2xl p-8 text-white mb-16">
           <h3 className="text-2xl font-bold mb-6">How Practice Tests Help You Succeed</h3>
           <div className="grid md:grid-cols-2 gap-8">
             <div>
@@ -212,41 +212,41 @@ const PracticeTestsPage = ({ onBack }) => {
         </div>
 
         {/* Getting Started */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">How to Use Practice Tests Effectively</h3>
+        <div className="homepage-card rounded-2xl shadow-xl p-8 homepage-hover-glow">
+          <h3 className="text-2xl font-bold homepage-text-primary mb-6">How to Use Practice Tests Effectively</h3>
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">1</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">1</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Create Your Test</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Create Your Test</h4>
+                <p className="homepage-text-secondary">
                   Select questions from your question bank based on the topics and difficulty levels you want to practice.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">2</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">2</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Take Your Time</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Take Your Time</h4>
+                <p className="homepage-text-secondary">
                   Work through the test at your own pace. You can save your progress and return to finish later if needed.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">3</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">3</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Review and Edit</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Review and Edit</h4>
+                <p className="homepage-text-secondary">
                   Before submitting, review all your answers and make any necessary changes. Flag questions you're unsure about.
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">4</div>
+              <div className="w-8 h-8 rounded-full homepage-feature-icon text-white flex items-center justify-center font-bold text-sm">4</div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Analyze Results</h4>
-                <p className="text-gray-600 dark:text-gray-300">
+                <h4 className="font-semibold homepage-text-primary mb-2">Analyze Results</h4>
+                <p className="homepage-text-secondary">
                   Review your performance analytics to understand your strengths and areas for improvement.
                 </p>
               </div>

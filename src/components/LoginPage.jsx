@@ -1,286 +1,201 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { cn } from '../lib/utils';
 import Navbar from './Navbar';
+import ParticleUpflow from './ui/ParticleUpflow';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
-const LoginPage = ({ onLogin, onSwitchToSignup, onBack }) => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
+const LoginPage = ({ onLogin, onSwitchToSignup }) => {
+  const { isDarkMode } = useDarkMode();
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-
-    // Clear login error when user starts typing
-    if (loginError) {
-      setLoginError('');
-    }
+  const validate = () => {
+    const errs = {};
+    if (!formData.email) errs.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'Please enter a valid email address';
+    if (!formData.password) errs.password = 'Password is required';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validate()) return;
+    setLoading(true);
+    await onLogin(formData);
+    setLoading(false);
+  };
 
-    setIsSubmitting(true);
-    setLoginError(''); // Clear any previous login errors
-
-    try {
-      await onLogin(formData);
-    } catch (error) {
-      console.error('Login error:', error);
-      setLoginError(error.message || 'Login failed. Please check your credentials and try again.');
-    } finally {
-      setIsSubmitting(false);
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
+  const isEmailValid = (email) => {
+    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300 flex flex-col">
-      {/* Minimal Navbar */}
-      <Navbar minimal={true} onLogin={onBack} />
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-md w-full"
-        >
-          {/* Login Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-            <div className="text-center mb-8">
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"
-              >
-                <BookOpen className="w-8 h-8 text-white" />
-              </motion.div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
-                Welcome Back
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                Welcome to Thinklytics! Sign in to continue your SAT improvement journey.
-              </p>
-            </div>
+    <div className={`relative min-h-screen w-full flex flex-col overflow-hidden transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-b from-[#061429] via-[#040d1c] to-black text-white' 
+        : 'bg-gradient-to-b from-blue-50 via-indigo-50 to-white text-gray-900'
+    }`}>
+      {/* Navbar */}
+      <Navbar />
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Login Error Display */}
-              {loginError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-600 rounded-lg p-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <p className="text-red-700 dark:text-red-300 text-sm font-medium">
-                      {loginError}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+      {/* Star field */}
+      <div className={`absolute inset-0 pointer-events-none ${
+        isDarkMode 
+          ? 'bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]' 
+          : 'bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]'
+      }`}></div>
 
-              {/* Email Field */}
-              <LabelInputContainer>
-                <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
-                <Input
-                  id="email"
+      {/* Radial glow */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className={`w-[700px] h-[500px] rounded-full blur-3xl ${
+          isDarkMode 
+            ? 'bg-[radial-gradient(circle,rgba(40,160,255,0.45)_0%,transparent_70%)]' 
+            : 'bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_70%)]'
+        }`}></div>
+      </div>
+
+      {/* Particle Animation - always under the form */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none w-full flex justify-center">
+        <ParticleUpflow width={320} height={320} />
+      </div>
+
+      {/* Content */}
+      <main className="flex-1 w-full flex flex-col items-center justify-center px-4 pt-24 pb-8 relative min-h-screen">
+        {/* Top Label */}
+        <p className={`text-sm font-medium tracking-widest mb-2 ${
+          isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+        }`}>LOGIN</p>
+
+        {/* Heading */}
+        <h1 className={`text-center font-semibold text-2xl sm:text-3xl md:text-4xl leading-tight max-w-4xl ${
+          isDarkMode ? 'text-white' : 'text-gray-900'
+        }`}>
+          Welcome Back!
+        </h1>
+
+        {/* Subheading */}
+        <p className={`max-w-xl text-center mt-4 ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Sign in to your account to access your personalized SAT dashboard.
+        </p>
+
+        {/* Form Card with modern styling */}
+        <div className={`mt-12 w-full max-w-md rounded-2xl shadow-2xl px-6 py-8 backdrop-blur-sm relative before:absolute before:inset-0 before:rounded-2xl before:blur-2xl before:z-0 ${
+          isDarkMode 
+            ? 'bg-[#111827] border border-blue-900/40 before:bg-[radial-gradient(circle,rgba(40,160,255,0.32)_0%,transparent_80%)] shadow-blue-500/30' 
+            : 'bg-white/80 border border-blue-200/50 before:bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_80%)] shadow-blue-500/20'
+        }`}>
+          <form className="flex flex-col space-y-6 relative" onSubmit={handleSubmit} autoComplete="off" noValidate>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Email</label>
+                <input
                   type="email"
+                  placeholder="Enter your email"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.email || (formData.email && !isEmailValid(formData.email))
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter your email address"
-                  icon={<Mail className="w-4 h-4" />}
-                  error={errors.email}
+                  onBlur={(e) => {
+                    if (e.target.value && !isEmailValid(e.target.value)) {
+                      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                    }
+                  }}
                 />
                 {errors.email && (
-                  <span className="text-red-500 text-sm mt-1">{errors.email}</span>
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.email}</span>
+                  </div>
                 )}
-              </LabelInputContainer>
-
-              {/* Password Field */}
-              <LabelInputContainer>
-                <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`block text-xs font-semibold uppercase mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                  } ${
+                    errors.password 
+                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                      : isDarkMode 
+                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                        : 'focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  placeholder="Enter your password"
-                  icon={<Lock className="w-4 h-4" />}
-                  error={errors.password}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  }
                 />
                 {errors.password && (
-                  <span className="text-red-500 text-sm mt-1">{errors.password}</span>
-                )}
-              </LabelInputContainer>
-
-              {/* Submit Button */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all ${
-                  isSubmitting 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Signing In...</span>
+                  <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                    <span className="font-medium">{errors.password}</span>
                   </div>
-                ) : (
-                  'Sign In'
                 )}
-              </motion.button>
-            </form>
-
-            {/* Requirements */}
-            <div className="mt-4 p-3 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-700 text-center font-medium mb-2">Login Requirements:</p>
-              <ul className="text-xs text-green-600 space-y-1">
-                <li>• Valid email address</li>
-                <li>• Password (minimum 6 characters)</li>
-                <li>• All fields are required</li>
-              </ul>
+              </div>
             </div>
-
-            {/* Switch to Signup */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <button
-                  onClick={onSwitchToSignup}
-                  className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                >
-                  Create one here
-                </button>
-              </p>
-            </div>
-          </div>
-
-          {/* Security Note */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              Your data is securely stored in the cloud with Supabase authentication.
+            <button
+              type="submit"
+              className={`w-full py-3 rounded-full font-bold uppercase tracking-wide shadow-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-[#28A0FF] hover:bg-[#3ab6ff] text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              disabled={loading}
+            >
+              {loading ? 'Signing In...' : 'Login'}
+            </button>
+            <p className={`text-center text-xs mt-2 ${
+              isDarkMode ? 'text-gray-500' : 'text-gray-600'
+            }`}>
+              By signing in you agree to our{' '}
+              <a href="#" className={`underline ${
+                isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+              }`}>Terms</a> and{' '}
+              <a href="#" className={`underline ${
+                isDarkMode ? 'text-[#28A0FF]' : 'text-blue-600'
+              }`}>Privacy Policy</a>
             </p>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-};
-
-// Enhanced Input Component
-const Input = ({ className, type, icon, rightIcon, error, ...props }) => {
-  return (
-    <div className="relative">
-      {icon && (
-        <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-300 ${
-          error ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'
+          </form>
+        </div>
+        <p className={`mt-8 text-sm ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
         }`}>
-          {icon}
-        </div>
-      )}
-      <input
-        type={type}
-        className={cn(
-          "flex h-12 w-full rounded-lg border bg-white dark:bg-gray-700 px-3 py-2 text-base sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
-          error 
-            ? "border-red-500 focus:ring-red-500 focus:border-red-500" 
-            : "border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500",
-          icon && "pl-10",
-          rightIcon && "pr-10",
-          className
-        )}
-        {...props}
-      />
-      {rightIcon && (
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-          {rightIcon}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Label Component
-const Label = ({ className, ...props }) => (
-  <label
-    className={cn(
-      "text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-      className
-    )}
-    {...props}
-  />
-);
-
-// Container Component
-const LabelInputContainer = ({ children, className }) => {
-  return (
-    <div className={cn("flex flex-col space-y-2 w-full", className)}>
-      {children}
+          Don&apos;t have an account?{' '}
+          <button onClick={onSwitchToSignup} className={`font-medium ${
+            isDarkMode 
+              ? 'text-[#28A0FF] hover:text-[#3ab6ff]' 
+              : 'text-blue-600 hover:text-blue-700'
+          }`}>
+            Create one
+          </button>
+        </p>
+      </main>
     </div>
   );
 };

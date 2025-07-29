@@ -1470,10 +1470,10 @@ const AnalyticsPage = ({ questions }) => {
     <div className="h-full overflow-hidden flex flex-col transition-colors duration-300">
       {/* Header - Modern Design */}
       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-6 py-4 flex-shrink-0 relative overflow-hidden shadow-lg transition-colors duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
+
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">Analytics Dashboard</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1 transition-colors duration-300">
               Track your performance and progress with advanced insights
               {timeRange === 'custom' && customDays !== '' && (

@@ -30,6 +30,8 @@ const AnimatedList = ({
   itemClassName = '',
   displayScrollbar = true,
   initialSelectedIndex = -1,
+  selectedItems = new Set(), // New prop for selection state
+  disabled = false, // New prop to disable interactions
 }) => {
   const listRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex);
@@ -146,24 +148,28 @@ const AnimatedList = ({
         }}
         tabIndex={0}
       >
-        {itemsToShow.map((item, index) => (
-          <AnimatedItem
-            key={index}
-            delay={0.1}
-            index={index}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onClick={() => {
-              setSelectedIndex(index);
-              if (onItemSelect) {
-                onItemSelect(item, index);
-              }
-            }}
-          >
-            <div className={`item ${selectedIndex === index ? 'selected' : ''} ${hoveredIndex === index ? 'hovered' : ''} ${itemClassName}`}>
-              <p className="item-text">{item}</p>
-            </div>
-          </AnimatedItem>
-        ))}
+        {itemsToShow.map((item, index) => {
+          const isSelected = selectedItems.has(index);
+          return (
+            <AnimatedItem
+              key={index}
+              delay={0.1}
+              index={index}
+              onMouseEnter={() => !disabled && setHoveredIndex(index)}
+              onClick={() => {
+                if (disabled) return;
+                setSelectedIndex(index);
+                if (onItemSelect) {
+                  onItemSelect(item, index);
+                }
+              }}
+            >
+              <div className={`item ${selectedIndex === index ? 'selected' : ''} ${hoveredIndex === index ? 'hovered' : ''} ${isSelected ? 'bulk-selected' : ''} ${itemClassName}`}>
+                <p className="item-text">{item}</p>
+              </div>
+            </AnimatedItem>
+          );
+        })}
         
         {/* Load More Button for Mobile */}
         {hasMoreItems && (

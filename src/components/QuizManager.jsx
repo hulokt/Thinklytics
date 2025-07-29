@@ -126,36 +126,20 @@ export class QuizManager {
       updatedQuizzes = [...quizzes, { ...quizData, lastUpdated: new Date().toISOString() }];
     }
 
-    console.log('💾 About to save updated quizzes array...');
-    console.log('📊 Current allQuizzes before save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
-    console.log('📊 Updated quizzes to save:', updatedQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
-    
     const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
-    console.log('💾 Save result:', saveSuccess);
     
     this.allQuizzes = updatedQuizzes;
-    console.log('📊 Local allQuizzes after save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
     
     // Refresh global state so UI updates immediately
     if (typeof this.refreshAllQuizzes === 'function') {
       await this.refreshAllQuizzes();
     }
     
-    console.log('✅ Quiz completion saved successfully');
-    
     return quizData;
   }
 
   // Finish a quiz (complete it and move to completed status)
   async finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime = 0) {
-    console.log('🏁 QuizManager.finishQuiz called with:', {
-      quizId: quizData?.id,
-      quizNumber: quizData?.quizNumber,
-      questionsCount: syncedQuestions?.length,
-      userAnswersCount: Object.keys(userAnswers || {}).length,
-      elapsedTime
-    });
-
     if (!quizData || !syncedQuestions || syncedQuestions.length === 0) {
       throw new Error('Invalid quiz data or questions provided to finishQuiz');
     }
@@ -163,12 +147,6 @@ export class QuizManager {
     const correctCount = syncedQuestions.filter(q => q.isCorrect).length;
     const totalQuestions = syncedQuestions.length;
     const score = Math.round((correctCount / totalQuestions) * 100);
-
-    console.log('📊 Quiz statistics calculated:', {
-      correctCount,
-      totalQuestions,
-      score
-    });
 
     // Keep full image data for completed quizzes - storage limits should be handled at the database level
     const sanitizedQuestions = syncedQuestions.map(q => ({ ...q }));
@@ -188,49 +166,27 @@ export class QuizManager {
       lastUpdated: new Date().toISOString()
     };
 
-    console.log('📦 Completed quiz data prepared:', {
-      quizId: completedQuiz.id,
-      quizNumber: completedQuiz.quizNumber,
-      status: completedQuiz.status,
-      score: completedQuiz.score
-    });
-
     // Check if the quiz exists in the array
     const existingIndex = this.allQuizzes.findIndex(quiz => quiz.id === quizData.id);
-    console.log('🔍 Quiz search result:', {
-      existingIndex,
-      allQuizzesCount: this.allQuizzes.length,
-      quizExists: existingIndex >= 0
-    });
     
     let updatedQuizzes;
     if (existingIndex >= 0) {
       // Update existing quiz
       updatedQuizzes = [...this.allQuizzes];
       updatedQuizzes[existingIndex] = completedQuiz;
-      console.log('✅ Updated existing quiz at index:', existingIndex);
     } else {
       // Add new quiz (this happens when quiz was never auto-saved)
       updatedQuizzes = [...this.allQuizzes, completedQuiz];
-      console.log('➕ Added new quiz to array');
     }
 
-    console.log('💾 About to save updated quizzes array...');
-    console.log('📊 Current allQuizzes before save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
-    console.log('📊 Updated quizzes to save:', updatedQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
-    
     const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
-    console.log('💾 Save result:', saveSuccess);
     
     this.allQuizzes = updatedQuizzes;
-    console.log('📊 Local allQuizzes after save:', this.allQuizzes.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber })));
     
     // Refresh global state so UI reflects completed status
     if (typeof this.refreshAllQuizzes === 'function') {
       await this.refreshAllQuizzes();
     }
-    
-    console.log('✅ Quiz completion saved successfully');
     
     return completedQuiz;
   }
@@ -271,50 +227,38 @@ export class QuizManager {
 
   // Delete a quiz and renumber remaining quizzes
   async deleteQuiz(quizId) {
-    console.log('🗑️ QuizManager.deleteQuiz called with quizId:', quizId);
-    console.log('🗑️ Current allQuizzes:', this.allQuizzes);
-    
     const quizToDelete = this.allQuizzes.find(q => q.id === quizId);
-    console.log('🗑️ Quiz to delete found:', quizToDelete);
     
     if (!quizToDelete) {
-      console.log('❌ Quiz not found for deletion');
       return false;
     }
 
     // Remove the quiz
     const remainingQuizzes = this.allQuizzes.filter(q => q.id !== quizId);
-    console.log('🗑️ Remaining quizzes after filter:', remainingQuizzes);
     
     // Renumber remaining quizzes if the deleted quiz had a lower number
     const deletedQuizNumber = quizToDelete.quizNumber;
-    console.log('🗑️ Deleted quiz number:', deletedQuizNumber);
     
     const renumberedQuizzes = remainingQuizzes.map(quiz => {
       if (quiz.quizNumber > deletedQuizNumber) {
         const renumbered = { ...quiz, quizNumber: quiz.quizNumber - 1 };
-        console.log(`🗑️ Renumbered quiz ${quiz.quizNumber} to ${renumbered.quizNumber}`);
         return renumbered;
       }
       return quiz;
     });
     
-    console.log('🗑️ Final renumbered quizzes:', renumberedQuizzes);
-    console.log('🗑️ Calling upsertAllQuizzes...');
-    
     try {
+      // Update local state first for immediate UI feedback
       this.allQuizzes = renumberedQuizzes;
+      
+      // Save to database
       await this.upsertAllQuizzes(renumberedQuizzes);
-      console.log('✅ upsertAllQuizzes completed successfully');
       
-      console.log('🗑️ Calling refreshAllQuizzes...');
-      await this.refreshAllQuizzes();
-      console.log('✅ refreshAllQuizzes completed successfully');
+      // Note: Removed redundant refreshAllQuizzes call since upsertAllQuizzes 
+      // already updates the local state and the UI will reflect changes immediately
       
-      console.log('✅ Quiz deletion completed successfully');
       return true;
     } catch (error) {
-      console.error('❌ Error in deleteQuiz:', error);
       throw error;
     }
   }

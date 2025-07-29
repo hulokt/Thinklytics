@@ -804,14 +804,7 @@ function AppContent() {
 
         <Route path="/quiz" element={
           <ProtectedRoute>
-            <SidebarLayout
-              currentPage="quiz"
-              onPageChange={handlePageChange}
-              onLogout={handleLogout}
-              onAccountClick={() => navigateWithScroll('/account')}
-              onProfileClick={() => navigateWithScroll('/profile')}
-              onHomeClick={handleLogoClick}
-            >
+            <div className="h-screen w-full overflow-hidden">
               <QuizPage
                 questions={currentQuiz}
                 onBack={() => {
@@ -821,7 +814,7 @@ function AppContent() {
                 isResuming={isResumingQuiz}
                 initialQuizData={resumingQuizData}
               />
-            </SidebarLayout>
+            </div>
           </ProtectedRoute>
         } />
 

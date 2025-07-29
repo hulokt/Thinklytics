@@ -541,18 +541,14 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       // Add hidden indicator for hidden questions
       const hiddenIndicator = question.hidden ? ' 🔒' : '';
       
-      // Add selection indicator if in bulk mode
-      const selectionIndicator = bulkSelectionMode ? 
-        (selectedQuestions.has(question.id) ? ' ☑️' : ' ☐') : '';
-      
       // Add timestamp (currentTime dependency ensures this updates every minute)
       const timeStamp = question.createdAt || question.lastUpdated 
         ? ` • ${formatRelativeTime(question.createdAt || question.lastUpdated)}` 
         : '';
       
-      return `${question.section} | ${passagePreview}${hiddenIndicator}${selectionIndicator}${timeStamp}`;
+      return `${question.section} | ${passagePreview}${hiddenIndicator}${timeStamp}`;
     });
-  }, [filteredQuestions, bulkSelectionMode, selectedQuestions, currentTime]);
+  }, [filteredQuestions, currentTime]);
 
   const handleQuestionSelect = (questionText, index) => {
     if (isImportMode) {
@@ -1596,12 +1592,12 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 h-full overflow-hidden flex flex-col transition-colors duration-300">
       {/* Header - Modern Design */}
       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-6 py-4 flex-shrink-0 relative overflow-hidden shadow-lg transition-colors duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
+
         
         {/* Responsive header and button group */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
               {isImportMode 
                 ? `Importing Questions (${currentQuestionIndex + 1}/${importProgress.total})`
                 : editingId ? 'Edit Question' : 'Create New Question'
@@ -1623,20 +1619,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
             )}
           </div>
           <div className="flex flex-col md:flex-row w-full md:w-auto items-stretch md:items-center gap-2 md:gap-3">
-            {!editingId && !isImportMode && (
-              <button
-                onClick={generateRandomQuestion}
-                className="group relative bg-gradient-to-r from-purple-600 to-indigo-700 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2 text-sm font-medium overflow-hidden w-full md:w-auto"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-700 to-indigo-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex items-center space-x-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2M7 4h10M7 4l-2 16h14L17 4M9 9v8M15 9v8" />
-                  </svg>
-                  <span>Generate Sample</span>
-                </div>
-              </button>
-            )}
+
             {/* Paste CSV Button */}
             {!editingId && !isImportMode && (
               <button
@@ -1868,11 +1851,11 @@ Reading and Writing,Standard English Conventions,Boundaries`}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:h-full">
           {/* Form Section - Modern Design */}
           <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 flex flex-col lg:h-full overflow-hidden hover:shadow-xl transition-all duration-300 relative min-h-[400px] md:min-h-[500px]">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 rounded-t-2xl"></div>
+
             
             <div className="p-4 sm:p-6 border-b border-gray-200/50 dark:border-gray-700/50 flex-shrink-0 transition-colors duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">Question Details</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Question Details</h2>
                 {isImportMode && (
                   <div className="flex items-center space-x-3">
                     <div className="bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full">
@@ -1890,10 +1873,10 @@ Reading and Writing,Standard English Conventions,Boundaries`}
 
             <form onSubmit={handleSubmit} className="flex flex-col lg:h-full overflow-hidden">
               <div className="p-3 sm:p-4 space-y-3 flex-1 lg:overflow-y-auto">
-              {/* Section Tabs - Modern Design */}
+              {/* Section Tabs - Modern Design with Sliding Gradient */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Section <span className="text-red-500">*</span></label>
-                <div className={`flex flex-wrap gap-2 p-2 rounded-xl shadow-inner transition-colors duration-300 ${
+                <div className={`relative flex flex-wrap gap-2 p-2 rounded-xl shadow-inner transition-colors duration-300 ${
                   validationErrors.section 
                     ? 'bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 border-2 border-red-300 dark:border-red-600' 
                     : 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'
@@ -1903,13 +1886,19 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                       key={section}
                       type="button"
                       onClick={() => handleInputChange('section', section)}
-                      className={`px-3 sm:px-5 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
+                      className={`relative px-3 sm:px-5 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 overflow-hidden ${
                         formData.section === section
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg transform scale-105'
-                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50 hover:shadow-md transition-colors duration-300'
+                          ? 'text-white shadow-lg transform scale-105'
+                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50 hover:shadow-md'
                       }`}
                     >
-                      {section}
+                      {/* Gradient background that slides */}
+                      <div 
+                        className={`absolute inset-0 bg-gradient-to-r from-[#22adff] to-[#3ab6ff] rounded-lg transition-all duration-500 ease-out ${
+                          formData.section === section ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
+                      <span className="relative z-10">{section}</span>
                     </button>
                   ))}
                 </div>
@@ -2040,7 +2029,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {ANSWER_CHOICES.map((choice) => (
                     <div key={choice} className="relative">
-                      <div className={`border-2 rounded-lg p-3 transition-colors ${
+                      <div className={`border-2 rounded-lg p-4 transition-colors ${
                         validationErrors[`answerChoice_${choice}`]
                           ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
                           : formData.correctAnswer === choice 
@@ -2071,7 +2060,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                           value={formData.answerChoices[choice]}
                           onChange={(e) => handleAnswerChoiceChange(choice, e.target.value)}
                           placeholder={`Enter answer choice ${choice}...`}
-                          className={`w-full px-2 py-1.5 border rounded-md focus:ring-2 text-base sm:text-sm transition-colors duration-300 ${
+                          className={`w-full px-3 py-2.5 border rounded-md focus:ring-2 text-base transition-colors duration-300 ${
                             validationErrors[`answerChoice_${choice}`]
                               ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                               : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
@@ -2354,6 +2343,11 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                     displayScrollbar={true}
                     disabled={isImportMode}
                     initialSelectedIndex={selectedQuestionIndex}
+                    selectedItems={bulkSelectionMode ? new Set(
+                      filteredQuestions
+                        .map((question, index) => selectedQuestions.has(question.id) ? index : -1)
+                        .filter(index => index !== -1)
+                    ) : new Set()}
                   />
                   {isImportMode && (
                     <div className="absolute inset-0 bg-white/90 dark:bg-gray-900/90 flex items-center justify-center rounded-lg z-10 border-2 border-yellow-300 dark:border-yellow-600">
@@ -2386,42 +2380,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                       : 'Click any question to edit'
                     }
                   </span>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <button
-                      onClick={() => setShowExportModal(true)}
-                      disabled={isExporting || exportSuccess}
-                      className={`px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 text-sm font-medium ${
-                        isExporting 
-                          ? 'bg-gray-400 text-white cursor-not-allowed' 
-                          : exportSuccess
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gradient-to-r from-green-500 to-blue-600 text-white hover:shadow-lg hover:scale-105'
-                      }`}
-                    >
-                      {isExporting ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          <span>Exporting...</span>
-                        </>
-                      ) : exportSuccess ? (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Downloaded!</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span>Export Questions</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+
                 </div>
               </div>
             )}

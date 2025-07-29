@@ -54,10 +54,9 @@ export const DesktopSidebar = ({ className, children, ...props }) => {
           className
         )}
         animate={{
-          width: animate ? (open ? 300 : 80) : "300px",
+          width: 240,
         }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+
         {...props}
       >
         {children}
@@ -77,8 +76,8 @@ export const MobileSidebar = ({ className, children, ...props }) => {
       >
         {/* Logo for mobile */}
         <div className="flex items-center space-x-2">
-          <img src={logoImage} alt="Thinklytics Logo" className="w-8 h-8 rounded-lg object-cover" />
-          <span className="ml-2 text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Thinklytics</span>
+          <img src={logoImage} alt="Thinklytics Logo" className="w-8 h-8 rounded-lg object-cover brightness-0 invert" />
+          <span className="ml-2 text-lg font-bold text-white">Thinklytics</span>
         </div>
         
         <div className="flex justify-end z-20">

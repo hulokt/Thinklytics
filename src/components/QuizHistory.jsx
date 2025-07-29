@@ -15,6 +15,9 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingQuiz, setIsDeletingQuiz] = useState(false);
+  const [isDeletingAllQuizzes, setIsDeletingAllQuizzes] = useState(false);
+  const [isResettingNumbers, setIsResettingNumbers] = useState(false);
 
   // Use new QuizManager
   const { 
@@ -46,7 +49,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         });
       }
     } catch (error) {
-      console.error('Error awarding points:', error);
+      // Error awarding points
     }
   };
 
@@ -58,12 +61,16 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   // Defensive: always use arrays
   useEffect(() => {
     if (!Array.isArray(inProgressQuizzesRaw) || !Array.isArray(completedQuizzesRaw)) {
-      console.error('[QuizHistory] ❌ One of the quiz arrays is not an array!', {
-        inProgressQuizzesRaw,
-        completedQuizzesRaw
-      });
+      // One of the quiz arrays is not an array
     }
   }, [inProgressQuizzesRaw, completedQuizzesRaw]);
+
+  // Force refresh when component mounts to ensure latest data
+  useEffect(() => {
+    if (quizManager) {
+      quizManager.refreshQuizzes();
+    }
+  }, [quizManager]);
 
   const inProgressQuizzes = Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw : [];
   const completedQuizzes = Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : [];
@@ -126,29 +133,43 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   const confirmDeleteQuiz = async () => {
     if (!showDeleteConfirm) return;
+    
+    setIsDeletingQuiz(true);
     try {
       // Use QuizManager to delete the quiz (handles renumbering automatically)
       await quizManager.deleteQuiz(showDeleteConfirm.id);
       
-      // Update question answers to remove this quiz's results
-      if (questionAnswers && showDeleteConfirm.questions) {
+      // Update question answers to remove this quiz's results (only if there are answers to update)
+      if (questionAnswers && showDeleteConfirm.questions && Object.keys(questionAnswers).length > 0) {
         const updatedAnswers = { ...questionAnswers };
+        let hasChanges = false;
+        
         showDeleteConfirm.questions.forEach(question => {
           if (updatedAnswers[question.id]) {
+            const originalLength = updatedAnswers[question.id].length;
             updatedAnswers[question.id] = updatedAnswers[question.id].filter(
               answer => answer.quizId !== showDeleteConfirm.id
             );
+            if (updatedAnswers[question.id].length !== originalLength) {
+              hasChanges = true;
+            }
             if (updatedAnswers[question.id].length === 0) {
               delete updatedAnswers[question.id];
             }
           }
         });
-        await upsertQuestionAnswers(updatedAnswers);
+        
+        // Only call upsertQuestionAnswers if there were actual changes
+        if (hasChanges) {
+          await upsertQuestionAnswers(updatedAnswers);
+        }
       }
+      
       setShowDeleteConfirm(null);
     } catch (error) {
-      console.error('Error during quiz deletion:', error);
-      setShowDeleteConfirm(null);
+      alert('Failed to delete quiz. Please try again.');
+    } finally {
+      setIsDeletingQuiz(false);
     }
   };
 
@@ -165,6 +186,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   };
 
   const confirmDeleteAllQuizzes = async () => {
+    setIsDeletingAllQuizzes(true);
     try {
       if (!quizManager) return;
 
@@ -177,12 +199,31 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
       setShowDeleteAllConfirm(false);
     } catch (err) {
-      console.error('Error deleting all quizzes:', err);
-      setShowDeleteAllConfirm(false);
+      alert('Failed to delete all quizzes. Please try again.');
+    } finally {
+      setIsDeletingAllQuizzes(false);
     }
   };
 
   const cancelDeleteAllQuizzes = () => setShowDeleteAllConfirm(false);
+
+  const confirmResetNumbers = async () => {
+    setIsResettingNumbers(true);
+    try {
+      if (!quizManager) return;
+
+      // Reset the numbering system by clearing all quizzes
+      await quizManager.deleteAllQuizzes();
+
+      setShowResetConfirm(false);
+    } catch (err) {
+      alert('Failed to reset quiz numbers. Please try again.');
+    } finally {
+      setIsResettingNumbers(false);
+    }
+  };
+
+  const cancelResetNumbers = () => setShowResetConfirm(false);
 
   // Helper function to get the correct answer letter for a question
   const getCorrectAnswerLetter = (question) => {
@@ -333,8 +374,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       setEditingAnswers({});
       
     } catch (error) {
-      console.error('❌ ========== SAVE CHANGES FAILED ==========');
-      console.error('Error details:', error);
+      // Error saving changes
       alert('Error saving changes. Please try again.');
     }
   };
@@ -428,10 +468,9 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       <div className="h-full overflow-hidden flex flex-col bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 transition-colors duration-300">
         {/* Header - EXACT copy from view page */}
         <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-6 py-4 flex-shrink-0 relative overflow-hidden shadow-lg transition-colors duration-300">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">Quiz Details</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Quiz Details</h1>
               <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1 transition-colors duration-300">
                 Review your performance and answers for this quiz.
               </p>
@@ -628,32 +667,12 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     <div className="h-full overflow-hidden flex flex-col transition-colors duration-300">
       {/* Header - Modern Design */}
       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-6 py-4 flex-shrink-0 relative overflow-hidden shadow-lg transition-colors duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
-        
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">Quiz History</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Quiz History</h1>
             <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1 transition-colors duration-300">
               Review your quiz results and track your progress over time.
             </p>
-          </div>
-          <div className="flex flex-col md:flex-row w-full md:w-auto items-stretch md:items-center gap-2 md:gap-3">
-            <button
-              onClick={() => setCurrentView('list')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full md:w-auto ${
-                currentView === 'list'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
-              }`}
-            >
-              Quiz List
-            </button>
-            <button
-              onClick={onBack}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 text-sm font-medium w-full md:w-auto"
-            >
-              Back to Selector
-            </button>
           </div>
         </div>
       </div>
@@ -680,7 +699,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1 h-6 bg-yellow-500 rounded-full"></div>
                     <h2 className="text-gray-900 dark:text-white text-lg font-semibold transition-colors duration-300">In Progress Quizzes</h2>
-                    <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium transition-colors duration-300">
+                    <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium transition-colors duration-300 w-fit">
                       {inProgressQuizzesSorted.length}
                     </span>
                   </div>
@@ -811,7 +830,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={cancelDeleteAllQuizzes}
+            onClick={cancelResetNumbers}
           />
           
           {/* Modal Content */}
@@ -832,7 +851,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   </div>
                 </div>
                 <button
-                  onClick={cancelDeleteAllQuizzes}
+                  onClick={cancelResetNumbers}
                   className="p-2 rounded-full hover:bg-white/20 transition-colors duration-200"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -880,16 +899,24 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
             <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-600 rounded-b-2xl">
               <div className="flex gap-3">
                 <button
-                  onClick={cancelDeleteAllQuizzes}
+                  onClick={cancelResetNumbers}
                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 font-medium"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={confirmDeleteAllQuizzes}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  onClick={confirmResetNumbers}
+                  disabled={isResettingNumbers}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Reset Numbers
+                  {isResettingNumbers ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Resetting...
+                    </>
+                  ) : (
+                    'Reset Numbers'
+                  )}
                 </button>
               </div>
             </div>
@@ -910,8 +937,27 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
               <p>This action cannot be undone.</p>
             </div>
             <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-2xl flex gap-3">
-              <button onClick={cancelDeleteAllQuizzes} className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg py-2">Cancel</button>
-              <button onClick={confirmDeleteAllQuizzes} className="flex-1 bg-red-600 text-white rounded-lg py-2">Delete All</button>
+              <button 
+                onClick={cancelDeleteAllQuizzes} 
+                disabled={isDeletingAllQuizzes}
+                className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteAllQuizzes} 
+                disabled={isDeletingAllQuizzes}
+                className="flex-1 bg-red-600 text-white rounded-lg py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeletingAllQuizzes ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete All'
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -997,15 +1043,24 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
               <div className="flex gap-3">
                 <button
                   onClick={cancelDeleteQuiz}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 font-medium"
+                  disabled={isDeletingQuiz}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDeleteQuiz}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  disabled={isDeletingQuiz}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Delete Quiz
+                  {isDeletingQuiz ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Quiz'
+                  )}
                 </button>
               </div>
             </div>

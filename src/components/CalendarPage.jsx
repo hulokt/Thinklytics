@@ -28,7 +28,7 @@ const calendarStyles = `
   }
 
   .react-calendar__navigation {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #22adff 0%, #3ab6ff 100%);
     padding: 16px;
     display: flex;
     align-items: center;
@@ -48,12 +48,12 @@ const calendarStyles = `
   }
 
   .react-calendar__navigation button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15) !important;
     transform: translateY(-1px);
   }
 
   .dark .react-calendar__navigation button:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.15) !important;
     transform: translateY(-1px);
   }
 
@@ -129,26 +129,38 @@ const calendarStyles = `
   }
 
   .react-calendar__tile--now {
-    background: #dbeafe;
-    color: #1e40af;
+    background: linear-gradient(135deg, #22adff, #3ab6ff);
+    color: white;
     font-weight: 600;
+  }
+
+  .react-calendar__tile--now:hover {
+    background: linear-gradient(135deg, #1e9be8, #32a5e6) !important;
+    color: white !important;
+    transform: translateY(-1px);
   }
 
   .dark .react-calendar__tile--now {
-    background: #1e3a8a;
-    color: #93c5fd;
+    background: linear-gradient(135deg, #22adff, #3ab6ff);
+    color: white;
+  }
+
+  .dark .react-calendar__tile--now:hover {
+    background: linear-gradient(135deg, #1e9be8, #32a5e6) !important;
+    color: white !important;
+    transform: translateY(-1px);
   }
 
   .react-calendar__tile--active {
-    background: #1e40af !important;
-    color: white !important;
+    background: linear-gradient(135deg, rgba(34, 173, 255, 0.2), rgba(58, 182, 255, 0.3)) !important;
+    color: #22adff !important;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+    box-shadow: 0 4px 12px rgba(34, 173, 255, 0.2);
   }
 
   .dark .react-calendar__tile--active {
-    background: #3b82f6 !important;
-    color: white !important;
+    background: linear-gradient(135deg, rgba(34, 173, 255, 0.3), rgba(58, 182, 255, 0.4)) !important;
+    color: #3ab6ff !important;
   }
 
   .react-calendar__tile--hasEvents {
@@ -425,7 +437,7 @@ const CalendarPage = ({ onStartQuiz }) => {
   // Get all events for the selected date
   const selectedDateEvents = getAllEventsForDate(toLocalDateString(selectedDate));
 
-  // When event sources change, bump key to trigger Calendar re-render so dot indicators update
+  // When event sources change, bump key to trigger Calendar re-render so that dot indicators update
   useEffect(() => {
     setCalendarKey(prev => prev + 1);
   }, [calendarEvents, inProgressQuizzes, completedQuizzes]);
@@ -914,15 +926,15 @@ const CalendarPage = ({ onStartQuiz }) => {
     <div className="h-full overflow-hidden flex flex-col transition-colors duration-300">
       {/* Header */}
       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-3 sm:px-6 py-4 flex-shrink-0 relative overflow-hidden shadow-lg transition-colors duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500"></div>
+
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-[#22adff] to-[#3ab6ff] rounded-xl flex items-center justify-center shadow-lg">
               <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Calendar & Schedule
               </h1>
               <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1 transition-colors duration-300">

@@ -82,6 +82,22 @@
   transform: none !important;
 }
 
+/* Light mode bulk selected (for multiple selection) */
+:not(.dark) .item.bulk-selected {
+  background-color: #e0f2fe !important;
+  border-color: #22adff !important;
+  box-shadow: 0 0 0 1px #22adff !important;
+  transform: none !important;
+}
+
+/* Dark mode bulk selected (for multiple selection) */
+.dark .item.bulk-selected {
+  background-color: #0c4a6e !important;
+  border-color: #22adff !important;
+  box-shadow: 0 0 0 1px #22adff !important;
+  transform: none !important;
+}
+
 /* Light mode text */
 :not(.dark) .item-text {
   color: #1e293b;

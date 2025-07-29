@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
@@ -17,11 +18,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const [startTime, setStartTime] = useState(Date.now());
   const [showReviewPage, setShowReviewPage] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isSavingAndExiting, setIsSavingAndExiting] = useState(false);
   const [quizInitialized, setQuizInitialized] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
   const [eliminationMode, setEliminationMode] = useState(false);
   const [eliminatedOptions, setEliminatedOptions] = useState({});
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef(null);
 
   // Use refs to capture current values for cleanup function
   const quizDataRef = useRef(null);
@@ -78,6 +82,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   // Get user for display name and points
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Use new QuizManager
   const { quizManager, allQuizzesLoading } = useQuizManager();
@@ -97,7 +102,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         });
       }
     } catch (error) {
-      console.error('Error awarding points:', error);
+      // Error awarding points
     }
   };
 
@@ -211,12 +216,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         (Object.keys(currentUserAnswers).length > 0 || currentElapsedTime > 0);
       
       if (hasProgress) {
-        console.log('🚪 Saving quiz progress on exit...', {
-          quizId: currentQuizData.id,
-          answeredCount: Object.keys(currentUserAnswers).length,
-          timeSpent: currentElapsedTime
-        });
-        
         const updatedQuizData = {
           ...currentQuizData,
           userAnswers: currentUserAnswers,
@@ -230,7 +229,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         
         // Save immediately when unmounting
         quizManager.saveQuiz(updatedQuizData).catch(error => {
-          console.error('Error saving progress on exit:', error);
+          // Error saving progress on exit
         });
 
         // Remove persisted startTime so elapsed clock doesn't keep growing while away
@@ -291,10 +290,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
     // If resuming, we can proceed even if loading (we have the data)
     if (isResuming && initialQuizData) {
-      console.log('🔄 Resuming existing quiz:', {
-        quizId: initialQuizData.id,
-        quizNumber: initialQuizData.quizNumber
-      });
       // Resume existing quiz
       setQuizData(initialQuizData);
       setUserAnswers(initialQuizData.userAnswers || {});
@@ -308,15 +303,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
     // For new quizzes, wait for loading to complete and quizManager to be available
     if (allQuizzesLoading || !quizManager) {
-      console.log('⏳ Waiting for data to load or QuizManager to be available...', {
-        allQuizzesLoading,
-        quizManagerAvailable: !!quizManager
-      });
       return;
     }
 
     if (!questions || questions.length === 0) {
-      console.error('❌ No questions provided to QuizPage');
       onBack();
       return;
     }
@@ -326,19 +316,11 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       return;
     }
 
-    console.log('🆕 Starting new quiz');
     // Start new quiz - normalize all questions
     const normalizedQuestions = questions.map(normalizeQuestion);
 
     // Use QuizManager to create new quiz with proper numbering
     const newQuizData = quizManager.createNewQuiz(normalizedQuestions);
-    
-    console.log('📦 New quiz data created:', {
-      quizId: newQuizData.id,
-      quizNumber: newQuizData.quizNumber,
-      questionsCount: newQuizData.questions.length,
-      startTime: newQuizData.startTime
-    });
     
     setQuizData(newQuizData);
     setQuizInitialized(true); // Mark as initialized
@@ -429,26 +411,55 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     setShowQuestionNavigation(false);
   };
 
-  const handleFinishQuiz = async () => {
-    console.log('🔴 handleFinishQuiz called!');
-    console.log('🔍 Checking quizData:', !!quizData);
-    console.log('🔍 Checking quizData.questions:', !!quizData?.questions);
-    console.log('🔍 Checking isFinishing:', isFinishing);
+  const handleSaveAndExit = async () => {
+    setIsSavingAndExiting(true);
     
-    if (!quizData || !quizData.questions || isFinishing) {
-      console.log('❌ Early return - missing data or already finishing');
-      return;
+    // Save current quiz progress before exiting
+    if (quizData && quizManager) {
+      try {
+        await quizManager.saveQuiz({
+          ...quizData,
+          userAnswers,
+          currentQuestionIndex,
+          flaggedQuestions: Array.from(flaggedQuestions),
+          eliminatedOptions,
+          eliminationMode,
+          timeSpent: elapsedTime,
+          lastUpdated: new Date().toISOString()
+        });
+      } catch (error) {
+        alert('Failed to save quiz progress. Please try again.');
+        setIsSavingAndExiting(false);
+        return;
+      }
     }
     
-    console.log('✅ Passed initial checks, proceeding with quiz completion...');
-    
-    console.log('🏁 ========== FINISH QUIZ START ==========');
-    console.log('📊 Quiz data before finishing:', {
-      quizId: quizData.id,
-      quizNumber: quizData.quizNumber,
-      questionsCount: quizData.questions.length,
-      answeredCount: Object.keys(userAnswers).length
-    });
+    // Only close the menu and navigate after the save is complete
+    setShowMoreMenu(false);
+    navigate('/history');
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setShowMoreMenu(false);
+      }
+    };
+
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMoreMenu]);
+
+  const handleFinishQuiz = async () => {
+    if (!quizData || !quizData.questions || isFinishing) {
+      return;
+    }
     
     setIsFinishing(true);
     try {
@@ -477,35 +488,11 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       });
 
       // 2. Use QuizManager to finish the quiz
-      console.log('⏱️ Finishing quiz with elapsed time:', elapsedTime);
-      console.log('📝 QuizManager available:', !!quizManager);
-      
       if (!quizManager) {
         throw new Error('QuizManager not available');
       }
       
       const completedQuiz = await quizManager.finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime);
-      
-      console.log('✅ Quiz completed successfully:', {
-        quizId: completedQuiz.id,
-        quizNumber: completedQuiz.quizNumber,
-        score: completedQuiz.score,
-        status: completedQuiz.status
-      });
-
-      // 3. Award points for completing the quiz
-      await awardPointsAndAnimate('COMPLETE_QUIZ', { score: completedQuiz.score });
-      
-      // 4. Award bonus points for high score if applicable
-      if (completedQuiz.score >= 90) {
-        // Increment the local high score counter
-        handleHighScore();
-        
-        // Small delay to show the completion animation first
-        setTimeout(() => {
-          awardPointsAndAnimate('HIGH_SCORE_BONUS', { score: completedQuiz.score });
-        }, 1000);
-      }
 
       // 5. Update question answers for analytics
       const currentAnswers = questionAnswers || {};
@@ -533,41 +520,22 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       
       await upsertQuestionAnswers(updatedAnswers);
       
-      console.log('🏁 ========== FINISH QUIZ COMPLETED SUCCESSFULLY ==========');
-      
       // Clear any stored resume data
       localStorage.removeItem('satlog:resumeQuizId');
-      
-      // Log the final quiz state for debugging
-      console.log('📊 Final completed quiz state:', {
-        id: completedQuiz.id,
-        quizNumber: completedQuiz.quizNumber,
-        status: completedQuiz.status,
-        score: completedQuiz.score,
-        totalQuestions: completedQuiz.totalQuestions,
-        correctAnswers: completedQuiz.correctAnswers
-      });
       
       // Update local state & refs so unmount cleanup sees the COMPLETED status
       setQuizData(completedQuiz);
       quizDataRef.current = completedQuiz;
       
-      // Navigate back to selector with a small delay to ensure all data is saved
-      setTimeout(() => {
-        console.log('🔄 Navigating back to selector...');
-        onBack();
-      }, 500);
+      // Navigate to quiz history instead of question selector
+      navigate('/history');
       
     } catch (error) {
-      console.error('❌ ========== FINISH QUIZ FAILED ==========');
-      console.error('Error details:', error);
-      console.error('Error stack:', error.stack);
-      
       // Show user-friendly error message
       alert('There was an error completing the quiz. Please try again.');
       
-      // Still navigate back to prevent getting stuck
-      onBack();
+      // Still navigate to history to prevent getting stuck
+      navigate('/history');
     } finally {
       setIsFinishing(false);
     }
@@ -600,8 +568,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         (Object.keys(currentUserAnswers).length > 0 || currentElapsedTime > 0);
       
       if (hasProgress) {
-        console.log('🌐 Browser closing - saving quiz progress...');
-        
         const updatedQuizData = {
           ...currentQuizData,
           userAnswers: currentUserAnswers,
@@ -615,7 +581,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         
         // Use synchronous storage or send a beacon request
         // For now, we'll just log it since we can't do async operations in beforeunload
-        console.log('📦 Quiz data to save:', updatedQuizData);
         
         // Show a warning to the user
         event.preventDefault();
@@ -1304,9 +1269,30 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
               <span className="material-icons mr-1">edit</span> Annotate
             </button>
-            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-              <span className="material-icons mr-1">more_vert</span> More
-            </button>
+            <div className="relative" ref={moreMenuRef}>
+              <button 
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+              >
+                <span className="material-icons mr-1">more_vert</span> More
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                  <button
+                    onClick={handleSaveAndExit}
+                    disabled={isSavingAndExiting}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-icons mr-2 text-sm">
+                      {isSavingAndExiting ? 'hourglass_empty' : 'save'}
+                    </span>
+                    {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -1552,6 +1538,32 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           actionType={pointsAnimation.action}
           onComplete={handlePointsAnimationComplete}
         />
+      )}
+
+      {/* Save and Exit Loading Overlay */}
+      {isSavingAndExiting && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Saving Quiz Progress</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Please wait while we save your progress...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Finish Quiz Loading Overlay */}
+      {isFinishing && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Completing Quiz</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Please wait while we process your results...</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -20,7 +20,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import logoImage from "/logo.png";
 
 export function SidebarLayout({ children, currentPage, onPageChange, onLogout, onAccountClick, onProfileClick, onHomeClick }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [userData, setUserData] = useState({ name: 'User', email: '' });
   const { user } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -98,7 +98,7 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
     >
       <SidebarProvider open={open} setOpen={setOpen}>
         <Sidebar open={open} setOpen={setOpen}>
-          <SidebarBody className="justify-between gap-10 bg-gray-900 border-r border-gray-700 transition-colors duration-300">
+          <SidebarBody className="justify-between gap-10 bg-[#030a14] border-r border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
               {(() => {
                 console.log('🏠 Sidebar state - open:', open);
@@ -127,8 +127,8 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                     }}
                     className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md transition-colors duration-300 ${
                       location.pathname === link.href
-                        ? 'bg-blue-900/30 text-blue-300'
-                        : 'text-gray-300 hover:bg-blue-900/20'
+                        ? 'bg-[#22adff]/20 text-[#3ab6ff]'
+                        : 'text-gray-300 hover:bg-[#22adff]/10'
                     }`}
                   >
                     <div className="shrink-0">
@@ -152,11 +152,11 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
-                className="flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 text-gray-300 hover:bg-blue-900/20"
+                className="flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 text-gray-300 hover:bg-[#22adff]/10"
               >
                 <div className="shrink-0">
                   {isDarkMode ? (
-                    <Moon className="w-5 h-5 text-blue-400" />
+                    <Moon className="w-5 h-5 text-[#3ab6ff]" />
                   ) : (
                     <Sun className="w-5 h-5 text-yellow-500" />
                   )}
@@ -184,8 +184,8 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
                 }}
                 className={`flex items-center justify-start gap-2 group/sidebar py-2 px-3 rounded-md w-full transition-colors duration-300 ${
                   location.pathname === '/profile'
-                    ? 'bg-blue-900/30 text-blue-300'
-                    : 'text-gray-300 hover:bg-blue-900/20'
+                    ? 'bg-[#22adff]/20 text-[#3ab6ff]'
+                    : 'text-gray-300 hover:bg-[#22adff]/10'
                 }`}
               >
                 <div className={`${!open ? 'mr-2' : ''}`}>
@@ -270,15 +270,15 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
+      className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-[#22adff]/10 rounded-lg transition-colors duration-300"
     >
-      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
+      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover brightness-0 invert" />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex flex-col"
       >
-        <span className="ml-2 text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Thinklytics</span>
+        <span className="ml-2 text-xl font-bold text-white">Thinklytics</span>
       </motion.div>
     </button>
   );
@@ -296,9 +296,9 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-gray-700/30 rounded-lg transition-colors duration-300"
+      className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-[#22adff]/10 rounded-lg transition-colors duration-300"
     >
-      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover" />
+      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover brightness-0 invert" />
     </button>
   );
 };

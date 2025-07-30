@@ -6,6 +6,11 @@ import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { awardPoints, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 
+// Import sound files
+import selectChoiceSound from '../assets/selectedChoiceSound.wav';
+import correctChoiceSound from '../assets/correctChoiceSound.wav';
+import wrongChoiceSound from '../assets/wrongChoiceSound.wav';
+
 const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = null }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
@@ -26,6 +31,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const [eliminatedOptions, setEliminatedOptions] = useState({});
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef(null);
+  const [checkedQuestions, setCheckedQuestions] = useState(new Set());
+  const [showExplanation, setShowExplanation] = useState({});
 
   // Use refs to capture current values for cleanup function
   const quizDataRef = useRef(null);
@@ -38,6 +45,13 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const hasUnsavedChangesRef = useRef(false);
   const eliminationModeRef = useRef(false);
   const eliminatedOptionsRef = useRef({});
+  const checkedQuestionsRef = useRef(new Set());
+  const showExplanationRef = useRef({});
+
+  // Audio refs for sound effects
+  const selectAudioRef = useRef(null);
+  const correctAudioRef = useRef(null);
+  const wrongAudioRef = useRef(null);
 
   // Update refs when state changes
   useEffect(() => {
@@ -80,6 +94,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     eliminatedOptionsRef.current = eliminatedOptions;
   }, [eliminatedOptions]);
 
+  useEffect(() => {
+    checkedQuestionsRef.current = checkedQuestions;
+  }, [checkedQuestions]);
+
+  useEffect(() => {
+    showExplanationRef.current = showExplanation;
+  }, [showExplanation]);
+
   // Get user for display name and points
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -87,6 +109,29 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   // Use new QuizManager
   const { quizManager, allQuizzesLoading } = useQuizManager();
   const { data: questionAnswers, upsertData: upsertQuestionAnswers } = useQuestionAnswers();
+
+  // Function to play sound effects
+  const playSound = (audioRef) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0; // Reset to beginning
+      audioRef.current.play().catch(error => {
+        // Silently handle audio play errors (user might have blocked autoplay)
+        console.log('Audio play failed:', error);
+      });
+    }
+  };
+
+  // Initialize audio elements
+  useEffect(() => {
+    selectAudioRef.current = new Audio(selectChoiceSound);
+    correctAudioRef.current = new Audio(correctChoiceSound);
+    wrongAudioRef.current = new Audio(wrongChoiceSound);
+    
+    // Set volume for all sounds
+    selectAudioRef.current.volume = 0.5;
+    correctAudioRef.current.volume = 0.5;
+    wrongAudioRef.current.volume = 0.5;
+  }, []);
 
   // Award points and show animation
   const awardPointsAndAnimate = async (actionType, additionalData = {}) => {
@@ -223,6 +268,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           flaggedQuestions: Array.from(currentFlaggedQuestions),
           eliminationMode: eliminationModeRef.current,
           eliminatedOptions: eliminatedOptionsRef.current,
+          checkedQuestions: Array.from(checkedQuestionsRef.current),
+          showExplanation: showExplanationRef.current,
           lastUpdated: new Date().toISOString(),
           timeSpent: currentElapsedTime
         };
@@ -236,6 +283,20 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         if (currentQuizData?.id) {
           localStorage.removeItem(`satlog:quiz:${currentQuizData.id}:startTime`);
         }
+      }
+      
+      // Cleanup audio elements
+      if (selectAudioRef.current) {
+        selectAudioRef.current.pause();
+        selectAudioRef.current = null;
+      }
+      if (correctAudioRef.current) {
+        correctAudioRef.current.pause();
+        correctAudioRef.current = null;
+      }
+      if (wrongAudioRef.current) {
+        wrongAudioRef.current.pause();
+        wrongAudioRef.current = null;
       }
     };
   }, []); // Empty dependency array to prevent re-runs
@@ -274,6 +335,23 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return question;
   };
 
+  // Helper function to get correct answer letter
+  const getCorrectAnswerLetter = (question) => {
+    if (question.answerChoices && question.correctAnswer) {
+      // If correctAnswer is already a letter (A, B, C, D)
+      if (['A', 'B', 'C', 'D'].includes(question.correctAnswer)) {
+        return question.correctAnswer;
+      }
+      // If correctAnswer is the text, find the corresponding letter
+      for (const [letter, text] of Object.entries(question.answerChoices)) {
+        if (text === question.correctAnswer) {
+          return letter;
+        }
+      }
+    }
+    return question.correctAnswer;
+  };
+
   // Reset quizInitialized when starting a new quiz session
   useEffect(() => {
     // Reset initialization state when questions change or resuming state changes
@@ -297,6 +375,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       setFlaggedQuestions(new Set(initialQuizData.flaggedQuestions || []));
       setEliminationMode(initialQuizData.eliminationMode || false);
       setEliminatedOptions(initialQuizData.eliminatedOptions || {});
+      setCheckedQuestions(new Set(initialQuizData.checkedQuestions || []));
+      setShowExplanation(initialQuizData.showExplanation || {});
       setQuizInitialized(true);
       return;
     }
@@ -356,6 +436,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   const handleAnswerSelect = (answer) => {
     if (!currentQuestion) return;
+    
+    // Prevent changing answer if question has been checked
+    if (checkedQuestions.has(currentQuestion.id)) {
+      return;
+    }
+
+    // Play select choice sound
+    playSound(selectAudioRef);
 
     const isCorrect = answer === currentQuestion.correctAnswer;
     
@@ -372,6 +460,39 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           : q
       )
     }));
+  };
+
+  const handleCheckAnswer = () => {
+    if (!currentQuestion) return;
+    
+    const userAnswer = userAnswers[currentQuestion.id];
+    if (!userAnswer) {
+      alert('Please select an answer before checking.');
+      return;
+    }
+    
+    // Check if answer is correct and play appropriate sound
+    const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
+    const isCorrect = userAnswer === currentQuestion.correctAnswer || 
+                     (currentQuestion.answerChoices && 
+                      currentQuestion.answerChoices[userAnswer] === currentQuestion.correctAnswer);
+    
+    if (isCorrect) {
+      playSound(correctAudioRef);
+    } else {
+      playSound(wrongAudioRef);
+    }
+    
+    // Mark this question as checked
+    setCheckedQuestions(prev => new Set([...prev, currentQuestion.id]));
+    
+    // Show explanation if available
+    if (currentQuestion.explanation) {
+      setShowExplanation(prev => ({
+        ...prev,
+        [currentQuestion.id]: true
+      }));
+    }
   };
 
   const handleFlagQuestion = () => {
@@ -424,6 +545,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           flaggedQuestions: Array.from(flaggedQuestions),
           eliminatedOptions,
           eliminationMode,
+          checkedQuestions: Array.from(checkedQuestions),
+          showExplanation,
           timeSpent: elapsedTime,
           lastUpdated: new Date().toISOString()
         });
@@ -527,8 +650,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       setQuizData(completedQuiz);
       quizDataRef.current = completedQuiz;
       
-      // Navigate to quiz history instead of question selector
-      navigate('/history');
+      // Navigate to quiz history with success state to trigger celebration
+      navigate('/history', { state: { showCelebration: true } });
       
     } catch (error) {
       // Show user-friendly error message
@@ -575,6 +698,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           flaggedQuestions: Array.from(flaggedQuestionsRef.current),
           eliminationMode: eliminationModeRef.current,
           eliminatedOptions: eliminatedOptionsRef.current,
+          checkedQuestions: Array.from(checkedQuestionsRef.current),
+          showExplanation: showExplanationRef.current,
           lastUpdated: new Date().toISOString(),
           timeSpent: currentElapsedTime
         };
@@ -947,6 +1072,114 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         .dark .question-option.selected:hover {
           background-color: #1e40af;
           border-color: #2563eb;
+        }
+        
+        /* Correct answer styles */
+        .question-option.correct-answer {
+          background-color: #dcfce7;
+          border-color: #22c55e;
+          color: #166534;
+          cursor: not-allowed;
+        }
+        .dark .question-option.correct-answer {
+          background-color: #14532d;
+          border-color: #22c55e;
+          color: #bbf7d0;
+          cursor: not-allowed;
+        }
+        .question-option.correct-answer .option-letter {
+          background-color: #22c55e;
+          color: white;
+          border-color: #22c55e;
+        }
+        /* Higher specificity to override selected state */
+        .question-option.selected.correct-answer .option-letter {
+          background-color: #22c55e !important;
+          color: white !important;
+          border-color: #22c55e !important;
+        }
+        .question-option.correct-answer:hover {
+          background-color: #dcfce7;
+          border-color: #22c55e;
+          cursor: not-allowed;
+        }
+        .dark .question-option.correct-answer:hover {
+          background-color: #14532d;
+          border-color: #22c55e;
+          cursor: not-allowed;
+        }
+        
+        /* Incorrect answer styles */
+        .question-option.incorrect-answer {
+          background-color: #fef2f2;
+          border-color: #ef4444;
+          color: #991b1b;
+          cursor: not-allowed;
+        }
+        .dark .question-option.incorrect-answer {
+          background-color: #7f1d1d;
+          border-color: #ef4444;
+          color: #fecaca;
+          cursor: not-allowed;
+        }
+        .question-option.incorrect-answer .option-letter {
+          background-color: #ef4444;
+          color: white;
+          border-color: #ef4444;
+        }
+        /* Higher specificity to override selected state */
+        .question-option.selected.incorrect-answer .option-letter {
+          background-color: #ef4444 !important;
+          color: white !important;
+          border-color: #ef4444 !important;
+        }
+        .question-option.incorrect-answer:hover {
+          background-color: #fef2f2;
+          border-color: #ef4444;
+          cursor: not-allowed;
+        }
+        .dark .question-option.incorrect-answer:hover {
+          background-color: #7f1d1d;
+          border-color: #ef4444;
+          cursor: not-allowed;
+        }
+        
+        /* Unselected wrong answers when checked */
+        .question-option.unselected-wrong {
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+          color: #6b7280;
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+        .dark .question-option.unselected-wrong {
+          background-color: #374151;
+          border-color: #4b5563;
+          color: #9ca3af;
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+        .question-option.unselected-wrong .option-letter {
+          background-color: #9ca3af;
+          color: #6b7280;
+          border-color: #9ca3af;
+        }
+        .dark .question-option.unselected-wrong .option-letter {
+          background-color: #6b7280;
+          color: #9ca3af;
+          border-color: #6b7280;
+        }
+        .question-option.unselected-wrong:hover {
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+        .dark .question-option.unselected-wrong:hover {
+          background-color: #374151;
+          border-color: #4b5563;
+          opacity: 0.7;
+          cursor: not-allowed;
         }
         
         /* Eliminated option styles */
@@ -1349,6 +1582,18 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                   Mark for Review
                 </span>
               </button>
+              <button 
+                onClick={handleCheckAnswer}
+                disabled={checkedQuestions.has(currentQuestion.id) || !userAnswers[currentQuestion.id]}
+                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300 ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="material-icons text-base sm:text-lg mr-1">
+                  {checkedQuestions.has(currentQuestion.id) ? 'check_circle' : 'check_circle_outline'}
+                </span>
+                <span>
+                  {checkedQuestions.has(currentQuestion.id) ? 'Checked' : 'Check Answer'}
+                </span>
+              </button>
             </div>
             <div className="flex items-center space-x-2">
               <button 
@@ -1373,12 +1618,33 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                 const isSelected = userAnswers[currentQuestion.id] === option;
                 const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
+                const isChecked = checkedQuestions.has(currentQuestion.id);
+                const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
+                const isCorrectAnswer = optionLetter === correctAnswerLetter;
+                
+                // Determine styling based on check status
+                let optionStyle = '';
+                if (isChecked) {
+                  if (isSelected && isCorrectAnswer) {
+                    optionStyle = 'selected correct-answer';
+                  } else if (isSelected && !isCorrectAnswer) {
+                    optionStyle = 'selected incorrect-answer';
+                  } else if (!isSelected && isCorrectAnswer) {
+                    optionStyle = 'correct-answer';
+                  } else {
+                    // For unselected incorrect answers, just use neutral styling
+                    optionStyle = 'unselected-wrong';
+                  }
+                } else {
+                  optionStyle = isSelected ? 'selected' : '';
+                  if (isEliminated) optionStyle += ' eliminated';
+                }
                 
                 return (
                   <div key={index} className="flex items-center space-x-3" style={{ overflow: 'visible' }}>
                     <div 
                       onClick={() => handleAnswerSelect(option)}
-                      className={`question-option min-w-0 ${isSelected ? 'selected' : ''} ${isEliminated ? 'eliminated' : ''}`}
+                      className={`question-option min-w-0 ${optionStyle}`}
                       style={{ 
                         padding: '0.5rem 0.75rem',
                         width: eliminationMode ? 'calc(100% - 80px)' : '100%',
@@ -1406,6 +1672,21 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 );
               })}
             </div>
+            
+            {/* Explanation Section */}
+            {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div className="flex items-start">
+                  <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                      {currentQuestion.explanation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -35,12 +35,14 @@ export function useUserData<K extends DataType>(
   const isLoadingRef = useRef(false)
   const isSavingRef = useRef(false)
   const lastRequestTimeRef = useRef(0)
+  const lastSaveTimeRef = useRef(0)
   const retryCountRef = useRef(0)
   const consecutiveFailuresRef = useRef(0)
   const circuitBreakerOpenUntilRef = useRef(0)
   
   // Minimum time between requests (in milliseconds)
   const MIN_REQUEST_INTERVAL = 1000
+  const MIN_SAVE_INTERVAL = 10 // Extremely fast for save operations - reduced from 50ms
   const MAX_CONSECUTIVE_FAILURES = 5
   const CIRCUIT_BREAKER_TIMEOUT = 30000 // 30 seconds
 
@@ -124,25 +126,23 @@ export function useUserData<K extends DataType>(
   }, [user, dataType])
 
   const upsertData = useCallback(async (newData: DataTypeMap[K]): Promise<boolean> => {
-    if (!user || isSavingRef.current || isCircuitBreakerOpen()) {
-      // debug alert removed
+    if (!user || isCircuitBreakerOpen()) {
       return false
     }
 
-    // Throttle save requests
-    const now = Date.now()
-    if (now - lastRequestTimeRef.current < MIN_REQUEST_INTERVAL) {
-      // debug alert removed
-      await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL))
+    // Update UI immediately for instant feedback
+    setData(newData)
+    setError(null)
+
+    // If already saving, just queue this update
+    if (isSavingRef.current) {
+      return true
     }
     
     isSavingRef.current = true
-    lastRequestTimeRef.current = Date.now()
+    lastSaveTimeRef.current = Date.now()
 
     try {
-      setError(null)
-      // debug alert removed
-      
       const { data: result, error: saveError } = await supabase.rpc('upsert_user_data', {
         p_user_id: user.id,
         p_data_type: dataType,
@@ -150,18 +150,14 @@ export function useUserData<K extends DataType>(
       })
 
       if (saveError) {
-        // debug alert removed
         throw new Error(`Supabase error: ${saveError.message}`)
       }
 
-      // debug alert removed
-      setData(newData)
       closeCircuitBreaker() // Close circuit breaker on success
       return true
       
     } catch (err: any) {
       console.error(`❌ Error saving ${dataType}:`, err)
-      // debug alert removed
       consecutiveFailuresRef.current++
       
       // Open circuit breaker if too many consecutive failures
@@ -244,6 +240,7 @@ function getDefaultData(dataType: DataType): any {
     case DATA_TYPES.QUIZ_HISTORY:
     case DATA_TYPES.IN_PROGRESS_QUIZZES:
     case DATA_TYPES.ALL_QUIZZES:
+    case DATA_TYPES.CALENDAR_EVENTS:
       return []
     case DATA_TYPES.QUESTION_ANSWERS:
       return {}
@@ -252,7 +249,6 @@ function getDefaultData(dataType: DataType): any {
   }
 }
 
-// Convenience hooks for specific data types
 export const useQuestions = () => useUserData(DATA_TYPES.QUESTIONS)
 export const useQuizHistory = () => useUserData(DATA_TYPES.QUIZ_HISTORY)
 export const useInProgressQuizzes = () => useUserData(DATA_TYPES.IN_PROGRESS_QUIZZES)

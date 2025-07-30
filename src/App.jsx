@@ -398,7 +398,7 @@ function AppContent() {
     }
   };
 
-  const handleAddQuestion = async (newQuestion) => {
+  const handleAddQuestion = (newQuestion) => {
     if (!questions) return;
     
     // Always treat incoming data as an array
@@ -493,10 +493,12 @@ function AppContent() {
 
     // Merge and save
     const updatedQuestions = [...questions, ...questionsWithIds];
-    await upsertQuestions(updatedQuestions);
+    upsertQuestions(updatedQuestions).catch(error => {
+      console.error('Failed to save questions to database:', error);
+    });
   };
 
-  const handleUpdateQuestion = async (questionId, updatedQuestion) => {
+  const handleUpdateQuestion = (questionId, updatedQuestion) => {
     if (!questions) return;
     
     // Helper to detect if a question should be hidden
@@ -530,20 +532,26 @@ function AppContent() {
       }
       return q;
     });
-    await upsertQuestions(updatedQuestions);
+    upsertQuestions(updatedQuestions).catch(error => {
+      console.error('Failed to update question in database:', error);
+    });
   };
 
-  const handleDeleteQuestion = async (questionId) => {
+  const handleDeleteQuestion = (questionId) => {
     if (!questions) return;
     
     const updatedQuestions = questions.filter(q => q.id !== questionId);
-    await upsertQuestions(updatedQuestions);
+    upsertQuestions(updatedQuestions).catch(error => {
+      console.error('Failed to delete question from database:', error);
+    });
   };
 
-  const handleBulkDeleteQuestions = async (questionIds) => {
+  const handleBulkDeleteQuestions = (questionIds) => {
     if (!questions || !Array.isArray(questionIds) || questionIds.length === 0) return;
     const updatedQuestions = questions.filter(q => !questionIds.includes(q.id));
-    await upsertQuestions(updatedQuestions);
+    upsertQuestions(updatedQuestions).catch(error => {
+      console.error('Failed to bulk delete questions from database:', error);
+    });
   };
 
   const handleStartQuiz = (selectedQuestions) => {
@@ -901,7 +909,16 @@ function AppContent() {
 
         <Route path="/account" element={
           <ProtectedRoute>
-            <AccountPage onBack={() => navigateWithScroll('/questions')} />
+            <SidebarLayout 
+              currentPage="account" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <AccountPage onBack={() => navigateWithScroll('/questions')} />
+            </SidebarLayout>
           </ProtectedRoute>
         } />
 

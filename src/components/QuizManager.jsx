@@ -106,9 +106,15 @@ export class QuizManager {
     const updatedQuizzes = this.allQuizzes.map(quiz => 
       quiz.id === quizId ? { ...quiz, ...updates, lastUpdated: new Date().toISOString() } : quiz
     );
+    
+    // Update local state immediately for instant UI feedback
     this.allQuizzes = updatedQuizzes;
-    await this.upsertAllQuizzes(updatedQuizzes);
-    await this.refreshAllQuizzes();
+    
+    // Make database call non-blocking for faster response
+    this.upsertAllQuizzes(updatedQuizzes).catch(error => {
+      console.error('Failed to save quiz update to database:', error);
+      // Could add retry logic here if needed
+    });
   }
 
   // Save quiz progress (for auto-save during quiz)
@@ -126,14 +132,13 @@ export class QuizManager {
       updatedQuizzes = [...quizzes, { ...quizData, lastUpdated: new Date().toISOString() }];
     }
 
-    const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
-    
+    // Update local state immediately for instant UI feedback
     this.allQuizzes = updatedQuizzes;
     
-    // Refresh global state so UI updates immediately
-    if (typeof this.refreshAllQuizzes === 'function') {
-      await this.refreshAllQuizzes();
-    }
+    // Make database call non-blocking for faster response
+    this.upsertAllQuizzes(updatedQuizzes).catch(error => {
+      console.error('Failed to save quiz progress to database:', error);
+    });
     
     return quizData;
   }
@@ -247,20 +252,16 @@ export class QuizManager {
       return quiz;
     });
     
-    try {
-      // Update local state first for immediate UI feedback
-      this.allQuizzes = renumberedQuizzes;
-      
-      // Save to database
-      await this.upsertAllQuizzes(renumberedQuizzes);
-      
-      // Note: Removed redundant refreshAllQuizzes call since upsertAllQuizzes 
-      // already updates the local state and the UI will reflect changes immediately
-      
-      return true;
-    } catch (error) {
-      throw error;
-    }
+    // Update local state immediately for instant UI feedback
+    this.allQuizzes = renumberedQuizzes;
+    
+    // Perform database operation in the background
+    this.upsertAllQuizzes(renumberedQuizzes).catch(error => {
+      console.error('Failed to save quiz deletion to database:', error);
+      // Could add retry logic here if needed
+    });
+    
+    return true;
   }
 
   // Get quizzes by status

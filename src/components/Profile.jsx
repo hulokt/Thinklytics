@@ -2,12 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserStats } from '../lib/userPoints';
 import { Calculator, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import CountUp from './ui/CountUp';
+
+// Import sound files
+import rankingLoadedSound from '../assets/rankingLoadedPage.wav';
 
 const Profile = () => {
   const { user } = useAuth();
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [rankingAudio, setRankingAudio] = useState(null);
+  const [animationStarted, setAnimationStarted] = useState(false);
+
+  // Initialize ranking audio
+  useEffect(() => {
+    const audio = new Audio(rankingLoadedSound);
+    audio.volume = 0.4;
+    setRankingAudio(audio);
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const loadUserStats = async () => {
@@ -24,6 +44,19 @@ const Profile = () => {
           if (stats) {
             console.log('✅ Profile stats loaded:', stats);
             setUserStats(stats);
+            
+            // Play ranking loaded sound when stats are successfully loaded
+            if (rankingAudio) {
+              rankingAudio.currentTime = 0;
+              rankingAudio.play().catch(error => {
+                console.log('Ranking audio play failed:', error);
+              });
+            }
+            
+            // Start animations after a short delay
+            setTimeout(() => {
+              setAnimationStarted(true);
+            }, 500);
           } else {
             // Show fallback data
             setUserStats({
@@ -41,6 +74,10 @@ const Profile = () => {
               progressToNext: 0,
               nextRankPoints: 100
             });
+            
+            setTimeout(() => {
+              setAnimationStarted(true);
+            }, 500);
           }
         } catch (error) {
           console.error('Error loading user stats:', error);
@@ -60,6 +97,10 @@ const Profile = () => {
             progressToNext: 0,
             nextRankPoints: 100
           });
+          
+          setTimeout(() => {
+            setAnimationStarted(true);
+          }, 500);
         } finally {
           setCalculating(false);
           setLoading(false);
@@ -68,7 +109,7 @@ const Profile = () => {
     };
 
     loadUserStats();
-  }, [user]);
+  }, [user, rankingAudio]);
 
   if (loading) {
     return (
@@ -96,7 +137,12 @@ const Profile = () => {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Real-time Stats Info */}
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4"
+      >
         <div className="flex items-start space-x-3">
           <Info className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
           <div>
@@ -110,10 +156,15 @@ const Profile = () => {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Profile Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+      >
         <div className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 px-8 py-12 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 via-indigo-700/90 to-purple-800/90"></div>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
@@ -121,22 +172,57 @@ const Profile = () => {
           
           <div className="flex flex-col lg:flex-row items-center lg:justify-between relative z-10 space-y-4 lg:space-y-0 text-center lg:text-left">
             <div className="flex flex-col sm:flex-row items-center sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 flex-1">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-white/20 to-white/10 rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm border border-white/20 flex-shrink-0">
+              <motion.div 
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.8, delay: 0.4, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-white/20 to-white/10 rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm border border-white/20 flex-shrink-0"
+              >
                 <span className="text-2xl sm:text-3xl font-bold">{userStats?.avatar}</span>
-              </div>
+              </motion.div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl sm:text-3xl font-bold mb-2 truncate">{userStats?.name}</h2>
+                <motion.h2 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                  className="text-2xl sm:text-3xl font-bold mb-2 truncate"
+                >
+                  {userStats?.name}
+                </motion.h2>
                 <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                  <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                  <motion.span 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.8 }}
+                    className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
+                  >
                     Level {userStats?.rank_position || 1}
-                  </span>
-                  <span className="text-xl sm:text-2xl font-bold">{userStats?.points || 0} pts</span>
+                  </motion.span>
+                  <motion.span 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 1.0 }}
+                    className="text-xl sm:text-2xl font-bold"
+                  >
+                    <CountUp 
+                      from={0} 
+                      to={userStats?.points || 0} 
+                      duration={1.5} 
+                      delay={1.2}
+                      startWhen={animationStarted}
+                    /> pts
+                  </motion.span>
                 </div>
               </div>
             </div>
             
             {/* Live Stats Indicator */}
-            <div className="text-center lg:text-right flex-shrink-0">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 1.2 }}
+              className="text-center lg:text-right flex-shrink-0"
+            >
               <div className="bg-white/20 backdrop-blur-sm border border-white/20 px-3 py-2 sm:px-4 sm:py-2 rounded-xl">
                 <div className="flex items-center justify-center space-x-2 mb-1">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -144,49 +230,105 @@ const Profile = () => {
                 </div>
                 <p className="text-xs opacity-90">Auto-calculated</p>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="p-8">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Your Statistics</h3>
+          <motion.h3 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.4 }}
+            className="text-xl font-semibold text-gray-900 dark:text-white mb-6"
+          >
+            Your Statistics
+          </motion.h3>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800">
+            <motion.div 
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 1.6 }}
+              className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800"
+            >
               <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                {userStats?.questions_added || 0}
+                <CountUp 
+                  from={0} 
+                  to={userStats?.questions_added || 0} 
+                  duration={1.2} 
+                  delay={1.8}
+                  startWhen={animationStarted}
+                />
               </div>
               <div className="text-sm text-blue-800 dark:text-blue-300 font-medium">Questions Added</div>
               <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">from question bank</div>
-            </div>
+            </motion.div>
             
-            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800">
+            <motion.div 
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 1.8 }}
+              className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800"
+            >
               <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
-                {userStats?.quizzes_completed || 0}
+                <CountUp 
+                  from={0} 
+                  to={userStats?.quizzes_completed || 0} 
+                  duration={1.2} 
+                  delay={2.0}
+                  startWhen={animationStarted}
+                />
               </div>
               <div className="text-sm text-green-800 dark:text-green-300 font-medium">Quizzes Completed</div>
               <div className="text-xs text-green-600 dark:text-green-400 mt-1">from quiz history</div>
-            </div>
+            </motion.div>
             
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 text-center border border-purple-200 dark:border-purple-800">
+            <motion.div 
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 2.0 }}
+              className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 text-center border border-purple-200 dark:border-purple-800"
+            >
               <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                {userStats?.edits || 0}
+                <CountUp 
+                  from={0} 
+                  to={userStats?.edits || 0} 
+                  duration={1.2} 
+                  delay={2.2}
+                  startWhen={animationStarted}
+                />
               </div>
               <div className="text-sm text-purple-800 dark:text-purple-300 font-medium">Edits</div>
               <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">local counter</div>
-            </div>
+            </motion.div>
             
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-4 text-center border border-yellow-200 dark:border-yellow-800">
+            <motion.div 
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 2.2 }}
+              className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-4 text-center border border-yellow-200 dark:border-yellow-800"
+            >
               <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
-                {userStats?.high_scores || 0}
+                <CountUp 
+                  from={0} 
+                  to={userStats?.high_scores || 0} 
+                  duration={1.2} 
+                  delay={2.4}
+                  startWhen={animationStarted}
+                />
               </div>
               <div className="text-sm text-yellow-800 dark:text-yellow-300 font-medium">High Scores</div>
               <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">local counter</div>
-            </div>
+            </motion.div>
           </div>
 
-          <div className="mt-8 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 2.4 }}
+            className="mt-8 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6"
+          >
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Level Progress</h4>
             
             <div className="flex items-center justify-between mb-2">
@@ -194,30 +336,70 @@ const Profile = () => {
                 Level {userStats?.rank || 1}
               </span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {userStats?.points || 0}/{userStats?.nextRankPoints || 100}
+                <CountUp 
+                  from={0} 
+                  to={userStats?.points || 0} 
+                  duration={1.5} 
+                  delay={2.6}
+                  startWhen={animationStarted}
+                />/{userStats?.nextRankPoints || 100}
               </span>
             </div>
             
-            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${userStats?.progressToNext || 0}%` }}
-              ></div>
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
+              <motion.div 
+                initial={{ width: "0%" }}
+                animate={{ width: `${userStats?.progressToNext || 0}%` }}
+                transition={{ 
+                  duration: 2, 
+                  delay: 2.8,
+                  ease: "easeOut"
+                }}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full relative"
+              >
+                {/* Animated shine effect */}
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ 
+                    duration: 2, 
+                    delay: 3.5,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                />
+              </motion.div>
             </div>
             
             <div className="mt-4 text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Daily Activity Days: <span className="font-semibold">{userStats?.daily_logins || 0}</span>
+                Daily Activity Days: <span className="font-semibold">
+                  <CountUp 
+                    from={0} 
+                    to={userStats?.daily_logins || 0} 
+                    duration={1.2} 
+                    delay={3.0}
+                    startWhen={animationStarted}
+                  />
+                </span>
                 {userStats?.streak_days > 0 && (
                   <span className="ml-4">
-                    Current Streak: <span className="font-semibold text-blue-600 dark:text-blue-400">{userStats.streak_days} days</span>
+                    Current Streak: <span className="font-semibold text-blue-600 dark:text-blue-400">
+                      <CountUp 
+                        from={0} 
+                        to={userStats.streak_days} 
+                        duration={1.2} 
+                        delay={3.2}
+                        startWhen={animationStarted}
+                      /> days
+                    </span>
                   </span>
                 )}
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

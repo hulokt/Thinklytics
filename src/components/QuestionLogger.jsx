@@ -18,6 +18,10 @@ import Fuse from 'fuse.js/dist/fuse.esm.js';
 import { formatRelativeTime } from '../lib/utils';
 import { exportQuestionsAsPDF } from '../utils/pdfExport';
 
+// Import sound files
+import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wav';
+import deletedQuestionOrQuizSound from '../assets/deltedQuestionOrQuiz.wav';
+
 // Helper: Levenshtein distance for fuzzy matching of question types
 const levenshteinDistance = (a = "", b = "") => {
   const m = a.length, n = b.length;
@@ -60,6 +64,8 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
 
   const { user } = useAuth();
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
+  const [addEditAudio, setAddEditAudio] = useState(null);
+  const [deleteAudio, setDeleteAudio] = useState(null);
 
   const [formData, setFormData] = useState({
     section: SAT_SECTIONS.READING_WRITING,
@@ -123,6 +129,26 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     }, 60000); // Update every minute (60,000 ms)
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Initialize audio
+  useEffect(() => {
+    const addEditAudioInstance = new Audio(addedOrEditedNewQuestionSound);
+    addEditAudioInstance.volume = 0.4;
+    setAddEditAudio(addEditAudioInstance);
+    
+    const deleteAudioInstance = new Audio(deletedQuestionOrQuizSound);
+    deleteAudioInstance.volume = 0.4;
+    setDeleteAudio(deleteAudioInstance);
+    
+    return () => {
+      if (addEditAudioInstance) {
+        addEditAudioInstance.pause();
+      }
+      if (deleteAudioInstance) {
+        deleteAudioInstance.pause();
+      }
+    };
   }, []);
 
   // Award points and show animation
@@ -265,22 +291,43 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     // Clear validation errors if validation passes
     setValidationErrors({});
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     if (editingId) {
+      // Perform the update operation immediately
       onUpdateQuestion(editingId, formData);
-      // Increment the local edit counter
       incrementEditCounter();
-      // Award points for editing
-      await awardPointsAndAnimate('EDIT_QUESTION');
+      
+      // Play add/edit sound immediately
+      if (addEditAudio) {
+        addEditAudio.currentTime = 0;
+        addEditAudio.play().catch(error => {
+          console.log('Add/edit audio play failed:', error);
+        });
+      }
+      
+      // Show animation and award points in the background
+      awardPointsAndAnimate('EDIT_QUESTION').catch(error => {
+        console.error('Error awarding points:', error);
+      });
+      
       setEditingId(null);
       setOriginalFormData(null);
       setSelectedQuestionIndex(-1);
     } else {
+      // Perform the add operation immediately
       onAddQuestion(formData);
-      // Award points for adding
-      await awardPointsAndAnimate('ADD_QUESTION');
+      
+      // Play add/edit sound immediately
+      if (addEditAudio) {
+        addEditAudio.currentTime = 0;
+        addEditAudio.play().catch(error => {
+          console.log('Add/edit audio play failed:', error);
+        });
+      }
+      
+      // Show animation and award points in the background
+      awardPointsAndAnimate('ADD_QUESTION').catch(error => {
+        console.error('Error awarding points:', error);
+      });
     }
 
     // Only reset form if not in import mode
@@ -343,13 +390,21 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   };
 
   const handleDelete = async (id) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
+    // Perform the delete operation immediately
     onDeleteQuestion(id);
     
-    // Award points for deletion
-    await awardPointsAndAnimate('DELETE_QUESTION');
+    // Play delete sound immediately
+    if (deleteAudio) {
+      deleteAudio.currentTime = 0;
+      deleteAudio.play().catch(error => {
+        console.log('Delete audio play failed:', error);
+      });
+    }
+    
+    // Show animation and award points in the background
+    awardPointsAndAnimate('DELETE_QUESTION').catch(error => {
+      console.error('Error awarding points:', error);
+    });
   };
 
   const generateRandomQuestion = () => {
@@ -607,21 +662,29 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       const deleteIds = Array.from(selectedQuestions);
       const deleteCount = deleteIds.length;
 
-      // Perform bulk deletion once via parent handler
+      // Play delete sound immediately
+      if (deleteAudio) {
+        deleteAudio.currentTime = 0;
+        deleteAudio.play().catch(error => {
+          console.log('Delete audio play failed:', error);
+        });
+      }
+
+      // Perform bulk deletion immediately
       if (onBulkDeleteQuestions) {
-        await onBulkDeleteQuestions(deleteIds);
+        onBulkDeleteQuestions(deleteIds);
       } else {
         // Fallback: delete sequentially
         for (const qid of deleteIds) {
-          await onDeleteQuestion(qid);
+          onDeleteQuestion(qid);
         }
       }
 
-      // Clear selection state & exit bulk mode
+      // Clear selection state & exit bulk mode immediately
       setSelectedQuestions(new Set());
       setBulkSelectionMode(false);
 
-      // Show ONE consolidated animation for the total deducted points
+      // Show animation and award points in the background
       const totalDeducted = POINTS_CONFIG.DELETE_QUESTION * deleteCount; // negative value
       setPointsAnimation({
         show: true,
@@ -629,11 +692,13 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         action: 'DELETE_QUESTION'
       });
 
-      // Deduct points in backend silently
+      // Deduct points in backend silently in the background
       if (user?.id) {
         for (let i = 0; i < deleteCount; i++) {
           try {
-            await awardPoints(user.id, 'DELETE_QUESTION');
+            awardPoints(user.id, 'DELETE_QUESTION').catch(err => {
+              console.error('Failed to deduct points during bulk delete:', err);
+            });
           } catch (err) {
             console.error('Failed to deduct points during bulk delete:', err);
           }

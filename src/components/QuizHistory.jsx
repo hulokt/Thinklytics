@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { useAuth } from '../contexts/AuthContext';
 import { awardPoints, handleQuizEdit } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
+import { useLocation } from 'react-router-dom';
+
+// Import sound files
+import quizFinishedSound from '../assets/quizFinishedSound.wav';
+import deletedQuestionOrQuizSound from '../assets/deltedQuestionOrQuiz.wav';
+import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wav';
 
 const QuizHistory = ({ onBack, onResumeQuiz }) => {
   // Initial props and state
@@ -15,9 +21,87 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDeletingQuiz, setIsDeletingQuiz] = useState(false);
   const [isDeletingAllQuizzes, setIsDeletingAllQuizzes] = useState(false);
   const [isResettingNumbers, setIsResettingNumbers] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationAudio, setCelebrationAudio] = useState(null);
+  const [deleteAudio, setDeleteAudio] = useState(null);
+  const celebrationTriggeredRef = useRef(false);
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  const [saveAudio, setSaveAudio] = useState(null);
+
+  // Get location to check for celebration state
+  const location = useLocation();
+
+  // Initialize celebration audio
+  useEffect(() => {
+    const audio = new Audio(quizFinishedSound);
+    audio.volume = 0.5;
+    
+    // Wait for audio to be loaded before setting it
+    audio.addEventListener('canplaythrough', () => {
+      setCelebrationAudio(audio);
+      setAudioLoaded(true);
+    });
+    
+    // Load the audio
+    audio.load();
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+      }
+    };
+  }, []);
+
+  // Initialize delete audio
+  useEffect(() => {
+    const audio = new Audio(deletedQuestionOrQuizSound);
+    audio.volume = 0.4;
+    setDeleteAudio(audio);
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+      }
+    };
+  }, []);
+
+  // Initialize save audio
+  useEffect(() => {
+    const audio = new Audio(addedOrEditedNewQuestionSound);
+    audio.volume = 0.4;
+    setSaveAudio(audio);
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+      }
+    };
+  }, []);
+
+  // Check for celebration state from navigation - ONLY ONCE when component loads and audio is ready
+  useEffect(() => {
+    // Only trigger celebration if we haven't triggered it yet AND we have the celebration state AND audio is loaded
+    if (location.state?.showCelebration && !celebrationTriggeredRef.current && audioLoaded && celebrationAudio) {
+      // Mark as triggered immediately
+      celebrationTriggeredRef.current = true;
+      
+      // Start celebration
+      setShowCelebration(true);
+      
+      // Play celebration sound
+      celebrationAudio.currentTime = 0;
+      celebrationAudio.play().catch(error => {
+        console.log('Celebration audio play failed:', error);
+      });
+      
+      // Clear the navigation state immediately
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, celebrationAudio, audioLoaded]); // Include audioLoaded in dependencies
 
   // Use new QuizManager
   const { 
@@ -26,6 +110,10 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     inProgressQuizzes: inProgressQuizzesRaw,
     completedQuizzes: completedQuizzesRaw
   } = useQuizManager();
+  
+  // Local state for immediate UI updates
+  const [localInProgressQuizzes, setLocalInProgressQuizzes] = useState([]);
+  const [localCompletedQuizzes, setLocalCompletedQuizzes] = useState([]);
   
   const { 
     data: questionAnswers, 
@@ -58,11 +146,97 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setPointsAnimation({ show: false, points: 0, action: '' });
   };
 
+  // Handle celebration completion
+  const handleCelebrationComplete = () => {
+    setShowCelebration(false);
+  };
+
+  // Celebration Animation Component
+  const CelebrationAnimation = () => {
+    const [confetti, setConfetti] = useState([]);
+
+    useEffect(() => {
+      if (showCelebration) {
+        // Create confetti particles with better physics
+        const confettiParticles = Array.from({ length: 80 }, (_, i) => ({
+          id: i,
+          x: Math.random() * window.innerWidth,
+          y: -20,
+          vx: (Math.random() - 0.5) * 6,
+          vy: Math.random() * 2 + 1,
+          color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'][Math.floor(Math.random() * 10)],
+          size: Math.random() * 8 + 4,
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 8,
+          gravity: 0.08,
+          wind: (Math.random() - 0.5) * 0.02
+        }));
+
+        setConfetti(confettiParticles);
+
+        // Animate confetti with smoother physics
+        const animateConfetti = () => {
+          setConfetti(prev => prev.map(particle => ({
+            ...particle,
+            x: particle.x + particle.vx,
+            y: particle.y + particle.vy,
+            vy: particle.vy + particle.gravity,
+            vx: particle.vx + particle.wind,
+            rotation: particle.rotation + particle.rotationSpeed
+          })).filter(particle => particle.y < window.innerHeight + 100));
+        };
+
+        // Much faster animation interval for smoother movement
+        const confettiInterval = setInterval(animateConfetti, 16); // ~60fps
+
+        // Auto-hide celebration after 4 seconds
+        const hideTimeout = setTimeout(() => {
+          handleCelebrationComplete();
+        }, 4000);
+
+        return () => {
+          clearInterval(confettiInterval);
+          clearTimeout(hideTimeout);
+        };
+      }
+    }, [showCelebration]);
+
+    if (!showCelebration) return null;
+
+    return (
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        {/* Confetti */}
+        {confetti.map(particle => (
+          <div
+            key={particle.id}
+            className="absolute rounded-full"
+            style={{
+              left: `${particle.x}px`,
+              top: `${particle.y}px`,
+              backgroundColor: particle.color,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              transform: `rotate(${particle.rotation}deg)`,
+              opacity: 0.9,
+              willChange: 'transform, left, top'
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
+
   // Defensive: always use arrays
   useEffect(() => {
     if (!Array.isArray(inProgressQuizzesRaw) || !Array.isArray(completedQuizzesRaw)) {
       // One of the quiz arrays is not an array
     }
+  }, [inProgressQuizzesRaw, completedQuizzesRaw]);
+
+  // Sync local state with QuizManager state
+  useEffect(() => {
+    setLocalInProgressQuizzes(Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw : []);
+    setLocalCompletedQuizzes(Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : []);
   }, [inProgressQuizzesRaw, completedQuizzesRaw]);
 
   // Force refresh when component mounts to ensure latest data
@@ -72,8 +246,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     }
   }, [quizManager]);
 
-  const inProgressQuizzes = Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw : [];
-  const completedQuizzes = Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : [];
+  const inProgressQuizzes = localInProgressQuizzes;
+  const completedQuizzes = localCompletedQuizzes;
 
   // Ensure both arrays are properly formatted
   const inProgressQuizzesArray = inProgressQuizzes;
@@ -134,25 +308,45 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const confirmDeleteQuiz = async () => {
     if (!showDeleteConfirm) return;
     
-    setIsDeletingQuiz(true);
+    const quizToDelete = showDeleteConfirm;
+    
+    // Immediately hide modal and remove quiz from UI for instant feedback
+    setShowDeleteConfirm(null);
+    setIsDeletingQuiz(false);
+    
+    // Immediately remove the quiz from local state for instant visual feedback
+    setLocalInProgressQuizzes(prev => prev.filter(q => q.id !== quizToDelete.id));
+    setLocalCompletedQuizzes(prev => prev.filter(q => q.id !== quizToDelete.id));
+    
+    // Perform the actual deletion in the background
     try {
-      // Use QuizManager to delete the quiz (handles renumbering automatically)
-      await quizManager.deleteQuiz(showDeleteConfirm.id);
+      // Play delete sound
+      if (deleteAudio) {
+        deleteAudio.currentTime = 0;
+        deleteAudio.play().catch(error => {
+          console.log('Delete audio play failed:', error);
+        });
+      }
       
-      // Update question answers to remove this quiz's results (only if there are answers to update)
-      if (questionAnswers && showDeleteConfirm.questions && Object.keys(questionAnswers).length > 0) {
+      // Use QuizManager to delete the quiz (handles renumbering automatically)
+      await quizManager.deleteQuiz(quizToDelete.id);
+      
+      // Only update question answers if there are actually answers to remove
+      if (questionAnswers && quizToDelete.questions && Object.keys(questionAnswers).length > 0) {
         const updatedAnswers = { ...questionAnswers };
         let hasChanges = false;
         
-        showDeleteConfirm.questions.forEach(question => {
-          if (updatedAnswers[question.id]) {
+        // Only process questions that actually have answers in the database
+        quizToDelete.questions.forEach(question => {
+          if (updatedAnswers[question.id] && updatedAnswers[question.id].length > 0) {
             const originalLength = updatedAnswers[question.id].length;
             updatedAnswers[question.id] = updatedAnswers[question.id].filter(
-              answer => answer.quizId !== showDeleteConfirm.id
+              answer => answer.quizId !== quizToDelete.id
             );
             if (updatedAnswers[question.id].length !== originalLength) {
               hasChanges = true;
             }
+            // Remove empty arrays
             if (updatedAnswers[question.id].length === 0) {
               delete updatedAnswers[question.id];
             }
@@ -161,15 +355,16 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         
         // Only call upsertQuestionAnswers if there were actual changes
         if (hasChanges) {
-          await upsertQuestionAnswers(updatedAnswers);
+          // Fire and forget - don't wait for this operation
+          upsertQuestionAnswers(updatedAnswers).catch(error => {
+            console.log('Failed to update question answers:', error);
+          });
         }
       }
-      
-      setShowDeleteConfirm(null);
     } catch (error) {
+      // If deletion fails, show an error but don't block the UI
+      console.error('Failed to delete quiz:', error);
       alert('Failed to delete quiz. Please try again.');
-    } finally {
-      setIsDeletingQuiz(false);
     }
   };
 
@@ -189,6 +384,14 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setIsDeletingAllQuizzes(true);
     try {
       if (!quizManager) return;
+
+      // Play delete sound
+      if (deleteAudio) {
+        deleteAudio.currentTime = 0;
+        deleteAudio.play().catch(error => {
+          console.log('Delete audio play failed:', error);
+        });
+      }
 
       await quizManager.deleteAllQuizzes();
 
@@ -272,6 +475,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       return;
     }
 
+    setIsSaving(true);
+
     try {
       // Build updated questions with current answers
       const updatedQuestions = editingQuiz.questions.map((question, index) => {
@@ -323,10 +528,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         lastModified: new Date().toISOString()
       };
 
-      // Use QuizManager to update the quiz
-      await quizManager.updateQuiz(editingQuiz.id, updatedQuiz);
-      
-      // Award points for editing answers (only if answers were actually changed)
+      // Check if answers were actually changed before making database calls
       const originalAnswers = editingQuiz.questions.reduce((acc, q) => {
         acc[q.id] = q.userAnswer;
         return acc;
@@ -335,47 +537,68 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       const hasChanges = Object.keys(editingAnswers).some(key => 
         editingAnswers[key] !== originalAnswers[key]
       );
+
+      // Use QuizManager to update the quiz (this is the main save operation)
+      await quizManager.updateQuiz(editingQuiz.id, updatedQuiz);
       
+      // Play save sound immediately after successful save
+      if (saveAudio) {
+        saveAudio.currentTime = 0;
+        saveAudio.play().catch(error => {
+          console.log('Save audio play failed:', error);
+        });
+      }
+      
+      // Only do additional operations if there were actual changes (non-blocking)
       if (hasChanges) {
         // Increment the local edit counter
         handleQuizEdit();
-        await awardPointsAndAnimate('EDIT_ANSWER');
+        
+        // Run points animation non-blocking (don't await it)
+        awardPointsAndAnimate('EDIT_ANSWER').catch(error => {
+          console.log('Points animation failed:', error);
+        });
+        
+        // Update question answers for analytics (non-blocking)
+        const currentAnswers = questionAnswers || {};
+        const updatedAnswers = { ...currentAnswers };
+        
+        updatedQuestions.forEach(question => {
+          if (question.userAnswer) {
+            if (!updatedAnswers[question.id]) {
+              updatedAnswers[question.id] = [];
+            }
+            
+            // Remove existing answer for this quiz
+            updatedAnswers[question.id] = updatedAnswers[question.id].filter(
+              answer => answer.quizId !== editingQuiz.id
+            );
+            
+            // Add new answer
+            updatedAnswers[question.id].push({
+              quizId: editingQuiz.id,
+              answer: question.userAnswer,
+              isCorrect: question.isCorrect,
+              date: editingQuiz.date || new Date().toISOString()
+            });
+          }
+        });
+        
+        // Run analytics update non-blocking
+        upsertQuestionAnswers(updatedAnswers).catch(error => {
+          console.log('Analytics update failed:', error);
+        });
       }
       
-      // Update question answers for analytics
-      const currentAnswers = questionAnswers || {};
-      const updatedAnswers = { ...currentAnswers };
-      
-      updatedQuestions.forEach(question => {
-        if (question.userAnswer) {
-          if (!updatedAnswers[question.id]) {
-            updatedAnswers[question.id] = [];
-          }
-          
-          // Remove existing answer for this quiz
-          updatedAnswers[question.id] = updatedAnswers[question.id].filter(
-            answer => answer.quizId !== editingQuiz.id
-          );
-          
-          // Add new answer
-          updatedAnswers[question.id].push({
-            quizId: editingQuiz.id,
-            answer: question.userAnswer,
-            isCorrect: question.isCorrect,
-            date: editingQuiz.date || new Date().toISOString()
-          });
-        }
-      });
-      
-      await upsertQuestionAnswers(updatedAnswers);
-      
-      // Exit edit mode and show updated quiz
+      // Exit edit mode and show updated quiz immediately
       setEditingQuiz(null);
       setEditingAnswers({});
       
     } catch (error) {
-      // Error saving changes
+      console.error('Error saving changes:', error);
       alert('Error saving changes. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -497,9 +720,21 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   </button>
                   <button
                     onClick={handleSaveChanges}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 w-full sm:w-auto"
+                    disabled={isSaving}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 w-full sm:w-auto ${
+                      isSaving 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
-                    Save Changes
+                    {isSaving ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Saving...</span>
+                      </div>
+                    ) : (
+                      'Save Changes'
+                    )}
                   </button>
                 </div>
               </div>
@@ -823,6 +1058,9 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           onComplete={handlePointsAnimationComplete}
         />
       )}
+
+      {/* Celebration Animation */}
+      <CelebrationAnimation />
 
       {/* Reset Numbering Confirmation Modal */}
       {showResetConfirm && (

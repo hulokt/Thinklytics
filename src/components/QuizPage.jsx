@@ -30,7 +30,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const [eliminationMode, setEliminationMode] = useState(false);
   const [eliminatedOptions, setEliminatedOptions] = useState({});
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const moreMenuRef = useRef(null);
+  const desktopMoreMenuRef = useRef(null);
+  const mobileMoreMenuRef = useRef(null);
   const [checkedQuestions, setCheckedQuestions] = useState(new Set());
   const [showExplanation, setShowExplanation] = useState({});
 
@@ -274,10 +275,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           timeSpent: currentElapsedTime
         };
         
-        // Save immediately when unmounting
-        quizManager.saveQuiz(updatedQuizData).catch(error => {
-          // Error saving progress on exit
-        });
+        // Save immediately when unmounting (but don't block navigation)
+        if (quizManager) {
+          quizManager.saveQuiz(updatedQuizData).catch(error => {
+            console.error('Error saving progress on exit:', error);
+          });
+        }
 
         // Remove persisted startTime so elapsed clock doesn't keep growing while away
         if (currentQuizData?.id) {
@@ -532,13 +535,23 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     setShowQuestionNavigation(false);
   };
 
-  const handleSaveAndExit = async () => {
+  const handleSaveAndExit = async (event) => {
+    // Prevent event bubbling and default behavior
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log('handleSaveAndExit called');
+    console.log('quizData:', quizData);
+    console.log('quizManager:', quizManager);
     setIsSavingAndExiting(true);
     
     // Save current quiz progress before exiting
     if (quizData && quizManager) {
       try {
-        await quizManager.saveQuiz({
+        console.log('Saving quiz data...');
+        const saveData = {
           ...quizData,
           userAnswers,
           currentQuestionIndex,
@@ -549,23 +562,39 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           showExplanation,
           timeSpent: elapsedTime,
           lastUpdated: new Date().toISOString()
-        });
+        };
+        console.log('Save data:', saveData);
+        await quizManager.saveQuiz(saveData);
+        console.log('Quiz saved successfully');
       } catch (error) {
+        console.error('Error saving quiz:', error);
         alert('Failed to save quiz progress. Please try again.');
         setIsSavingAndExiting(false);
         return;
       }
+    } else {
+      console.log('No quizData or quizManager available, proceeding with navigation');
     }
     
     // Only close the menu and navigate after the save is complete
+    console.log('Closing menu and navigating to history');
     setShowMoreMenu(false);
+    
+    // Hide the loading overlay before navigation
+    setIsSavingAndExiting(false);
+    
+    // Navigate immediately
+    console.log('Navigating to history page');
     navigate('/history');
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+      const isDesktopClickOutside = desktopMoreMenuRef.current && !desktopMoreMenuRef.current.contains(event.target);
+      const isMobileClickOutside = mobileMoreMenuRef.current && !mobileMoreMenuRef.current.contains(event.target);
+      
+      if (isDesktopClickOutside && isMobileClickOutside) {
         setShowMoreMenu(false);
       }
     };
@@ -833,7 +862,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             </div>
             
             {/* Center - Timer (on mobile, shows at top-right, on desktop in center) */}
-            <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto sm:flex-1 sm:flex sm:justify-center text-center">
+            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 sm:relative sm:top-auto sm:left-auto sm:transform-none sm:flex-1 sm:flex sm:justify-center text-center">
               <div>
                 <div className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
                   {formatTime(elapsedTime)}
@@ -847,14 +876,68 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </div>
             </div>
             
-            {/* Right side - Tools (hidden on mobile) */}
+            {/* Right side - Tools (desktop only) */}
             <div className="hidden sm:flex items-center space-x-4 sm:flex-1 sm:justify-end">
               <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
                 <span className="material-icons mr-1">edit</span> Annotate
               </button>
-              <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-                <span className="material-icons mr-1">more_vert</span> More
+              <div className="relative" ref={desktopMoreMenuRef}>
+                <button 
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+                >
+                  <span className="material-icons mr-1">more_vert</span> More
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showMoreMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={handleSaveAndExit}
+                      disabled={isSavingAndExiting}
+                      data-testid="main-desktop-save-exit-btn"
+                      className="save-exit-btn w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50"
+                    >
+                      <span className="material-icons mr-2 text-sm">
+                        {isSavingAndExiting ? 'hourglass_empty' : 'save'}
+                      </span>
+                      {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Tools - Icons only */}
+            <div className="flex sm:hidden items-center space-x-3 absolute top-3 right-3">
+              <button className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300">
+                <span className="material-icons text-lg">edit</span>
               </button>
+              <div className="relative" ref={mobileMoreMenuRef}>
+                <button 
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300"
+                >
+                  <span className="material-icons text-lg">more_vert</span>
+                </button>
+                
+                {/* Mobile Dropdown Menu */}
+                {showMoreMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={handleSaveAndExit}
+                      disabled={isSavingAndExiting}
+                      data-testid="main-mobile-save-exit-btn"
+                      className="save-exit-btn w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50"
+                    >
+                      <span className="material-icons mr-2 text-sm">
+                        {isSavingAndExiting ? 'hourglass_empty' : 'save'}
+                      </span>
+                      {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -1019,8 +1102,40 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden pb-20 sm:pb-0">
+    <div className="quiz-page-container bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden">
       <style>{`
+        /* Disable outer page scrolling */
+        html, body {
+          overflow: hidden !important;
+          position: fixed !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+        
+        /* Save and Exit button styling */
+        .save-exit-btn {
+          cursor: pointer !important;
+          user-select: none !important;
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+        }
+        .save-exit-btn:disabled {
+          cursor: not-allowed !important;
+        }
+        .save-exit-btn:focus {
+          outline: 2px solid #3b82f6 !important;
+          outline-offset: 2px !important;
+        }
+        
+        /* Mobile-only height adjustment */
+        @media (max-width: 767px) {
+          .quiz-page-container {
+            max-height: 90vh !important;
+            height: 90vh !important;
+          }
+        }
+        
         .progress-bar-segment {
           height: 6px;
           flex-grow: 1;
@@ -1483,7 +1598,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           </div>
           
           {/* Center - Timer (on mobile, shows at top-right, on desktop in center) */}
-          <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto sm:flex-1 sm:flex sm:justify-center text-center">
+          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 sm:relative sm:top-auto sm:left-auto sm:transform-none sm:flex-1 sm:flex sm:justify-center text-center">
             <div>
               <div className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
                 {formatTime(elapsedTime)}
@@ -1497,203 +1612,409 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             </div>
           </div>
           
-          {/* Right side - Tools (hidden on mobile) */}
-          <div className="hidden sm:flex items-center space-x-4 sm:flex-1 sm:justify-end">
-            <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
-              <span className="material-icons mr-1">edit</span> Annotate
-            </button>
-            <div className="relative" ref={moreMenuRef}>
-              <button 
-                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
-              >
-                <span className="material-icons mr-1">more_vert</span> More
+                      {/* Right side - Tools (desktop only) */}
+            <div className="hidden sm:flex items-center space-x-4 sm:flex-1 sm:justify-end">
+              <button className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300">
+                <span className="material-icons mr-1">edit</span> Annotate
               </button>
+              <div className="relative" ref={desktopMoreMenuRef}>
+                <button 
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+                >
+                  <span className="material-icons mr-1">more_vert</span> More
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showMoreMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={handleSaveAndExit}
+                      disabled={isSavingAndExiting}
+                      data-testid="review-desktop-save-exit-btn"
+                      className="save-exit-btn w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50"
+                    >
+                      <span className="material-icons mr-2 text-sm">
+                        {isSavingAndExiting ? 'hourglass_empty' : 'save'}
+                      </span>
+                      {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Tools - Icons only */}
+            <div className="flex sm:hidden items-center space-x-3 absolute top-3 right-3">
+              <button className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300">
+                <span className="material-icons text-lg">edit</span>
+              </button>
+              <div className="relative" ref={mobileMoreMenuRef}>
+                <button 
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300"
+                >
+                  <span className="material-icons text-lg">more_vert</span>
+                </button>
+                
+                {/* Mobile Dropdown Menu */}
+                {showMoreMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={handleSaveAndExit}
+                      disabled={isSavingAndExiting}
+                      data-testid="review-mobile-save-exit-btn"
+                      className="save-exit-btn w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50"
+                    >
+                      <span className="material-icons mr-2 text-sm">
+                        {isSavingAndExiting ? 'hourglass_empty' : 'save'}
+                      </span>
+                      {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        {/* Mobile Layout */}
+        <div className="block md:hidden flex flex-col h-full">
+          {/* Question Info Section - Top on mobile */}
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <div className="flex items-center">
+                <span className="bg-black dark:bg-gray-700 text-white text-xs sm:text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
+                  {currentQuestionIndex + 1}
+                </span>
+                <button 
+                  onClick={handleFlagQuestion}
+                  className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+                >
+                  <span className={`material-icons text-base sm:text-lg mr-1 ${
+                    flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''
+                  }`}>
+                    {flaggedQuestions.has(currentQuestion.id) ? 'bookmark' : 'bookmark_border'}
+                  </span>
+                  <span className={flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''}>
+                    Mark for Review
+                  </span>
+                </button>
+                <button 
+                  onClick={handleCheckAnswer}
+                  disabled={checkedQuestions.has(currentQuestion.id) || !userAnswers[currentQuestion.id]}
+                  className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300 ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="material-icons text-base sm:text-lg mr-1">
+                    {checkedQuestions.has(currentQuestion.id) ? 'check_circle' : 'check_circle_outline'}
+                  </span>
+                  <span>
+                    {checkedQuestions.has(currentQuestion.id) ? 'Checked' : 'Check Answer'}
+                  </span>
+                </button>
+                <button 
+                  onClick={toggleEliminationMode}
+                  className="btn-default btn-line-black undo-btn text-xs sm:text-sm font-medium px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center relative ml-4"
+                  style={{ minWidth: '38px', minHeight: '26px', height: '26px', padding: '0 10px' }}
+                >
+                  <span style={{ position: 'relative', zIndex: 1 }}>ABC</span>
+                  {/* Diagonal X line overlay */}
+                  <svg width="100%" height="100%" viewBox="0 0 38 26" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+                    <line x1="2" y1="24" x2="36" y2="2" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Passage Section - Middle on mobile */}
+          <div className="flex-1 p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col">
+            <div className="flex justify-between items-center mb-3 sm:mb-4 flex-shrink-0">
+              <p className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">Passage</p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {/* Allow both passage image and text. Always display image first if present */}
+              {currentQuestion.passageImage && (
+                <img
+                  src={currentQuestion.passageImage}
+                  alt="Passage"
+                  className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
+                />
+              )}
+              {currentQuestion.passageText && (
+                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  {currentQuestion.passageText}
+                </p>
+              )}
+              {!currentQuestion.passageText && !currentQuestion.passageImage && (
+                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  {currentQuestion.questionText}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Question and Choices Section - Bottom on mobile */}
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col">
+            {/* Question Text */}
+            <div className="flex-shrink-0 mb-3 sm:mb-4">
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
+              </p>
+            </div>
+            
+            {/* Answer Options */}
+            <div className="flex-1">
+              <div className="space-y-2 sm:space-y-3" style={{ overflow: 'visible' }}>
+                {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
+                  const isSelected = userAnswers[currentQuestion.id] === option;
+                  const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
+                  const isChecked = checkedQuestions.has(currentQuestion.id);
+                  const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
+                  const isCorrectAnswer = optionLetter === correctAnswerLetter;
+                  
+                  // Determine styling based on check status
+                  let optionStyle = '';
+                  if (isChecked) {
+                    if (isSelected && isCorrectAnswer) {
+                      optionStyle = 'selected correct-answer';
+                    } else if (isSelected && !isCorrectAnswer) {
+                      optionStyle = 'selected incorrect-answer';
+                    } else if (!isSelected && isCorrectAnswer) {
+                      optionStyle = 'correct-answer';
+                    } else {
+                      // For unselected incorrect answers, just use neutral styling
+                      optionStyle = 'unselected-wrong';
+                    }
+                  } else {
+                    optionStyle = isSelected ? 'selected' : '';
+                    if (isEliminated) optionStyle += ' eliminated';
+                  }
+                  
+                  return (
+                    <div key={index} className="flex items-center space-x-3" style={{ overflow: 'visible' }}>
+                      <div 
+                        onClick={() => handleAnswerSelect(option)}
+                        className={`question-option min-w-0 ${optionStyle}`}
+                        style={{ 
+                          padding: '0.5rem 0.75rem',
+                          width: eliminationMode ? 'calc(100% - 80px)' : '100%',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
+                        <span className="text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                      </div>
+                      
+                      {eliminationMode && (
+                        <button
+                          onClick={() => handleEliminateOption(option)}
+                          className={`elimination-btn rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ${
+                            isEliminated
+                              ? 'bg-gray-400 border-gray-400 text-white px-2 py-1'
+                              : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 w-6 h-6'
+                          }`}
+                        >
+                          {isEliminated ? 'undo' : optionLetter}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               
-              {/* Dropdown Menu */}
-              {showMoreMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-                  <button
-                    onClick={handleSaveAndExit}
-                    disabled={isSavingAndExiting}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-icons mr-2 text-sm">
-                      {isSavingAndExiting ? 'hourglass_empty' : 'save'}
-                    </span>
-                    {isSavingAndExiting ? 'Saving...' : 'Save and Exit'}
-                  </button>
+              {/* Explanation Section */}
+              {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                  <div className="flex items-start">
+                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        {currentQuestion.explanation}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-        {/* Left Side - Passage */}
-        <div className="w-full md:w-1/2 p-3 sm:p-4 overflow-y-auto bg-white dark:bg-gray-800 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col">
-          <div className="flex justify-between items-center mb-3 sm:mb-4 flex-shrink-0">
-            <p className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300"> </p>
-            <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 hidden sm:block">
-              <span className="material-icons">fullscreen</span>
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {/* Allow both passage image and text. Always display image first if present */}
-            {currentQuestion.passageImage && (
-              <img
-                src={currentQuestion.passageImage}
-                alt="Passage"
-                className="max-h-60 sm:max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
-              />
-            )}
-            {currentQuestion.passageText && (
-              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                {currentQuestion.passageText}
-              </p>
-            )}
-            {!currentQuestion.passageText && !currentQuestion.passageImage && (
-              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                {currentQuestion.questionText}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side - Question and Options */}
-        <div className="w-full md:w-1/2 p-3 sm:p-4 overflow-y-auto bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 flex-shrink-0 gap-2">
-            <div className="flex items-center">
-              <span className="bg-black dark:bg-gray-700 text-white text-xs sm:text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
-                {currentQuestionIndex + 1}
-              </span>
-              <button 
-                onClick={handleFlagQuestion}
-                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
-              >
-                <span className={`material-icons text-base sm:text-lg mr-1 ${
-                  flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''
-                }`}>
-                  {flaggedQuestions.has(currentQuestion.id) ? 'bookmark' : 'bookmark_border'}
-                </span>
-                <span className={flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''}>
-                  Mark for Review
-                </span>
-              </button>
-              <button 
-                onClick={handleCheckAnswer}
-                disabled={checkedQuestions.has(currentQuestion.id) || !userAnswers[currentQuestion.id]}
-                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300 ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="material-icons text-base sm:text-lg mr-1">
-                  {checkedQuestions.has(currentQuestion.id) ? 'check_circle' : 'check_circle_outline'}
-                </span>
-                <span>
-                  {checkedQuestions.has(currentQuestion.id) ? 'Checked' : 'Check Answer'}
-                </span>
+        {/* Desktop Layout */}
+        <div className="hidden md:flex flex-row overflow-hidden min-h-0 h-full">
+          {/* Passage Section - Left side on desktop */}
+          <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col h-full">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+              <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Passage</p>
+              <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300">
+                <span className="material-icons">fullscreen</span>
               </button>
             </div>
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={toggleEliminationMode}
-                className="btn-default btn-line-black undo-btn text-xs sm:text-sm font-medium px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center relative"
-                style={{ minWidth: '38px', minHeight: '26px', height: '26px', padding: '0 10px' }}
-              >
-                <span style={{ position: 'relative', zIndex: 1 }}>ABC</span>
-                {/* Diagonal X line overlay */}
-                <svg width="100%" height="100%" viewBox="0 0 38 26" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
-                  <line x1="2" y1="24" x2="36" y2="2" stroke="#333" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
+            <div className="flex-1 overflow-y-auto">
+              {/* Allow both passage image and text. Always display image first if present */}
+              {currentQuestion.passageImage && (
+                <img
+                  src={currentQuestion.passageImage}
+                  alt="Passage"
+                  className="max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
+                />
+              )}
+              {currentQuestion.passageText && (
+                <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  {currentQuestion.passageText}
+                </p>
+              )}
+              {!currentQuestion.passageText && !currentQuestion.passageImage && (
+                <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  {currentQuestion.questionText}
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 transition-colors duration-300">
-              {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
-            </p>
-            <div className="space-y-2 sm:space-y-3" style={{ overflow: 'visible' }}>
-              {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
-                const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-                const isSelected = userAnswers[currentQuestion.id] === option;
-                const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
-                const isChecked = checkedQuestions.has(currentQuestion.id);
-                const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
-                const isCorrectAnswer = optionLetter === correctAnswerLetter;
-                
-                // Determine styling based on check status
-                let optionStyle = '';
-                if (isChecked) {
-                  if (isSelected && isCorrectAnswer) {
-                    optionStyle = 'selected correct-answer';
-                  } else if (isSelected && !isCorrectAnswer) {
-                    optionStyle = 'selected incorrect-answer';
-                  } else if (!isSelected && isCorrectAnswer) {
-                    optionStyle = 'correct-answer';
-                  } else {
-                    // For unselected incorrect answers, just use neutral styling
-                    optionStyle = 'unselected-wrong';
-                  }
-                } else {
-                  optionStyle = isSelected ? 'selected' : '';
-                  if (isEliminated) optionStyle += ' eliminated';
-                }
-                
-                return (
-                  <div key={index} className="flex items-center space-x-3" style={{ overflow: 'visible' }}>
-                    <div 
-                      onClick={() => handleAnswerSelect(option)}
-                      className={`question-option min-w-0 ${optionStyle}`}
-                      style={{ 
-                        padding: '0.5rem 0.75rem',
-                        width: eliminationMode ? 'calc(100% - 80px)' : '100%',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
-                      <span className="text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
-                    </div>
-                    
-                    {eliminationMode && (
-                      <button
-                        onClick={() => handleEliminateOption(option)}
-                        className={`elimination-btn rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ${
-                          isEliminated
-                            ? 'bg-gray-400 border-gray-400 text-white px-2 py-1'
-                            : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 w-6 h-6'
-                        }`}
-                      >
-                        {isEliminated ? 'undo' : optionLetter}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+
+          {/* Question Section - Right side on desktop */}
+          <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col h-full">
+            {/* Question Info - Top section */}
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+              <div className="flex items-center">
+                <span className="bg-black dark:bg-gray-700 text-white text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
+                  {currentQuestionIndex + 1}
+                </span>
+                <button 
+                  onClick={handleFlagQuestion}
+                  className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300"
+                >
+                  <span className={`material-icons text-lg mr-1 ${
+                    flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''
+                  }`}>
+                    {flaggedQuestions.has(currentQuestion.id) ? 'bookmark' : 'bookmark_border'}
+                  </span>
+                  <span className={flaggedQuestions.has(currentQuestion.id) ? 'text-red-500' : ''}>
+                    Mark for Review
+                  </span>
+                </button>
+                <button 
+                  onClick={handleCheckAnswer}
+                  disabled={checkedQuestions.has(currentQuestion.id) || !userAnswers[currentQuestion.id]}
+                  className="text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white flex items-center transition-colors duration-300 ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="material-icons text-lg mr-1">
+                    {checkedQuestions.has(currentQuestion.id) ? 'check_circle' : 'check_circle_outline'}
+                  </span>
+                  <span>
+                    {checkedQuestions.has(currentQuestion.id) ? 'Checked' : 'Check Answer'}
+                  </span>
+                </button>
+                <button 
+                  onClick={toggleEliminationMode}
+                  className="btn-default btn-line-black undo-btn text-sm font-medium px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center relative ml-4"
+                  style={{ minWidth: '38px', minHeight: '26px', height: '26px', padding: '0 10px' }}
+                >
+                  <span style={{ position: 'relative', zIndex: 1 }}>ABC</span>
+                  {/* Diagonal X line overlay */}
+                  <svg width="100%" height="100%" viewBox="0 0 38 26" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+                    <line x1="2" y1="24" x2="36" y2="2" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
-            {/* Explanation Section */}
-            {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-                <div className="flex items-start">
-                  <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
-                  <div>
-                    <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                      {currentQuestion.explanation}
-                    </p>
+            {/* Question Text */}
+            <div className="flex-shrink-0 mb-4">
+              <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
+              </p>
+            </div>
+            
+            {/* Answer Options */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-3" style={{ overflow: 'visible' }}>
+                {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
+                  const isSelected = userAnswers[currentQuestion.id] === option;
+                  const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
+                  const isChecked = checkedQuestions.has(currentQuestion.id);
+                  const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
+                  const isCorrectAnswer = optionLetter === correctAnswerLetter;
+                  
+                  // Determine styling based on check status
+                  let optionStyle = '';
+                  if (isChecked) {
+                    if (isSelected && isCorrectAnswer) {
+                      optionStyle = 'selected correct-answer';
+                    } else if (isSelected && !isCorrectAnswer) {
+                      optionStyle = 'selected incorrect-answer';
+                    } else if (!isSelected && isCorrectAnswer) {
+                      optionStyle = 'correct-answer';
+                    } else {
+                      // For unselected incorrect answers, just use neutral styling
+                      optionStyle = 'unselected-wrong';
+                    }
+                  } else {
+                    optionStyle = isSelected ? 'selected' : '';
+                    if (isEliminated) optionStyle += ' eliminated';
+                  }
+                  
+                  return (
+                    <div key={index} className="flex items-center space-x-3" style={{ overflow: 'visible' }}>
+                      <div 
+                        onClick={() => handleAnswerSelect(option)}
+                        className={`question-option min-w-0 ${optionStyle}`}
+                        style={{ 
+                          padding: '0.75rem 1rem',
+                          width: eliminationMode ? 'calc(100% - 80px)' : '100%',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span className="option-letter" style={{ width: '1.75rem', height: '1.75rem', marginRight: '0.75rem', flexShrink: 0 }}>{optionLetter}</span>
+                        <span className="text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                      </div>
+                      
+                      {eliminationMode && (
+                        <button
+                          onClick={() => handleEliminateOption(option)}
+                          className={`elimination-btn rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ${
+                            isEliminated
+                              ? 'bg-gray-400 border-gray-400 text-white px-2 py-1'
+                              : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 w-6 h-6'
+                          }`}
+                        >
+                          {isEliminated ? 'undo' : optionLetter}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Explanation Section */}
+              {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                  <div className="flex items-start">
+                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        {currentQuestion.explanation}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center flex-shrink-0 transition-colors duration-300 relative gap-3 sm:gap-0">
-        <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 text-center sm:text-left sm:flex-1">Welcome, {getUserDisplayName()}</div>
+        <div className="hidden sm:block text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 text-center sm:text-left sm:flex-1">Welcome, {getUserDisplayName()}</div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-0 sm:space-x-2 relative sm:flex-1 sm:justify-center">
           <button 

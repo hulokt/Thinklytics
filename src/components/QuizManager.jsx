@@ -135,10 +135,13 @@ export class QuizManager {
     // Update local state immediately for instant UI feedback
     this.allQuizzes = updatedQuizzes;
     
-    // Make database call non-blocking for faster response
-    this.upsertAllQuizzes(updatedQuizzes).catch(error => {
+    // Wait for database save to complete
+    try {
+      await this.upsertAllQuizzes(updatedQuizzes);
+    } catch (error) {
       console.error('Failed to save quiz progress to database:', error);
-    });
+      throw error; // Re-throw so the calling function can handle it
+    }
     
     return quizData;
   }

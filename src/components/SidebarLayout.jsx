@@ -20,7 +20,13 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import logoImage from "/logo.png";
 
 export function SidebarLayout({ children, currentPage, onPageChange, onLogout, onAccountClick, onProfileClick, onHomeClick }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => {
+    // Start closed on mobile devices
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768; // 768px is the md breakpoint
+    }
+    return true; // Default for SSR
+  });
   const [userData, setUserData] = useState({ name: 'User', email: '' });
   const { user } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -50,6 +56,18 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
 
     loadUserData();
   }, [user]);
+
+  // Handle window resize to close sidebar on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && open) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open]);
 
   const links = [
     {

@@ -1110,6 +1110,26 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           position: fixed !important;
           width: 100% !important;
           height: 100% !important;
+        } /* Disable overscroll (pull-to-refresh) */
+        html, body, .quiz-page-container {
+          overscroll-behavior: none !important;
+          overscroll-behavior-x: none !important;
+          overscroll-behavior-y: none !important;
+          -webkit-overflow-scrolling: auto !important;
+          -webkit-overscroll-behavior: none !important;
+          -webkit-overscroll-behavior-x: none !important;
+          -webkit-overscroll-behavior-y: none !important;
+        }
+        
+        /* Prevent touch scrolling beyond boundaries */
+        .quiz-page-container {
+          touch-action: pan-x pan-y !important;
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+          -khtml-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
         }
         
         /* Save and Exit button styling */

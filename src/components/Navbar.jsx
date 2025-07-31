@@ -41,15 +41,8 @@ const Navbar = ({ onGetStarted }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-transparent backdrop-blur-md transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between py-3 lg:py-4">
-        {/* Left: Logo + Hamburger */}
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <button
-            className="lg:hidden flex items-center justify-center w-10 h-10 text-gray-300 hover:text-white rounded-md focus:outline-none transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Open menu"
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+        {/* Left: Logo */}
+        <div className="flex items-center min-w-0">
           <div
             className="flex items-center gap-2 cursor-pointer select-none"
             onClick={(e) => {
@@ -92,11 +85,12 @@ const Navbar = ({ onGetStarted }) => {
           </div>
         </div>
 
-        {/* Right: Light/dark toggle + CTA */}
+        {/* Right: Light/dark toggle + CTA + Mobile Menu */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Light/dark toggle - hidden on mobile */}
           <button
             onClick={toggleDarkMode}
-            className="flex items-center justify-center w-10 h-10 text-[var(--brand-70)] hover:text-[var(--brand-60)] rounded-full focus:outline-none transition-colors"
+            className="hidden sm:flex items-center justify-center w-10 h-10 text-[var(--brand-70)] hover:text-[var(--brand-60)] rounded-full focus:outline-none transition-colors"
             aria-label="Toggle dark mode"
           >
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -108,13 +102,21 @@ const Navbar = ({ onGetStarted }) => {
             <span>Start now</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
+          {/* Mobile Menu Button */}
+          <button
+            className="lg:hidden flex items-center justify-center w-10 h-10 text-gray-300 hover:text-white rounded-md focus:outline-none transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Open menu"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
       </div>
 
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden absolute top-full left-0 right-0 bg-gray-900/95 dark:bg-[var(--bg-lv1)]/95 border-b border-gray-800 dark:border-[var(--border-grey)] shadow-xl animate-fade-in z-50 backdrop-blur-md">
-          <div className="flex flex-col items-stretch gap-1 py-4 px-4">
+        <div className="lg:hidden absolute top-full left-0 right-0 bg-gray-900/95 dark:bg-[var(--bg-lv1)]/95 border-b border-gray-800 dark:border-[var(--border-grey)] shadow-xl animate-fade-in z-50 backdrop-blur-md min-h-[100vh]">
+          <div className="flex flex-col items-stretch gap-1 py-6 px-4 h-full">
             {NAV_LINKS.map((link) => {
               const isActive = location.pathname === link.href;
               return (

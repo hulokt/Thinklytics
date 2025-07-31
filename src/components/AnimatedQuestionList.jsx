@@ -165,6 +165,10 @@ const AnimatedQuestionList = ({
                 onChange={() => onQuestionToggle && onQuestionToggle(question.id)}
                 className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
+              {/* Question Number */}
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded min-w-[20px] text-center flex-shrink-0">
+                {index + 1}
+              </span>
               <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 flex-1 min-w-0 transition-colors duration-300">
                 <span className="font-medium truncate text-xs">{question.section}</span>
                 {flagged && <span className="text-yellow-500 text-xs">🚩</span>}

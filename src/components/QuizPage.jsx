@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { awardPoints, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
+import ImageModal from './ImageModal';
 
 // Import sound files
 import selectChoiceSound from '../assets/selectedChoiceSound.wav';
@@ -34,6 +35,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const mobileMoreMenuRef = useRef(null);
   const [checkedQuestions, setCheckedQuestions] = useState(new Set());
   const [showExplanation, setShowExplanation] = useState({});
+  const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
 
   // Use refs to capture current values for cleanup function
   const quizDataRef = useRef(null);
@@ -155,6 +157,15 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   // Handle points animation completion
   const handlePointsAnimationComplete = () => {
     setPointsAnimation({ show: false, points: 0, action: '' });
+  };
+
+  // Image modal handlers
+  const handleImageClick = (imageSrc, imageAlt) => {
+    setImageModal({ isOpen: true, imageSrc, imageAlt });
+  };
+
+  const handleCloseImageModal = () => {
+    setImageModal({ isOpen: false, imageSrc: '', imageAlt: '' });
   };
 
   // Get user display name
@@ -1101,6 +1112,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     );
   }
 
+  
+
   return (
     <div className="quiz-page-container bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden">
       <style>{`
@@ -1848,15 +1861,24 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </div>
               
               {/* Explanation Section */}
-              {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
+              {checkedQuestions.has(currentQuestion.id) && (currentQuestion.explanation || currentQuestion.explanationImage) && (
                 <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                   <div className="flex items-start">
                     <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
-                    <div>
+                    <div className="flex-1">
                       <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                        {currentQuestion.explanation}
-                      </p>
+                      {currentQuestion.explanationImage && (
+                        <img 
+                          src={currentQuestion.explanationImage} 
+                          alt="Explanation" 
+                          className="max-h-48 w-auto rounded shadow-sm border border-blue-200 dark:border-blue-600 mb-2" 
+                        />
+                      )}
+                      {currentQuestion.explanation && (
+                        <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                          {currentQuestion.explanation}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1881,7 +1903,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 <img
                   src={currentQuestion.passageImage}
                   alt="Passage"
-                  className="max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain"
+                  className="max-h-80 rounded shadow border mb-2 mx-auto w-full object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  onClick={() => handleImageClick(currentQuestion.passageImage, 'Passage')}
                 />
               )}
               {currentQuestion.passageText && (
@@ -2014,15 +2037,24 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               </div>
               
               {/* Explanation Section */}
-              {checkedQuestions.has(currentQuestion.id) && currentQuestion.explanation && (
+              {checkedQuestions.has(currentQuestion.id) && (currentQuestion.explanation || currentQuestion.explanationImage) && (
                 <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                   <div className="flex items-start">
                     <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
-                    <div>
+                    <div className="flex-1">
                       <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                        {currentQuestion.explanation}
-                      </p>
+                      {currentQuestion.explanationImage && (
+                        <img 
+                          src={currentQuestion.explanationImage} 
+                          alt="Explanation" 
+                          className="max-h-48 w-auto rounded shadow-sm border border-blue-200 dark:border-blue-600 mb-2" 
+                        />
+                      )}
+                      {currentQuestion.explanation && (
+                        <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                          {currentQuestion.explanation}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2161,6 +2193,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           onComplete={handlePointsAnimationComplete}
         />
       )}
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModal.isOpen}
+        imageSrc={imageModal.imageSrc}
+        imageAlt={imageModal.imageAlt}
+        onClose={handleCloseImageModal}
+      />
 
       {/* Save and Exit Loading Overlay */}
       {isSavingAndExiting && (

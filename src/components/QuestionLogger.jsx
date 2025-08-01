@@ -17,6 +17,7 @@ import PointsAnimation from './PointsAnimation';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
 import { formatRelativeTime } from '../lib/utils';
 import { exportQuestionsAsPDF } from '../utils/pdfExport';
+import ImageModal from './ImageModal';
 
 // Import sound files
 import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wav';
@@ -82,6 +83,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     },
     correctAnswer: 'A',
     explanation: '',
+    explanationImage: null,
     difficulty: DIFFICULTY_LEVELS.MEDIUM
   });
 
@@ -116,6 +118,9 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(-1);
   // Timer for updating relative timestamps every minute
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Image modal state
+  const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
@@ -247,15 +252,19 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     // Validate form fields
     const errors = {};
     
-    // Always validate section, domain, and questionType for all questions
+    // Always validate section for all questions
     if (!formData.section) {
       errors.section = true;
     }
-    if (!formData.domain) {
-      errors.domain = true;
-    }
-    if (!formData.questionType) {
-      errors.questionType = true;
+    
+    // For Math section, domain and questionType are optional
+    if (formData.section !== SAT_SECTIONS.MATH) {
+      if (!formData.domain) {
+        errors.domain = true;
+      }
+      if (!formData.questionType) {
+        errors.questionType = true;
+      }
     }
     
     // If not a hidden question, validate additional required fields
@@ -264,19 +273,30 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         errors.passageText = true;
       }
 
-      if (!formData.questionText.trim()) {
+      // For Math section, question text is optional
+      if (formData.section !== SAT_SECTIONS.MATH && !formData.questionText.trim()) {
         errors.questionText = true;
       }
 
-      // Check if any answer choice is empty
-      const emptyChoices = Object.entries(formData.answerChoices)
-        .filter(([key, value]) => !value.trim())
-        .map(([key]) => key);
-      
-      if (emptyChoices.length > 0) {
-        emptyChoices.forEach(choice => {
-          errors[`answerChoice_${choice}`] = true;
+      // For Math section, auto-fill empty answer choices with A, B, C, D
+      if (formData.section === SAT_SECTIONS.MATH) {
+        const choices = ['A', 'B', 'C', 'D'];
+        choices.forEach((choice, index) => {
+          if (!formData.answerChoices[choice] || formData.answerChoices[choice].trim() === '') {
+            formData.answerChoices[choice] = choice;
+          }
         });
+      } else {
+        // For non-Math sections, check if any answer choice is empty
+        const emptyChoices = Object.entries(formData.answerChoices)
+          .filter(([key, value]) => !value.trim())
+          .map(([key]) => key);
+        
+        if (emptyChoices.length > 0) {
+          emptyChoices.forEach(choice => {
+            errors[`answerChoice_${choice}`] = true;
+          });
+        }
       }
     }
 
@@ -333,7 +353,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     // Only reset form if not in import mode
     if (!isImportMode) {
       setFormData({
-        section: SAT_SECTIONS.READING_WRITING,
+        section: formData.section, // Keep the current section instead of resetting to Reading and Writing
         domain: '',
         questionType: '',
         passageText: '',
@@ -342,6 +362,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         answerChoices: { A: '', B: '', C: '', D: '' },
         correctAnswer: 'A',
         explanation: '',
+        explanationImage: null,
         difficulty: DIFFICULTY_LEVELS.MEDIUM
       });
     }
@@ -360,6 +381,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       answerChoices: question.answerChoices,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation,
+      explanationImage: question.explanationImage || null,
       difficulty: question.difficulty
     };
     setFormData(questionData);
@@ -371,7 +393,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     if (!editingId || !originalFormData) return false;
     
     // Compare all form fields
-    const fieldsToCompare = ['section', 'domain', 'questionType', 'passageText', 'passageImage', 'questionText', 'correctAnswer', 'explanation', 'difficulty'];
+    const fieldsToCompare = ['section', 'domain', 'questionType', 'passageText', 'passageImage', 'questionText', 'correctAnswer', 'explanation', 'explanationImage', 'difficulty'];
     
     for (let field of fieldsToCompare) {
       if (formData[field] !== originalFormData[field]) {
@@ -1003,6 +1025,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
           answerChoices: { A: '', B: '', C: '', D: '' },
           correctAnswer: 'A',
           explanation: '',
+          explanationImage: null,
           difficulty: DIFFICULTY_LEVELS.MEDIUM
         };
       }
@@ -1045,6 +1068,28 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         passageText = passageText.substring(0, imageStartIndex) + passageText.substring(imageEndIndex);
         passageText = passageText.trim();
       }
+
+      // Extract image data and text from explanation content
+      let explanationText = rawExplanation || '';
+      let explanationImage = null;
+      
+      if (explanationText.includes(imageMarker) && explanationText.includes(imageEndMarker)) {
+        const imageStartIndex = explanationText.indexOf(imageMarker);
+        const imageEndIndex = explanationText.indexOf(imageEndMarker) + imageEndMarker.length;
+        
+        // Extract image data
+        const imageDataWithMarkers = explanationText.substring(imageStartIndex, imageEndIndex);
+        const imageData = imageDataWithMarkers.replace(imageMarker, '').replace(imageEndMarker, '');
+        
+        // Validate that it's a proper data URL
+        if (imageData.startsWith('data:image/')) {
+          explanationImage = imageData;
+        }
+        
+        // Remove image data from explanation text
+        explanationText = explanationText.substring(0, imageStartIndex) + explanationText.substring(imageEndIndex);
+        explanationText = explanationText.trim();
+      }
       
       return {
         section: normalizedSection,
@@ -1060,7 +1105,8 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
           D: rawD || ''
         },
         correctAnswer: correct,
-        explanation: rawExplanation || '',
+        explanation: explanationText,
+        explanationImage: explanationImage,
         difficulty: normalizedDifficulty
       };
       
@@ -1480,6 +1526,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       answerChoices: { A: '', B: '', C: '', D: '' },
       correctAnswer: 'A',
       explanation: '',
+      explanationImage: null,
       difficulty: DIFFICULTY_LEVELS.MEDIUM
     });
   };
@@ -1512,6 +1559,45 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   // Remove passage image
   const handleRemovePassageImage = () => {
     setFormData(prev => ({ ...prev, passageImage: null }));
+  };
+
+  // Handle image paste in explanation
+  const handleExplanationPaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            // Keep existing text and add image
+            setFormData(prev => ({ 
+              ...prev, 
+              explanationImage: event.target.result,
+              // Don't clear explanation text - allow both text and image
+            }));
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
+  // Remove explanation image
+  const handleRemoveExplanationImage = () => {
+    setFormData(prev => ({ ...prev, explanationImage: null }));
+  };
+
+  // Image modal handlers
+  const handleImageClick = (imageSrc, imageAlt) => {
+    setImageModal({ isOpen: true, imageSrc, imageAlt });
+  };
+
+  const handleCloseImageModal = () => {
+    setImageModal({ isOpen: false, imageSrc: '', imageAlt: '' });
   };
 
   // Export questions as PDF
@@ -1594,6 +1680,21 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
           passageContent = `${imageMarker}${question.passageImage}${imageEndMarker}`;
         }
       }
+
+      // Combine explanation text and image into a single field
+      let explanationContent = question.explanation || '';
+      
+      // If there's an explanation image, add it to the explanation content with a special marker
+      if (question.explanationImage) {
+        const imageMarker = '[IMAGE_DATA]';
+        const imageEndMarker = '[/IMAGE_DATA]';
+        // Add image data after text (or as standalone if no text)
+        if (explanationContent.trim()) {
+          explanationContent = `${explanationContent} ${imageMarker}${question.explanationImage}${imageEndMarker}`;
+        } else {
+          explanationContent = `${imageMarker}${question.explanationImage}${imageEndMarker}`;
+        }
+      }
       
       const row = [
         convertAndEscapeCSVValue(question.section),
@@ -1606,7 +1707,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         convertAndEscapeCSVValue(question.answerChoices?.C || ''),
         convertAndEscapeCSVValue(question.answerChoices?.D || ''),
         convertAndEscapeCSVValue(question.correctAnswer || 'A'),
-        convertAndEscapeCSVValue(question.explanation || ''),
+        convertAndEscapeCSVValue(explanationContent),
         convertAndEscapeCSVValue(question.difficulty || 'Medium')
       ];
       return row.join(',');
@@ -2040,7 +2141,8 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                     <img 
                       src={formData.passageImage} 
                       alt="Passage" 
-                      className="max-h-48 w-auto rounded shadow-sm border border-gray-200 dark:border-gray-600" 
+                      className="max-h-48 w-auto rounded shadow-sm border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity duration-200" 
+                      onClick={() => handleImageClick(formData.passageImage, 'Passage')}
                     />
                   </div>
                 )}
@@ -2142,13 +2244,46 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                 {/* Explanation */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Explanation (Optional)</label>
+                  
+                  {/* Show image if present */}
+                  {formData.explanationImage && (
+                    <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Explanation Image</span>
+                        <button 
+                          type="button" 
+                          onClick={handleRemoveExplanationImage} 
+                          className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:underline"
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                      <img 
+                        src={formData.explanationImage} 
+                        alt="Explanation" 
+                        className="max-h-48 w-auto rounded shadow-sm border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity duration-200" 
+                        onClick={() => handleImageClick(formData.explanationImage, 'Explanation')}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Text input - always show, even with image */}
                   <textarea
                     value={formData.explanation}
                     onChange={(e) => handleInputChange('explanation', e.target.value)}
-                    placeholder="Provide an explanation for the correct answer..."
-                    rows={2}
+                    onPaste={handleExplanationPaste}
+                    placeholder={formData.explanationImage 
+                      ? "Add text to accompany the explanation image above... (or paste another image)" 
+                      : "Provide an explanation for the correct answer... (or paste an image)"
+                    }
+                    rows={formData.explanationImage ? 2 : 3}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical text-base sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
                   />
+                  
+                  {/* Help text */}
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    💡 You can paste images (Ctrl+V) and add text to create rich explanations with both visual and textual content.
+                  </p>
                 </div>
 
                 {/* Settings */}
@@ -2193,6 +2328,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                         answerChoices: { A: '', B: '', C: '', D: '' },
                         correctAnswer: 'A',
                         explanation: '',
+                        explanationImage: null,
                         difficulty: DIFFICULTY_LEVELS.MEDIUM
                       });
                     }}
@@ -2238,6 +2374,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                           answerChoices: { A: '', B: '', C: '', D: '' },
                           correctAnswer: 'A',
                           explanation: '',
+                          explanationImage: null,
                           difficulty: DIFFICULTY_LEVELS.MEDIUM
                         });
                       }}
@@ -2463,6 +2600,14 @@ Reading and Writing,Standard English Conventions,Boundaries`}
           onComplete={handlePointsAnimationComplete}
         />
       )}
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModal.isOpen}
+        imageSrc={imageModal.imageSrc}
+        imageAlt={imageModal.imageAlt}
+        onClose={handleCloseImageModal}
+      />
     </div>
   );
 };

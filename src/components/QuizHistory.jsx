@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { awardPoints, handleQuizEdit } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
+import ImageModal from './ImageModal';
 
 // Import sound files
 import quizFinishedSound from '../assets/quizFinishedSound.wav';
@@ -31,6 +32,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const celebrationTriggeredRef = useRef(false);
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [saveAudio, setSaveAudio] = useState(null);
+  const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
 
   // Get location to check for celebration state
   const location = useLocation();
@@ -144,6 +146,15 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   // Handle points animation completion
   const handlePointsAnimationComplete = () => {
     setPointsAnimation({ show: false, points: 0, action: '' });
+  };
+
+  // Image modal handlers
+  const handleImageClick = (imageSrc, imageAlt) => {
+    setImageModal({ isOpen: true, imageSrc, imageAlt });
+  };
+
+  const handleCloseImageModal = () => {
+    setImageModal({ isOpen: false, imageSrc: '', imageAlt: '' });
   };
 
   // Handle celebration completion
@@ -880,11 +891,26 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                         })}
                       </div>
                       
-                      {question.explanation && (
+                      {(question.explanation || question.explanationImage) && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg p-3 transition-colors duration-300">
-                          <p className="text-blue-800 dark:text-blue-300 text-sm transition-colors duration-300">
-                            <strong>Explanation:</strong> {question.explanation}
-                          </p>
+                          <div className="text-blue-800 dark:text-blue-300 text-sm transition-colors duration-300">
+                            <strong>Explanation:</strong>
+                                                         {question.explanationImage && (
+                               <div className="mt-2">
+                                 <img 
+                                   src={question.explanationImage} 
+                                   alt="Explanation" 
+                                   className="max-h-48 w-auto rounded shadow-sm border border-blue-200 dark:border-blue-600 cursor-pointer hover:opacity-90 transition-opacity duration-200" 
+                                   onClick={() => handleImageClick(question.explanationImage, 'Explanation')}
+                                 />
+                               </div>
+                             )}
+                            {question.explanation && (
+                              <p className="mt-2">
+                                {question.explanation}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1058,6 +1084,14 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           onComplete={handlePointsAnimationComplete}
         />
       )}
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModal.isOpen}
+        imageSrc={imageModal.imageSrc}
+        imageAlt={imageModal.imageAlt}
+        onClose={handleCloseImageModal}
+      />
 
       {/* Celebration Animation */}
       <CelebrationAnimation />

@@ -1154,19 +1154,19 @@ const CalendarPage = ({ onStartQuiz }) => {
                                               // Check if today is the planned date - disable if not today
                                               const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
                                               if (plannedDate) {
-                                                const today = new Date().toISOString().split('T')[0];
+                                                const today = getTodayString();
                                                 let plannedDateStr;
                                                 
                                                 // Handle different date formats
                                                 if (plannedDate.includes('T')) {
-                                                  // ISO string format
-                                                  plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                  // ISO string format - convert to local date
+                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                 } else if (plannedDate.includes('-') && plannedDate.length === 10) {
                                                   // YYYY-MM-DD format
                                                   plannedDateStr = plannedDate;
                                                 } else {
                                                   // Try to parse as date
-                                                  plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                 }
                                                 
                                                 return today !== plannedDateStr;
@@ -1177,15 +1177,15 @@ const CalendarPage = ({ onStartQuiz }) => {
                                               (() => {
                                                 const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
                                                 if (plannedDate) {
-                                                  const today = new Date().toISOString().split('T')[0];
+                                                  const today = getTodayString();
                                                   let plannedDateStr;
                                                   
                                                   if (plannedDate.includes('T')) {
-                                                    plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                    plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                   } else if (plannedDate.includes('-') && plannedDate.length === 10) {
                                                     plannedDateStr = plannedDate;
                                                   } else {
-                                                    plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                    plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                   }
                                                   
                                                   if (today !== plannedDateStr) {
@@ -1199,15 +1199,15 @@ const CalendarPage = ({ onStartQuiz }) => {
                                               // Check if today is the planned date
                                               const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
                                               if (plannedDate) {
-                                                const today = new Date().toISOString().split('T')[0];
+                                                const today = getTodayString();
                                                 let plannedDateStr;
                                                 
                                                 if (plannedDate.includes('T')) {
-                                                  plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                 } else if (plannedDate.includes('-') && plannedDate.length === 10) {
                                                   plannedDateStr = plannedDate;
                                                 } else {
-                                                  plannedDateStr = new Date(plannedDate).toISOString().split('T')[0];
+                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
                                                 }
                                                 
                                                 if (today !== plannedDateStr) {

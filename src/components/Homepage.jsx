@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   BookOpen,
   CheckCircle,
@@ -41,65 +41,140 @@ const Homepage = ({ onGetStarted, onLogin }) => {
       {/* Navigation */}
       <Navbar onGetStarted={onGetStarted} onLogin={onLogin} />
 
-      {/* Hero Section - MODERNIZED */}
+      {/* Hero Section - ULTRA MODERN */}
       <section className="relative w-full flex flex-col items-center justify-center overflow-hidden pt-24 sm:pt-32 md:pt-40 pb-16 sm:pb-24 md:pb-32 min-h-screen">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:64px_64px]"></div>
-        <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_center,transparent_0%,rgba(59,130,246,0.03)_100%)]"></div>
+        {/* Modern Animated Background */}
+        <div className="absolute inset-0 h-full w-full">
+          {/* Enhanced Gradient Mesh Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100/60 via-indigo-100/40 to-purple-100/60 dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-purple-950/20"></div>
+          
+          {/* Enhanced Animated Floating Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-gradient-to-r from-blue-500/30 to-cyan-500/30 dark:from-blue-400/20 dark:to-cyan-400/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-500/25 to-pink-500/25 dark:from-purple-400/15 dark:to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-gradient-to-r from-indigo-500/30 to-blue-500/30 dark:from-indigo-400/20 dark:to-blue-400/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+          
+          {/* Enhanced Geometric Shapes */}
+          <div className="absolute top-20 left-10 w-32 h-32 border-2 border-blue-400/50 dark:border-blue-700/30 rounded-2xl rotate-12 animate-float bg-white/20 dark:bg-transparent backdrop-blur-sm"></div>
+          <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-br from-blue-500/30 to-indigo-500/30 dark:from-blue-400/10 dark:to-indigo-400/10 rounded-full animate-float-delayed"></div>
+          <div className="absolute bottom-32 left-20 w-20 h-20 border-2 border-purple-400/50 dark:border-purple-700/30 rounded-lg rotate-45 animate-float-slow bg-white/20 dark:bg-transparent backdrop-blur-sm"></div>
+          
+          {/* Enhanced Particle Effect */}
+          <div className="absolute inset-0">
+            {useMemo(() => 
+              [...Array(20)].map((_, i) => {
+                // Generate stable random values that don't change on re-render
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const delay = Math.random() * 3;
+                const duration = 2 + Math.random() * 2;
+                
+                return (
+                  <div
+                    key={`particle-${i}`}
+                    className="absolute w-2 h-2 bg-blue-500/60 dark:bg-blue-300/40 rounded-full animate-ping"
+                    style={{
+                      left: `${left}%`,
+                      top: `${top}%`,
+                      animationDelay: `${delay}s`,
+                      animationDuration: `${duration}s`
+                    }}
+                  ></div>
+                );
+              }), []
+            )}
+          </div>
+          
+          {/* Enhanced Grid Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(59,130,246,0.08)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(59,130,246,0.02)_50%,transparent_100%)] bg-[size:100px_100px]"></div>
+        </div>
         
         <div className="relative z-10 text-center px-4 sm:px-6 max-w-6xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full homepage-card border mb-8">
-            <Sparkles className="w-4 h-4 text-blue-600 dark:text-[var(--brand-60)]" />
-            <span className="text-sm font-medium text-blue-700 dark:text-[var(--brand-70)]">
+          {/* Enhanced Badge */}
+          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/90 dark:homepage-card border-2 border-blue-200 dark:border mb-8 backdrop-blur-sm shadow-xl">
+            <div className="relative">
+              <Sparkles className="w-5 h-5 text-blue-600 dark:text-[var(--brand-60)] animate-pulse" />
+              <div className="absolute inset-0 w-5 h-5 bg-blue-400/30 dark:bg-blue-400/20 rounded-full animate-ping"></div>
+            </div>
+            <span className="text-sm font-semibold text-blue-700 dark:text-[var(--brand-70)]">
               AI-Powered SAT Prep Platform
             </span>
           </div>
 
-          {/* Main Heading */}
+          {/* Enhanced Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 sm:mb-8 leading-[0.9] tracking-tight">
-            Master the SAT with
-            <br />
-            <ContainerTextFlip
-              words={["Smart Analytics", "AI Insights", "Data-Driven Prep"]}
-              className="homepage-gradient-text"
-            />
+            <span className="block text-gray-900 dark:homepage-text-primary">Master the SAT with</span>
+            <div className="relative">
+              <ContainerTextFlip
+                words={["Smart Analytics", "AI Insights", "Data-Driven Prep"]}
+                className="homepage-gradient-text relative z-10"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-indigo-500/30 dark:from-blue-400/20 dark:via-purple-400/20 dark:to-indigo-400/20 blur-3xl -z-10"></div>
+            </div>
           </h1>
 
-          {/* Subtitle */}
-          <p className="text-lg sm:text-xl md:text-2xl homepage-text-secondary max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4">
+          {/* Enhanced Subtitle */}
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-700 dark:homepage-text-secondary max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4 font-medium">
             Transform your mistakes into mastery. Log questions, analyze patterns, and boost your score with intelligent insights and personalized practice.
           </p>
 
-          {/* CTA Buttons */}
+          {/* Enhanced CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 sm:mb-16 px-4">
             <button
               onClick={onGetStarted}
-              className="group relative inline-flex items-center justify-center gap-3 h-14 w-full sm:w-auto px-6 sm:px-8 rounded-2xl homepage-cta-primary text-white font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
+              className="group relative inline-flex items-center justify-center gap-3 h-16 w-full sm:w-auto px-8 sm:px-10 rounded-3xl homepage-cta-primary text-white font-bold text-lg sm:text-xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden transform hover:scale-105"
             >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[var(--brand-70)] via-[var(--brand-50p)] to-[var(--brand-60)] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[var(--brand-70)] via-[var(--brand-50p)] to-[var(--brand-60)] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               <span className="relative z-10">Start Learning Free</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300 relative z-10" />
             </button>
             <button
               onClick={onLogin}
-              className="inline-flex items-center justify-center gap-3 h-14 w-full sm:w-auto px-6 sm:px-8 rounded-2xl homepage-cta-secondary backdrop-blur-sm border font-semibold text-base sm:text-lg transition-all duration-300"
+              className="group inline-flex items-center justify-center gap-3 h-16 w-full sm:w-auto px-8 sm:px-10 rounded-3xl homepage-cta-secondary backdrop-blur-sm border-2 font-bold text-lg sm:text-xl transition-all duration-300 hover:scale-105 hover:shadow-xl"
             >
               <span>Sign In</span>
             </button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-2xl mx-auto px-4">
+          {/* Enhanced Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-3xl mx-auto px-4">
             {[
-              { number: "10K+", label: "Students" },
-              { number: "150+", label: "Score Increase" },
-              { number: "95%", label: "Success Rate" }
+              { 
+                number: "10K+", 
+                label: "Students", 
+                icon: (
+                  <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                )
+              },
+              { 
+                number: "150+", 
+                label: "Score Increase", 
+                icon: (
+                  <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                )
+              },
+              { 
+                number: "95%", 
+                label: "Success Rate", 
+                icon: (
+                  <svg className="w-12 h-12 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                )
+              }
             ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold homepage-text-primary mb-1">{stat.number}</div>
-                <div className="text-xs sm:text-sm homepage-text-muted">{stat.label}</div>
+              <div key={i} className="group relative p-6 rounded-2xl bg-white/90 dark:homepage-card backdrop-blur-sm border-2 border-blue-100 dark:border hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                <div className="text-center">
+                  <div className="flex justify-center mb-4 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
+                    {stat.icon}
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-bold homepage-gradient-text mb-2">{stat.number}</div>
+                  <div className="text-sm sm:text-base text-gray-600 dark:homepage-text-muted font-medium">{stat.label}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -361,18 +436,33 @@ const ProblemSolutionStrip = () => (
         {[
           { 
             solution: "Auto-logged mistakes", 
-            icon: <ClipboardCopy className="w-6 h-6" />,
-            description: "Smart categorization"
+            icon: (
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            ),
+            description: "Smart categorization",
+            color: "blue"
           },
           { 
             solution: "Instant analytics", 
-            icon: <BarChart className="w-6 h-6" />,
-            description: "Real-time insights"
+            icon: (
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            ),
+            description: "Real-time insights",
+            color: "green"
           },
           { 
             solution: "Personalized quizzes", 
-            icon: <FileQuestion className="w-6 h-6" />,
-            description: "Targeted practice"
+            icon: (
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ),
+            description: "Targeted practice",
+            color: "amber"
           }
         ].map((block, i) => (
           <div
@@ -381,7 +471,11 @@ const ProblemSolutionStrip = () => (
           >
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-[var(--brand-10)] dark:to-[var(--brand-20)] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="relative z-10 text-center">
-              <div className="w-12 h-12 rounded-2xl homepage-feature-icon flex items-center justify-center mx-auto mb-4 text-white group-hover:scale-110 transition-transform duration-300">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white group-hover:scale-110 transition-transform duration-300 ${
+                block.color === 'blue' ? 'bg-blue-600 dark:bg-blue-500' :
+                block.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
+                'bg-amber-600 dark:bg-amber-500'
+              }`}>
                 {block.icon}
               </div>
               <h3 className="text-lg sm:text-xl font-bold homepage-text-primary mb-2">{block.solution}</h3>

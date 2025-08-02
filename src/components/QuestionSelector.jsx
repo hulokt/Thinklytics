@@ -37,6 +37,8 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [csvCopied, setCsvCopied] = useState(false);
 
   // Get question answers and quiz history from Supabase
   const { data: questionAnswers } = useQuestionAnswers();
@@ -114,6 +116,25 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
     // First, exclude hidden questions from quiz builder
     filtered = filtered.filter(q => !q.hidden);
+    
+    // Additional validation: exclude questions with missing required data
+    filtered = filtered.filter(q => {
+      // Base requirements for all questions
+      const hasBaseData = q && q.section && q.id;
+      
+      // For Math questions, domain and questionType are optional (only section and passage required)
+      // For Reading/Writing questions, domain and questionType are required
+      const isMathQuestion = q.section === 'Math';
+      const hasValidData = hasBaseData && (
+        isMathQuestion ? true : (q.domain && q.questionType)
+      );
+      
+      if (!hasValidData) {
+        console.warn('🚨 Question with missing data filtered out:', q);
+      }
+      
+      return hasValidData;
+    });
 
     // Apply section filter
     if (filters.section !== 'All') {
@@ -642,6 +663,126 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
   // Modern Export as PDF function for selected questions
+  // Copy selected questions as CSV to clipboard
+  const copySelectedQuestionsAsCSV = async () => {
+    const selected = questions.filter(q => selectedQuestions.includes(q.id));
+    
+    // Filter out hidden questions from export
+    const exportableQuestions = selected.filter(q => !q.hidden);
+    
+    if (exportableQuestions.length === 0) {
+      alert('No visible questions to copy!');
+      return;
+    }
+
+    // Helper function to convert commas to exclamation marks and escape CSV values
+    const convertAndEscapeCSVValue = (value) => {
+      if (value === null || value === undefined) return '';
+      
+      // First convert to string and replace ALL commas with exclamation marks
+      let str = String(value).replace(/,/g, '!');
+      
+      // Also replace newlines with spaces to prevent CSV line breaks
+      str = str.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Always wrap in quotes to ensure proper CSV formatting
+      // Escape existing quotes by doubling them
+      str = str.replace(/"/g, '""');
+      // Wrap in quotes
+      str = `"${str}"`;
+      
+      return str;
+    };
+
+    // Convert questions to CSV format in the specified order
+    const csvRows = exportableQuestions.map(question => {
+      // Combine passage text and image into a single field
+      let passageContent = question.passageText || '';
+      
+      // If there's an image, add it to the passage content with a special marker
+      if (question.passageImage) {
+        const imageMarker = '[IMAGE_DATA]';
+        const imageEndMarker = '[/IMAGE_DATA]';
+        // Add image data after text (or as standalone if no text)
+        if (passageContent.trim()) {
+          passageContent = `${passageContent} ${imageMarker}${question.passageImage}${imageEndMarker}`;
+        } else {
+          passageContent = `${imageMarker}${question.passageImage}${imageEndMarker}`;
+        }
+      }
+
+      // Combine explanation text and image into a single field
+      let explanationContent = question.explanation || '';
+      
+      // If there's an explanation image, add it to the explanation content with a special marker
+      if (question.explanationImage) {
+        const imageMarker = '[IMAGE_DATA]';
+        const imageEndMarker = '[/IMAGE_DATA]';
+        // Add image data after text (or as standalone if no text)
+        if (explanationContent.trim()) {
+          explanationContent = `${explanationContent} ${imageMarker}${question.explanationImage}${imageEndMarker}`;
+        } else {
+          explanationContent = `${imageMarker}${question.explanationImage}${imageEndMarker}`;
+        }
+      }
+      
+      const row = [
+        convertAndEscapeCSVValue(question.section),
+        convertAndEscapeCSVValue(question.domain),
+        convertAndEscapeCSVValue(question.questionType),
+        convertAndEscapeCSVValue(passageContent),
+        convertAndEscapeCSVValue(question.questionText || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.A || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.B || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.C || ''),
+        convertAndEscapeCSVValue(question.answerChoices?.D || ''),
+        convertAndEscapeCSVValue(question.correctAnswer || 'A'),
+        convertAndEscapeCSVValue(explanationContent),
+        convertAndEscapeCSVValue(question.difficulty || 'Medium')
+      ];
+      return row.join(',');
+    });
+
+    // Create CSV content (no header for paste-friendly format)
+    const csvContent = csvRows.join('\n');
+
+    try {
+      // Copy to clipboard
+      await navigator.clipboard.writeText(csvContent);
+      
+      // Show success state and auto-close modal
+      setCsvCopied(true);
+      setTimeout(() => {
+        setCsvCopied(false);
+        setShowExportModal(false);
+      }, 1500);
+      
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = csvContent;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+        setCsvCopied(true);
+        setTimeout(() => {
+          setCsvCopied(false);
+          setShowExportModal(false);
+        }, 1500);
+      } catch (fallbackErr) {
+        alert('Failed to copy to clipboard. Please try again.');
+      }
+      
+      document.body.removeChild(textArea);
+    }
+  };
+
   const exportSelectedQuestionsAsPDF = async () => {
     const selected = questions.filter(q => selectedQuestions.includes(q.id));
     
@@ -658,6 +799,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
         setIsExporting(false);
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 3000);
+        setShowExportModal(false);
       } else {
         throw new Error(result.error);
       }
@@ -864,38 +1006,18 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
                   Add to Calendar ({selectedQuestions.length})
                 </button>
                 <button
-                  onClick={exportSelectedQuestionsAsPDF}
-                  disabled={isExporting || exportSuccess || selectedQuestions.length === 0}
+                  onClick={() => setShowExportModal(true)}
+                  disabled={selectedQuestions.length === 0}
                   className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center space-x-2 text-xs font-medium ${
-                    isExporting || selectedQuestions.length === 0
+                    selectedQuestions.length === 0
                       ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                      : exportSuccess
-                      ? 'bg-green-500 text-white'
                       : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:scale-105'
                   }`}
                 >
-                  {isExporting ? (
-                    <>
-                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      <span>Generating PDF...</span>
-                    </>
-                  ) : exportSuccess ? (
-                    <>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Downloaded!</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span>Export as PDF</span>
-                    </>
-                  )}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Export ({selectedQuestions.length})</span>
                 </button>
               </div>
             </div>
@@ -1322,6 +1444,132 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
             `}</style>
           </div>
         </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <dialog
+          open
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 w-full h-full"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowExportModal(false);
+            }
+          }}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full transform transition-all duration-300 scale-100">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Export Questions
+                </h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Choose how you'd like to export your {selectedQuestions.length} selected questions
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="space-y-4">
+                {/* CSV Export Option */}
+                <button
+                  onClick={copySelectedQuestionsAsCSV}
+                  disabled={csvCopied}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-4 ${
+                    csvCopied
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-900 dark:text-white'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                    csvCopied
+                      ? 'bg-green-500 text-white'
+                      : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {csvCopied ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h4 className="font-semibold">Copy as CSV</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {csvCopied ? 'Copied to clipboard!' : 'Copy questions to clipboard for spreadsheet import'}
+                    </p>
+                  </div>
+                </button>
+
+                {/* PDF Export Option */}
+                <button
+                  onClick={exportSelectedQuestionsAsPDF}
+                  disabled={isExporting}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-4 ${
+                    isExporting
+                      ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                      : exportSuccess
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-900 dark:text-white'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                    isExporting
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                      : exportSuccess
+                      ? 'bg-green-500 text-white'
+                      : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {isExporting ? (
+                      <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : exportSuccess ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h4 className="font-semibold">
+                      {isExporting ? 'Generating PDF...' : exportSuccess ? 'Downloaded!' : 'Export as PDF'}
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {isExporting ? 'Please wait...' : exportSuccess ? 'PDF saved successfully!' : 'Download questions as a PDF document'}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-600 rounded-b-2xl">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </dialog>
       )}
     </div>
   );

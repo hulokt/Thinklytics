@@ -371,6 +371,17 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     // Reset initialization state when questions change or resuming state changes
     setQuizInitialized(false);
     setHasUnsavedChanges(false); // Reset unsaved changes state
+    
+    // Reset all quiz state when starting fresh (not resuming)
+    if (!isResuming) {
+      setCheckedQuestions(new Set());
+      setFlaggedQuestions(new Set());
+      setEliminationMode(false);
+      setEliminatedOptions({});
+      setShowExplanation({});
+      setUserAnswers({});
+      setCurrentQuestionIndex(0);
+    }
   }, [questions, isResuming, initialQuizData]);
 
   // Initialize quiz data
@@ -484,6 +495,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       alert('Please select an answer before checking.');
       return;
     }
+    
+
     
     // Check if answer is correct and play appropriate sound
     const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
@@ -691,7 +704,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       quizDataRef.current = completedQuiz;
       
       // Navigate to quiz history with success state to trigger celebration
-      navigate('/history', { state: { showCelebration: true } });
+      navigate('/history', { 
+        state: { 
+          showCelebration: true,
+          celebrationId: `quiz-${completedQuiz.id}-${Date.now()}`
+        } 
+      });
       
     } catch (error) {
       // Show user-friendly error message

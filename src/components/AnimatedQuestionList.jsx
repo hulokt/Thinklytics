@@ -88,6 +88,16 @@ const AnimatedQuestionList = ({
   // Get questions to display based on mobile/desktop and visible count
   const questionsToShow = isMobile ? questions.slice(0, visibleCount) : questions;
   const hasMoreQuestions = isMobile && visibleCount < questions.length;
+  
+  // Debug: Check for duplicate IDs
+  useEffect(() => {
+    const ids = questionsToShow.map(q => q.id);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    if (duplicates.length > 0) {
+      console.warn('🚨 Found duplicate question IDs:', duplicates);
+      console.warn('🚨 Questions with duplicate IDs:', questionsToShow.filter(q => duplicates.includes(q.id)));
+    }
+  }, [questionsToShow]);
 
   useEffect(() => {
     if (!enableArrowNavigation) return;
@@ -137,13 +147,49 @@ const AnimatedQuestionList = ({
   }, [selectedIndex, keyboardNav]);
 
   const renderQuestion = (question, index) => {
+    // Validate question data with consistent logic
+    const hasBaseData = question && question.id && question.section;
+    const isMathQuestion = question?.section === 'Math';
+    const hasValidData = hasBaseData && (
+      isMathQuestion ? true : (question.domain && question.questionType)
+    );
+
+    // Debug logging for problematic questions
+    if (!hasValidData) {
+      console.warn('🚨 Rendering question with missing data:', { 
+        question: {
+          id: question?.id,
+          section: question?.section,
+          domain: question?.domain,
+          questionType: question?.questionType,
+          isMathQuestion
+        }, 
+        index 
+      });
+    }
+    
     const isSelected = selectedQuestions.includes(question.id);
     const status = getQuestionStatus ? getQuestionStatus(question.id) : null;
     const flagged = isQuestionFlagged ? isQuestionFlagged(question.id) : false;
 
+    // Skip rendering if question has missing required data
+    if (!hasValidData) {
+      console.warn('🚨 Skipping question with missing data:', { 
+        question: {
+          id: question?.id,
+          section: question?.section,
+          domain: question?.domain,
+          questionType: question?.questionType,
+          isMathQuestion
+        }, 
+        index 
+      });
+      return null;
+    }
+    
     return (
       <AnimatedQuestionItem
-        key={question.id}
+        key={`${question.id}-${index}`}
         delay={0.1}
         index={index}
         onMouseEnter={() => setSelectedIndex(index)}

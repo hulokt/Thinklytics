@@ -6,6 +6,7 @@ import { useQuizManager } from './QuizManager';
 import { Modal } from './ui/animated-modal';
 import { CheckCircle, Clock, BarChart2, Plus, Play, Calendar as CalendarIcon, Target, BookOpen, Trash2, ChevronRight, CalendarDays, Activity } from 'lucide-react';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useUndo } from '../contexts/UndoContext';
 
 // Custom calendar styles
 const calendarStyles = `
@@ -664,36 +665,58 @@ const CalendarPage = ({ onStartQuiz }) => {
     }
   };
 
-  const handleDeleteQuiz = async (quiz) => {
-    try {
-      /* console.log('🗑️ Attempting to delete quiz:', quiz); */
-      
-      // Always attempt to delete associated QuizManager record if quizId exists
-      if (quizManager && quiz.quizId) {
-        /* console.log('🗑️ Deleting corresponding quiz manager record with quizId:', quiz.quizId); */
-        await quizManager.deleteQuiz(quiz.quizId);
-      }
+  const { addUndoAction } = useUndo();
 
-      // Also remove any matching calendar event
-      const updatedEvents = (calendarEvents || []).filter(event => event.id !== quiz.id);
-      /* console.warn('🗑️ handleDeleteQuiz – removing calendar event id:', quiz.id, 'Remaining events count:', updatedEvents.length); */
-      mergeAndSaveCalendarEvents(updatedEvents);
-      
-      setToastMessage('Quiz deleted successfully');
-      setToastType('success');
-      setShowToast(true);
-      
-      // Auto-hide toast after 3 seconds
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (error) {
-      console.error('❌ Error deleting quiz:', error);
-      setToastMessage(`Failed to delete quiz: ${error.message}`);
-      setToastType('error');
-      setShowToast(true);
-      
-      // Auto-hide error toast after 5 seconds
-      setTimeout(() => setShowToast(false), 5000);
-    }
+  const handleDeleteQuiz = async (quiz) => {
+    // Store original state for potential undo
+    const originalEvents = calendarEvents || [];
+    
+    // Immediately remove from UI for instant feedback
+    const updatedEvents = originalEvents.filter(event => event.id !== quiz.id);
+    mergeAndSaveCalendarEvents(updatedEvents);
+    
+    setToastMessage('Quiz deleted successfully');
+    setToastType('success');
+    setShowToast(true);
+    
+    // Add to undo stack
+    addUndoAction({
+      id: `calendar-quiz-${quiz.id}-${Date.now()}`,
+      type: 'quiz',
+      data: {
+        quiz,
+        originalEvents,
+        quizManager
+      },
+      onUndo: (data) => {
+        // Restore the quiz to the UI
+        mergeAndSaveCalendarEvents(data.originalEvents);
+        setToastMessage('Quiz restored');
+        setToastType('success');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      },
+      onConfirm: async () => {
+        // Actually delete from database after 5 seconds
+        try {
+          // Always attempt to delete associated QuizManager record if quizId exists
+          if (data.quizManager && quiz.quizId) {
+            await data.quizManager.deleteQuiz(quiz.quizId);
+          }
+          
+          // Auto-hide success toast after 3 seconds
+          setTimeout(() => setShowToast(false), 3000);
+        } catch (error) {
+          console.error('❌ Error deleting quiz:', error);
+          setToastMessage(`Failed to delete quiz: ${error.message}`);
+          setToastType('error');
+          setShowToast(true);
+          
+          // Auto-hide error toast after 5 seconds
+          setTimeout(() => setShowToast(false), 5000);
+        }
+      }
+    });
   };
 
   const handleDeleteCustomEvent = async (event) => {

@@ -99,6 +99,8 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
   const [exportSuccess, setExportSuccess] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [csvCopied, setCsvCopied] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef(null);
 
   // Multi-question CSV import state
   const [csvQuestions, setCsvQuestions] = useState([]);
@@ -155,6 +157,23 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       }
     };
   }, []);
+
+  // Handle clicking outside the actions menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target)) {
+        setShowActionsMenu(false);
+      }
+    };
+
+    if (showActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showActionsMenu]);
 
   // Award points and show animation
   const awardPointsAndAnimate = async (actionType, additionalData = {}) => {
@@ -1243,9 +1262,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       throw new Error('No valid questions found in CSV. Please check your format and ensure each line has all required fields.');
     }
     
-    if (questions.length > 100) {
-      throw new Error('Maximum 100 questions allowed per import');
-    }
+
     
     return questions;
   };
@@ -1336,19 +1353,30 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
           errors.passageText = true;
         }
 
-        if (!formData.questionText.trim()) {
+        // For Math section, question text is optional
+        if (formData.section !== SAT_SECTIONS.MATH && !formData.questionText.trim()) {
           errors.questionText = true;
         }
 
-        // Check if any answer choice is empty
-        const emptyChoices = Object.entries(formData.answerChoices)
-          .filter(([key, value]) => !value.trim())
-          .map(([key]) => key);
-        
-        if (emptyChoices.length > 0) {
-          emptyChoices.forEach(choice => {
-            errors[`answerChoice_${choice}`] = true;
+        // For Math section, auto-fill empty answer choices with A, B, C, D
+        if (formData.section === SAT_SECTIONS.MATH) {
+          const choices = ['A', 'B', 'C', 'D'];
+          choices.forEach((choice, index) => {
+            if (!formData.answerChoices[choice] || formData.answerChoices[choice].trim() === '') {
+              formData.answerChoices[choice] = choice;
+            }
           });
+        } else {
+          // For non-Math sections, check if any answer choice is empty
+          const emptyChoices = Object.entries(formData.answerChoices)
+            .filter(([key, value]) => !value.trim())
+            .map(([key]) => key);
+          
+          if (emptyChoices.length > 0) {
+            emptyChoices.forEach(choice => {
+              errors[`answerChoice_${choice}`] = true;
+            });
+          }
         }
       }
 
@@ -1600,6 +1628,46 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     setImageModal({ isOpen: false, imageSrc: '', imageAlt: '' });
   };
 
+  // Clean up duplicate questions
+  const handleCleanupDuplicates = async () => {
+    if (!questionsArray || questionsArray.length === 0) return;
+    
+    const questionIds = questionsArray.map(q => q.id);
+    const duplicateIds = [];
+    const seenIds = new Set();
+    
+    // Find IDs that appear more than once
+    questionsArray.forEach(question => {
+      if (seenIds.has(question.id)) {
+        duplicateIds.push(question.id);
+      } else {
+        seenIds.add(question.id);
+      }
+    });
+    
+    if (duplicateIds.length === 0) {
+      alert('No duplicate questions found!');
+      return;
+    }
+    
+    const confirmed = window.confirm(
+      `Found ${duplicateIds.length} duplicate questions. Do you want to remove them? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    console.log('🧹 Cleaning up duplicates:', {
+      original: questionsArray.length,
+      duplicatesToRemove: duplicateIds.length,
+      duplicateIds: duplicateIds
+    });
+    
+    // Delete the duplicate questions using bulk delete
+    onBulkDeleteQuestions(duplicateIds);
+    
+    alert(`Successfully removed ${duplicateIds.length} duplicate questions!`);
+  };
+
   // Export questions as PDF
   const handleExportQuestionsAsPDF = async () => {
     // Filter out hidden questions from export
@@ -1786,21 +1854,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
           </div>
           <div className="flex flex-col md:flex-row w-full md:w-auto items-stretch md:items-center gap-2 md:gap-3">
 
-            {/* Paste CSV Button */}
-            {!editingId && !isImportMode && (
-              <button
-                onClick={() => { setShowCsvModal(true); setCsvInput(''); setCsvError(''); }}
-                className="group relative bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2 text-sm font-medium overflow-hidden w-full md:w-auto"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-blue-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex items-center space-x-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Paste CSV</span>
-                </div>
-              </button>
-            )}
+
             {/* Cancel Import Button */}
             {isImportMode && (
               <button
@@ -1832,7 +1886,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
               <strong>Hidden questions:</strong> Section, Domain, Question Type (only 3 fields) - auto-detected as drafts
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-              💡 <strong>Multi-question support:</strong> Paste multiple questions by putting each question on a new line. You can import up to 100 questions at once!
+              💡 <strong>Multi-question support:</strong> Paste multiple questions by putting each question on a new line. You can import unlimited questions at once!
             </p>
             <textarea
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 mb-2 text-base sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
@@ -2576,13 +2630,59 @@ Reading and Writing,Standard English Conventions,Boundaries`}
             {filteredQuestions.length > 0 && (
               <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex-shrink-0 transition-colors duration-300">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-2">
-                  <span className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
+                  <span className="text-gray-600 dark:text-gray-400 transition-colors duration-300 text-xs sm:text-sm">
                     {bulkSelectionMode 
                       ? `Click questions to select/deselect (${selectedQuestions.size} selected)`
                       : 'Click any question to edit'
                     }
                   </span>
-
+                  
+                  {/* Modern 3-dots menu - positioned on the right */}
+                  {!bulkSelectionMode && !editingId && !isImportMode && (
+                    <div className="relative self-end sm:self-auto" ref={actionsMenuRef}>
+                      <button
+                        onClick={() => setShowActionsMenu(!showActionsMenu)}
+                        className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                        title="More actions"
+                      >
+                        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        </svg>
+                      </button>
+                      
+                      {/* Dropdown menu - positioned at top right */}
+                      {showActionsMenu && (
+                        <div className="absolute bottom-full right-0 mb-1 w-40 sm:w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                          <button
+                            onClick={() => {
+                              setShowCsvModal(true);
+                              setCsvInput('');
+                              setCsvError('');
+                              setShowActionsMenu(false);
+                            }}
+                            className="w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2 sm:gap-3"
+                          >
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span className="truncate">Paste CSV</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleCleanupDuplicates();
+                              setShowActionsMenu(false);
+                            }}
+                            className="w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2 sm:gap-3"
+                          >
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span className="truncate">Clean Duplicates</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

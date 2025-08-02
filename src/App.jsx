@@ -17,6 +17,8 @@ import {
 } from './utils/LazyComponents';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
+import { UndoProvider, useUndo } from './contexts/UndoContext';
+import UndoToast from './components/ui/UndoToast';
 import { useQuestions, useCalendarEvents } from './hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 import { supabase } from './lib/supabaseClient';
@@ -77,9 +79,11 @@ function App() {
     <Router basename={basename}>
       <AuthProvider>
         <DarkModeProvider>
-          <Suspense fallback={<div>Loading...</div>}>
-            <AppContent />
-          </Suspense>
+          <UndoProvider>
+            <Suspense fallback={<div>Loading...</div>}>
+              <AppContent />
+            </Suspense>
+          </UndoProvider>
         </DarkModeProvider>
       </AuthProvider>
     </Router>
@@ -483,9 +487,9 @@ function AppContent() {
 
     // Assign fresh ids and mark hidden questions
     const nowIso = new Date().toISOString();
-    const questionsWithIds = dedupedIncoming.map((q) => ({
+    const questionsWithIds = dedupedIncoming.map((q, index) => ({
       ...q,
-      id: Date.now() + Math.random(),
+      id: `${Date.now()}-${Math.floor(Math.random() * 1000000)}-${index}`, // More robust ID generation
       hidden: isHiddenQuestion(q), // Auto-detect hidden status
       createdAt: nowIso,
       lastUpdated: nowIso,
@@ -537,20 +541,73 @@ function AppContent() {
     });
   };
 
+  const { addUndoAction } = useUndo();
+
   const handleDeleteQuestion = (questionId) => {
     if (!questions) return;
     
+    const questionToDelete = questions.find(q => q.id === questionId);
+    if (!questionToDelete) return;
+
+    // Store original questions before deletion
+    const originalQuestions = [...questions];
+    
+    // Immediately remove from UI for instant feedback
     const updatedQuestions = questions.filter(q => q.id !== questionId);
+    
+    // Update UI immediately
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to delete question from database:', error);
+      console.error('Failed to update UI for question deletion:', error);
+    });
+    
+    // Add to undo stack
+    addUndoAction({
+      id: `question-${questionId}-${Date.now()}`,
+      type: 'question',
+      data: { question: questionToDelete, originalQuestions },
+      onUndo: (data) => {
+        // Restore using the original questions state captured at deletion time
+        upsertQuestions(data.originalQuestions).catch(error => {
+          console.error('Failed to restore question to database:', error);
+        });
+      },
+      onConfirm: () => {
+        // The deletion is already persisted, just confirm it
+        console.log('Question deletion confirmed');
+      }
     });
   };
 
   const handleBulkDeleteQuestions = (questionIds) => {
     if (!questions || !Array.isArray(questionIds) || questionIds.length === 0) return;
+    
+    const questionsToDelete = questions.filter(q => questionIds.includes(q.id));
+    
+    // Store original questions before deletion
+    const originalQuestions = [...questions];
+    
     const updatedQuestions = questions.filter(q => !questionIds.includes(q.id));
+    
+    // Update UI immediately
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to bulk delete questions from database:', error);
+      console.error('Failed to update UI for bulk question deletion:', error);
+    });
+    
+    // Add to undo stack
+    addUndoAction({
+      id: `questions-${questionIds.join('-')}-${Date.now()}`,
+      type: 'questions',
+      data: { questions: questionsToDelete, originalQuestions },
+      onUndo: (data) => {
+        // Restore using the original questions state captured at deletion time
+        upsertQuestions(data.originalQuestions).catch(error => {
+          console.error('Failed to restore questions to database:', error);
+        });
+      },
+      onConfirm: () => {
+        // The deletion is already done, just confirm it
+        console.log('Bulk question deletion confirmed');
+      }
     });
   };
 
@@ -949,6 +1006,9 @@ function AppContent() {
         {/* Redirect any unknown routes */}
         <Route path="*" element={<Navigate to={user ? "/questions" : "/home"} replace />} />
       </Routes>
+      
+      {/* Undo Toast */}
+      <UndoToast />
     </>
   );
 }

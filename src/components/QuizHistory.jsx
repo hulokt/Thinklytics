@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { useAuth } from '../contexts/AuthContext';
+import { useUndo } from '../contexts/UndoContext';
 import { awardPoints, handleQuizEdit } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
@@ -29,10 +30,11 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationAudio, setCelebrationAudio] = useState(null);
   const [deleteAudio, setDeleteAudio] = useState(null);
-  const celebrationTriggeredRef = useRef(false);
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [saveAudio, setSaveAudio] = useState(null);
   const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
+  const celebrationCheckedRef = useRef(false);
+  const celebrationSessionRef = useRef(null);
 
   // Get location to check for celebration state
   const location = useLocation();
@@ -84,26 +86,37 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     };
   }, []);
 
-  // Check for celebration state from navigation - ONLY ONCE when component loads and audio is ready
+  // Check for celebration state from navigation - BULLETPROOF single trigger
   useEffect(() => {
-    // Only trigger celebration if we haven't triggered it yet AND we have the celebration state AND audio is loaded
-    if (location.state?.showCelebration && !celebrationTriggeredRef.current && audioLoaded && celebrationAudio) {
-      // Mark as triggered immediately
-      celebrationTriggeredRef.current = true;
+    if (location.state?.showCelebration && audioLoaded && celebrationAudio) {
+      const celebrationId = location.state.celebrationId || `celebration-${Date.now()}`;
       
-      // Start celebration
-      setShowCelebration(true);
+      // Only proceed if this is a NEW celebration session
+      if (celebrationSessionRef.current !== celebrationId) {
+        celebrationSessionRef.current = celebrationId;
+        
+        const hasShownThisCelebration = sessionStorage.getItem(`satlog-celebration-${celebrationId}`);
+        
+        if (!hasShownThisCelebration) {
+          // Mark this specific celebration as shown
+          sessionStorage.setItem(`satlog-celebration-${celebrationId}`, 'true');
+          
+          // Start celebration ONCE
+          setShowCelebration(true);
+          
+          // Create a fresh audio instance for this celebration
+          const freshAudio = new Audio(quizFinishedSound);
+          freshAudio.volume = 0.5;
+          freshAudio.play().catch(error => {
+            console.log('Celebration audio play failed:', error);
+          });
+        }
+      }
       
-      // Play celebration sound
-      celebrationAudio.currentTime = 0;
-      celebrationAudio.play().catch(error => {
-        console.log('Celebration audio play failed:', error);
-      });
-      
-      // Clear the navigation state immediately
+      // Always clear the navigation state to prevent repeated triggers
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, celebrationAudio, audioLoaded]); // Include audioLoaded in dependencies
+  }, [location.state, celebrationAudio, audioLoaded]);
 
   // Use new QuizManager
   const { 
@@ -132,6 +145,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     try {
       const result = await awardPoints(user.id, actionType, additionalData);
       if (result.success && result.pointsAwarded !== 0) {
+        console.log('🎯 Starting points animation:', { actionType, points: result.pointsAwarded, celebrationActive: showCelebration });
         setPointsAnimation({
           show: true,
           points: result.pointsAwarded,
@@ -145,6 +159,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Handle points animation completion
   const handlePointsAnimationComplete = () => {
+    console.log('🎯 Points animation completed');
     setPointsAnimation({ show: false, points: 0, action: '' });
   };
 
@@ -159,58 +174,103 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Handle celebration completion
   const handleCelebrationComplete = () => {
+    console.log('🎉 Celebration completed - cleaning up all states');
     setShowCelebration(false);
+    // Clean up celebration session
+    celebrationSessionRef.current = null;
   };
 
   // Celebration Animation Component
   const CelebrationAnimation = () => {
     const [confetti, setConfetti] = useState([]);
+    const animationStartedRef = useRef(false);
+    const confettiIntervalRef = useRef(null);
+    const hideTimeoutRef = useRef(null);
+    const celebrationIdRef = useRef(null);
 
     useEffect(() => {
       if (showCelebration) {
-        // Create confetti particles with better physics
-        const confettiParticles = Array.from({ length: 80 }, (_, i) => ({
-          id: i,
-          x: Math.random() * window.innerWidth,
-          y: -20,
-          vx: (Math.random() - 0.5) * 6,
-          vy: Math.random() * 2 + 1,
-          color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'][Math.floor(Math.random() * 10)],
-          size: Math.random() * 8 + 4,
-          rotation: Math.random() * 360,
-          rotationSpeed: (Math.random() - 0.5) * 8,
-          gravity: 0.08,
-          wind: (Math.random() - 0.5) * 0.02
-        }));
+        // Only start if not already running
+        if (!animationStartedRef.current) {
+          console.log('🎉 Starting celebration animation');
+          animationStartedRef.current = true;
+          
+          // Create confetti particles with better physics
+          const confettiParticles = Array.from({ length: 80 }, (_, i) => ({
+            id: i,
+            x: Math.random() * window.innerWidth,
+            y: -20,
+            vx: (Math.random() - 0.5) * 6,
+            vy: Math.random() * 2 + 1,
+            color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'][Math.floor(Math.random() * 10)],
+            size: Math.random() * 8 + 4,
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 8,
+            gravity: 0.08,
+            wind: (Math.random() - 0.5) * 0.02
+          }));
 
-        setConfetti(confettiParticles);
+          setConfetti(confettiParticles);
 
-        // Animate confetti with smoother physics
-        const animateConfetti = () => {
-          setConfetti(prev => prev.map(particle => ({
-            ...particle,
-            x: particle.x + particle.vx,
-            y: particle.y + particle.vy,
-            vy: particle.vy + particle.gravity,
-            vx: particle.vx + particle.wind,
-            rotation: particle.rotation + particle.rotationSpeed
-          })).filter(particle => particle.y < window.innerHeight + 100));
-        };
+          // Animate confetti with smoother physics
+          const animateConfetti = () => {
+            setConfetti(prev => prev.map(particle => ({
+              ...particle,
+              x: particle.x + particle.vx,
+              y: particle.y + particle.vy,
+              vy: particle.vy + particle.gravity,
+              vx: particle.vx + particle.wind,
+              rotation: particle.rotation + particle.rotationSpeed
+            })).filter(particle => particle.y < window.innerHeight + 100));
+          };
 
-        // Much faster animation interval for smoother movement
-        const confettiInterval = setInterval(animateConfetti, 16); // ~60fps
+          // Much faster animation interval for smoother movement
+          confettiIntervalRef.current = setInterval(animateConfetti, 16); // ~60fps
 
-        // Auto-hide celebration after 4 seconds
-        const hideTimeout = setTimeout(() => {
-          handleCelebrationComplete();
-        }, 4000);
-
-        return () => {
-          clearInterval(confettiInterval);
-          clearTimeout(hideTimeout);
-        };
+          // Auto-hide celebration after 4 seconds
+          hideTimeoutRef.current = setTimeout(() => {
+            handleCelebrationComplete();
+          }, 4000);
+        } else {
+          console.log('🎉 Celebration animation already running - skipping restart');
+        }
+      } else {
+        // Clean up when celebration ends
+        if (animationStartedRef.current) {
+          console.log('🎉 Cleaning up celebration animation');
+          animationStartedRef.current = false;
+          
+          // Clear intervals and timeouts
+          if (confettiIntervalRef.current) {
+            clearInterval(confettiIntervalRef.current);
+            confettiIntervalRef.current = null;
+          }
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+          
+          setConfetti([]);
+        }
       }
+
+      // Cleanup on unmount
+      return () => {
+        if (confettiIntervalRef.current) {
+          clearInterval(confettiIntervalRef.current);
+        }
+        if (hideTimeoutRef.current) {
+          clearTimeout(hideTimeoutRef.current);
+        }
+      };
     }, [showCelebration]);
+
+    // Debug re-renders
+    useEffect(() => {
+      if (showCelebration) {
+        console.log('🔄 CelebrationAnimation re-rendered while celebration active');
+      }
+    });
 
     if (!showCelebration) return null;
 
@@ -246,6 +306,11 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Sync local state with QuizManager state
   useEffect(() => {
+    console.log('🔄 QuizHistory re-render: Quiz data changed', {
+      inProgressCount: Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw.length : 'not-array',
+      completedCount: Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw.length : 'not-array',
+      celebrationActive: showCelebration
+    });
     setLocalInProgressQuizzes(Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw : []);
     setLocalCompletedQuizzes(Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : []);
   }, [inProgressQuizzesRaw, completedQuizzesRaw]);
@@ -256,6 +321,23 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       quizManager.refreshQuizzes();
     }
   }, [quizManager]);
+
+  // Debug: Track all component re-renders
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
+  
+  useEffect(() => {
+    console.log(`🔄 QuizHistory render #${renderCountRef.current}:`, {
+      showCelebration,
+      celebrationSession: celebrationSessionRef.current,
+      inProgressCount: localInProgressQuizzes.length,
+      completedCount: localCompletedQuizzes.length,
+      pointsAnimationActive: pointsAnimation.show,
+      editingQuiz: !!editingQuiz,
+      audioLoaded,
+      timestamp: new Date().toISOString().split('T')[1].split('.')[0]
+    });
+  });
 
   const inProgressQuizzes = localInProgressQuizzes;
   const completedQuizzes = localCompletedQuizzes;
@@ -316,6 +398,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setShowDeleteConfirm(quiz);
   };
 
+  const { addUndoAction } = useUndo();
+
   const confirmDeleteQuiz = async () => {
     if (!showDeleteConfirm) return;
     
@@ -325,21 +409,24 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setShowDeleteConfirm(null);
     setIsDeletingQuiz(false);
     
+    // Store the original state for potential undo
+    const originalInProgress = localInProgressQuizzes;
+    const originalCompleted = localCompletedQuizzes;
+    
     // Immediately remove the quiz from local state for instant visual feedback
     setLocalInProgressQuizzes(prev => prev.filter(q => q.id !== quizToDelete.id));
     setLocalCompletedQuizzes(prev => prev.filter(q => q.id !== quizToDelete.id));
     
-    // Perform the actual deletion in the background
+    // Play delete sound immediately
+    if (deleteAudio) {
+      deleteAudio.currentTime = 0;
+      deleteAudio.play().catch(error => {
+        console.log('Delete audio play failed:', error);
+      });
+    }
+    
+    // Immediately delete from database for persistence
     try {
-      // Play delete sound
-      if (deleteAudio) {
-        deleteAudio.currentTime = 0;
-        deleteAudio.play().catch(error => {
-          console.log('Delete audio play failed:', error);
-        });
-      }
-      
-      // Use QuizManager to delete the quiz (handles renumbering automatically)
       await quizManager.deleteQuiz(quizToDelete.id);
       
       // Only update question answers if there are actually answers to remove
@@ -373,10 +460,41 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         }
       }
     } catch (error) {
-      // If deletion fails, show an error but don't block the UI
-      console.error('Failed to delete quiz:', error);
+      console.error('Failed to delete quiz from database:', error);
+      // If database deletion fails, restore the UI
+      setLocalInProgressQuizzes(originalInProgress);
+      setLocalCompletedQuizzes(originalCompleted);
       alert('Failed to delete quiz. Please try again.');
+      return;
     }
+    
+    // Add to undo stack
+    addUndoAction({
+      id: `quiz-${quizToDelete.id}-${Date.now()}`,
+      type: 'quiz',
+      data: {
+        quiz: quizToDelete,
+        originalInProgress,
+        originalCompleted,
+        questionAnswers: questionAnswers
+      },
+      onUndo: async (data) => {
+        // Restore the quiz to the UI and database
+        setLocalInProgressQuizzes(data.originalInProgress);
+        setLocalCompletedQuizzes(data.originalCompleted);
+        
+        // Re-add the quiz to the database
+        try {
+          await quizManager.addQuiz(data.quiz);
+        } catch (error) {
+          console.error('Failed to restore quiz to database:', error);
+        }
+      },
+      onConfirm: () => {
+        // The deletion is already done, just confirm it
+        console.log('Quiz deletion confirmed');
+      }
+    });
   };
 
   const cancelDeleteQuiz = () => {
@@ -1093,8 +1211,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         onClose={handleCloseImageModal}
       />
 
-      {/* Celebration Animation */}
-      <CelebrationAnimation />
+              {/* Celebration Animation */}
+        {showCelebration && <CelebrationAnimation />}
 
       {/* Reset Numbering Confirmation Modal */}
       {showResetConfirm && (

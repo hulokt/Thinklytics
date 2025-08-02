@@ -392,23 +392,40 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
                 <label className={`block text-xs font-semibold uppercase mb-2 ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  className={`w-full rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
-                    isDarkMode 
-                      ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
-                      : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
-                  } ${
-                    errors.password 
-                      ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
-                      : isDarkMode 
-                        ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
-                        : 'focus:ring-blue-500 focus:border-blue-500'
-                  }`}
-                  value={formData.password}
-                  onChange={e => handleInputChange('password', e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className={`w-full rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                      isDarkMode 
+                        ? 'bg-[#0F172A] border border-[#1e293b] placeholder-gray-500 text-white' 
+                        : 'bg-gray-50 border border-gray-300 placeholder-gray-500 text-gray-900'
+                    } ${
+                      errors.password 
+                        ? 'ring-2 ring-red-500 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]' 
+                        : isDarkMode 
+                          ? 'focus:ring-[#28A0FF] focus:border-[#28A0FF]' 
+                          : 'focus:ring-blue-500 focus:border-blue-500'
+                    }`}
+                    value={formData.password}
+                    onChange={e => handleInputChange('password', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors duration-200 ${
+                      isDarkMode 
+                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                    }`}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>

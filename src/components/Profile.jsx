@@ -38,21 +38,21 @@ const Profile = () => {
         setCalculating(true);
         
         try {
-          console.log('📊 Profile opened - starting automatic stats calculation...');
+  
           
           // Wait for all stats to be calculated
           const stats = await getUserStats(user.id);
           
           if (stats) {
-            console.log('✅ Profile stats loaded:', stats);
+      
             setUserStats(stats);
             
             // Play ranking loaded sound when stats are successfully loaded
             if (rankingAudio) {
               rankingAudio.currentTime = 0;
-              rankingAudio.play().catch(error => {
-                console.log('Ranking audio play failed:', error);
-              });
+                      rankingAudio.play().catch(error => {
+          // Audio play failed
+        });
             }
             
             // Start animations after a short delay
@@ -82,7 +82,6 @@ const Profile = () => {
             }, 500);
           }
         } catch (error) {
-          console.error('Error loading user stats:', error);
           // Show fallback data on error
           setUserStats({
             name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',

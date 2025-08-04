@@ -59,60 +59,16 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
   // Debug modal state changes
   useEffect(() => {
-    console.log('🔘 Modal state changed:', showCalendarModal);
+
   }, [showCalendarModal]);
 
   useEffect(() => {
-    console.log('🔄 useEffect triggered by dependency change:', {
-      questionsLength: questions?.length,
-      sortBy,
-      filtersStr: JSON.stringify(filters),
-      hasQuestionAnswers: !!questionAnswers,
-      quizHistoryLength: completedQuizzes?.length,
-      quizHistorySample: completedQuizzes?.slice(0, 2)?.map(q => ({ id: q.id, status: q.status, quizNumber: q.quizNumber }))
-    });
     applyFilters();
   }, [questions, filters, sortBy, questionAnswers, completedQuizzes, managerInProgressQuizzes, searchQuery]);
 
-  // Temporary debug effect
-  useEffect(() => {
-    if (questions && questions.length > 0 && questionAnswers && completedQuizzes) {
-      console.log('🔍 === DEBUGGING QUESTION STATUS ===');
-      console.log('📊 Available data:', {
-        questionsCount: questions.length,
-        questionAnswersKeys: Object.keys(questionAnswers).length,
-        quizHistoryCount: completedQuizzes.length,
-        quizHistorySample: completedQuizzes.slice(0, 2).map(q => ({ 
-          id: q.id, 
-          score: q.score, 
-          endTime: q.endTime, 
-          hasScore: q.score !== undefined && q.score !== null,
-          hasEndTime: q.endTime !== undefined && q.endTime !== null,
-          isCompleted: (q.score !== undefined && q.score !== null) && (q.endTime !== undefined && q.endTime !== null),
-          status: q.status
-        }))
-      });
-      
-      // Test status calculation for first few questions
-      const testQuestions = questions.slice(0, 3);
-      testQuestions.forEach(question => {
-        const status = getQuestionStatus(question.id);
-        console.log(`🔍 Question ${question.id}: status = ${status}`);
-      });
-      
-      console.log('🔍 === END DEBUGGING ===');
-    }
-  }, [questions, questionAnswers, completedQuizzes]);
+
 
   const applyFilters = () => {
-    console.log('🔄 Applying filters and sorting...', {
-      totalQuestions: questions.length,
-      sortBy,
-      filters,
-      searchQuery,
-      hasQuestionAnswers: !!questionAnswers,
-      questionAnswersKeys: questionAnswers ? Object.keys(questionAnswers).length : 0
-    });
 
     let filtered = [...questions];
 
@@ -132,7 +88,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       );
       
       if (!hasValidData) {
-        console.warn('🚨 Question with missing data filtered out:', q);
+        // Question with missing data filtered out
       }
       
       return hasValidData;
@@ -231,19 +187,19 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       }
     }
 
-    console.log(`📊 After filtering & search: ${filtered.length} questions remaining`);
+
 
     // Apply sorting
     const sorted = searchQuery.trim() ? filtered : applySorting(filtered);
     
-    console.log(`✅ After sorting: ${sorted.length} questions`);
+
     if (sortBy === 'unsolved-first' && sorted.length > 0) {
       // Log first few questions to verify sorting
       const statusSample = sorted.slice(0, 5).map(q => ({
         id: q.id,
         status: getQuestionStatus(q.id)
       }));
-      console.log('📋 First 5 questions after unsolved-first sort:', statusSample);
+
     }
     
     setFilteredQuestions(sorted);
@@ -251,20 +207,14 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
   const applySorting = (questionsToSort) => {
     if (!questionsToSort || questionsToSort.length === 0) {
-      console.log('🚨 No questions to sort');
       return [];
     }
 
     const sortedQuestions = [...questionsToSort];
-    console.log('🔄 applySorting called with:', {
-      sortBy,
-      questionsCount: sortedQuestions.length,
-      firstQuestionId: sortedQuestions[0]?.id
-    });
-    
+
     switch (sortBy) {
       case 'unsolved-first': {
-        console.log('🎯 Executing unsolved-first sorting...');
+
         
         const result = sortedQuestions.sort((a, b) => {
           const statusA = getQuestionStatus(a.id);
@@ -284,13 +234,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
           const priorityA = getPriority(statusA);
           const priorityB = getPriority(statusB);
           
-          // Log some comparisons for debugging
-          if (Math.random() < 0.2) { // 20% chance to log
-            console.log(`🔍 Comparing:`, {
-              A: { id: a.id, status: statusA, priority: priorityA },
-              B: { id: b.id, status: statusB, priority: priorityB }
-            });
-          }
+                  // Log some comparisons for debugging
+        if (Math.random() < 0.2) { // 20% chance to log
+          // Debug comparison removed
+        }
           
           // Primary sort: By priority (lower number = higher priority)
           if (priorityA !== priorityB) {
@@ -302,19 +249,13 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
           const dateB = new Date(b.createdAt || b.id || 0);
           return dateB - dateA;
         });
-        
-        console.log('✅ unsolved-first sorting completed. First 5 results:', 
-          result.slice(0, 5).map(q => ({
-            id: q.id,
-            status: getQuestionStatus(q.id)
-          }))
-        );
+
         
         return result;
       }
       
       case 'newest-first': {
-        console.log('📅 Executing newest-first sorting...');
+
         return sortedQuestions.sort((a, b) => {
           const dateA = new Date(a.createdAt || a.id || 0);
           const dateB = new Date(b.createdAt || b.id || 0);
@@ -323,7 +264,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       }
       
       case 'oldest-first': {
-        console.log('📅 Executing oldest-first sorting...');
+
         return sortedQuestions.sort((a, b) => {
           const dateA = new Date(a.createdAt || a.id || 0);
           const dateB = new Date(b.createdAt || b.id || 0);
@@ -332,7 +273,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       }
       
       default: {
-        console.log('⚠️ Unknown sort option:', sortBy);
+
         return sortedQuestions;
       }
     }
@@ -382,46 +323,23 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const handleAddToCalendar = () => {
-    console.log('🔘 Add to Calendar button clicked!');
-    console.log('🔘 Current state:', {
-      selectedQuestions: selectedQuestions.length,
-      showCalendarModal: showCalendarModal,
-      calendarDate: calendarDate
-    });
     
     if (selectedQuestions.length === 0) {
-      console.log('❌ No questions selected, returning early');
       return;
     }
     
-    console.log('✅ Setting showCalendarModal to true');
     setShowCalendarModal(true);
-    console.log('✅ Modal state should now be true');
   };
 
   const handleSaveToCalendar = async () => {
     try {
-      console.log('📅 Starting save to calendar process...');
-      console.log('📅 Input data:', { 
-        selectedQuestions: selectedQuestions.length, 
-        calendarDate: calendarDate.toISOString(),
-        calendarEvents: safeCalendarEvents.length,
-        quizManager: !!quizManager
-      });
-      
       const selectedQuestionData = questions.filter(q => selectedQuestions.includes(q.id));
-      console.log('📅 Selected question data:', {
-        count: selectedQuestionData.length,
-        questions: selectedQuestionData.map(q => ({ id: q.id, section: q.section, domain: q.domain }))
-      });
       
       if (selectedQuestionData.length === 0) {
-        console.error('❌ No questions selected');
         return;
       }
       
       if (!quizManager) {
-        console.error('❌ Quiz manager not available');
         return;
       }
       
@@ -434,7 +352,6 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       };
       
       const dayKey = toLocalDateString(calendarDate);
-      console.log('📅 Using dayKey:', dayKey, 'for calendarDate:', calendarDate);
       
       const existingQuizForDate = safeCalendarEvents.find(event => 
         event.date === dayKey && 
@@ -446,7 +363,6 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       );
       
       if (existingQuizForDate) {
-        console.log('⚠️ Quiz with same questions already exists for this date');
         // Show a different toast for duplicate
         setToastDate(calendarDate.toLocaleDateString('en-US', { 
           weekday: 'long', 
@@ -462,17 +378,12 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       }
       
       // Create planned quiz
-      console.log('📅 Creating planned quiz...');
       const plannedQuiz = quizManager.createPlannedQuiz(selectedQuestionData, calendarDate.toISOString());
-      console.log('📅 Planned quiz created:', plannedQuiz);
       
       // Save quiz to quiz manager
-      console.log('📅 Saving quiz to quiz manager...');
       await quizManager.addQuiz(plannedQuiz);
-      console.log('✅ Quiz saved to quiz manager');
       
       // Save calendar event
-      console.log('📅 Saving calendar event...');
       const newCalendarEvent = { 
         id: Date.now(),
         date: dayKey, 
@@ -485,14 +396,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       };
       
       const newEvents = [...safeCalendarEvents, newCalendarEvent];
-      console.log('📅 New calendar events array:', newEvents);
-      console.log('📅 Saving calendar events to database...');
       
       const saveResult = await mergeAndSaveCalendarEvents(newEvents);
-      console.log('📅 Calendar events save result:', saveResult);
       
       if (saveResult) {
-        console.log('✅ Calendar event saved successfully');
         
         // Show modern toast notification
         setToastDate(calendarDate.toLocaleDateString('en-US', { 
@@ -515,22 +422,11 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
         // Clear selected questions
         setSelectedQuestions([]);
         
-        console.log('✅ Quiz scheduling completed successfully');
       } else {
-        console.error('❌ Failed to save calendar events');
         throw new Error('Failed to save calendar events');
       }
       
     } catch (err) {
-      console.error('❌ Error in handleSaveToCalendar:', err);
-      console.error('❌ Error details:', {
-        message: err.message,
-        stack: err.stack,
-        selectedQuestions: selectedQuestions.length,
-        calendarDate: calendarDate?.toISOString(),
-        quizManager: !!quizManager,
-        calendarEvents: safeCalendarEvents.length
-      });
       
       // Show error toast
       setToastDate('Error occurred');
@@ -542,20 +438,15 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
   const getQuestionStatus = (questionId) => {
     if (!questionAnswers) {
-      console.log(`🔍 [${questionId}] No questionAnswers available`);
       return 'not-attempted';
     }
     if (!questionAnswers[questionId]) {
-      console.log(`🔍 [${questionId}] No answers for this question`);
       return 'not-attempted';
     }
     const answers = questionAnswers[questionId];
     if (!Array.isArray(answers) || answers.length === 0) {
-      console.log(`🔍 [${questionId}] Answers is not array or empty:`, answers);
       return 'not-attempted';
     }
-    
-    console.log(`🔍 [${questionId}] Found ${answers.length} answers:`, answers);
     
     // Only consider answers from completed quizzes
     const completedAnswers = answers.filter(answer => {
@@ -574,30 +465,21 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       return isFromCompletedQuiz;
     });
     
-    console.log(`🔍 [${questionId}] Completed answers:`, completedAnswers);
-    
     if (completedAnswers.length === 0) {
-      console.log(`🔍 [${questionId}] No completed answers found`);
       return 'not-attempted';
     }
     
     const correctCount = completedAnswers.filter(answer => answer && answer.isCorrect === true).length;
     const incorrectCount = completedAnswers.filter(answer => answer && answer.isCorrect === false).length;
     
-    console.log(`🔍 [${questionId}] Correct: ${correctCount}, Incorrect: ${incorrectCount}`);
-    
     // Determine status based on answer history from completed quizzes only
     if (correctCount > 0 && incorrectCount > 0) {
-      console.log(`🔍 [${questionId}] Status: mixed`);
       return 'mixed';
     } else if (correctCount > 0) {
-      console.log(`🔍 [${questionId}] Status: correct`);
       return 'correct';
     } else if (incorrectCount > 0) {
-      console.log(`🔍 [${questionId}] Status: incorrect`);
       return 'incorrect';
     } else {
-      console.log(`🔍 [${questionId}] Status: not-attempted (fallback)`);
       return 'not-attempted';
     }
   };
@@ -1036,7 +918,6 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
                     <select
                       value={sortBy}
                       onChange={(e) => {
-                        console.log('🔄 Sort option changed from', sortBy, 'to', e.target.value);
                         setSortBy(e.target.value);
                       }}
                       className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"

@@ -2,14 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Sidebar, SidebarBody, SidebarProvider } from "./ui/sidebar";
 import { 
-  IconFileText, 
-  IconPlayCircle, 
-  IconHistory, 
-  IconBarChart, 
-  IconUser,
-  IconLogout,
-  IconStar
-} from "./ui/icons";
+  FileText as IconFileText, 
+  PlayCircle as IconPlayCircle, 
+  History as IconHistory, 
+  BarChart as IconBarChart, 
+  User as IconUser,
+  LogOut as IconLogout,
+  Star as IconStar
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
 import { useAuth } from '../contexts/AuthContext';
@@ -33,16 +33,6 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Debug logging
-  console.log('🏠 SidebarLayout rendered with props:', {
-    currentPage,
-    onPageChange: typeof onPageChange,
-    onLogout: typeof onLogout,
-    onAccountClick: typeof onAccountClick,
-    onProfileClick: typeof onProfileClick,
-    onHomeClick: typeof onHomeClick,
-    onHomeClickValue: onHomeClick
-  });
 
   useEffect(() => {
     const loadUserData = () => {
@@ -119,14 +109,10 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
           <SidebarBody className="justify-between gap-10 bg-[#030a14] border-r border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
               {(() => {
-                console.log('🏠 Sidebar state - open:', open);
                 if (open) {
-                  console.log('🏠 Rendering Logo component');
                   return <Logo onHomeClick={onHomeClick} closeSidebar={() => {
                       if (window.innerWidth < 768) setOpen(false);
                   }} />;
-                } else {
-                  console.log('🏠 Rendering LogoIcon component');
                   return <LogoIcon onHomeClick={onHomeClick} closeSidebar={() => {
                       if (window.innerWidth < 768) setOpen(false);
                   }} />;
@@ -280,7 +266,6 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
   const navigate = useNavigate();
   
   const handleClick = () => {
-    console.log('🏠 Logo clicked - go to home');
     if (onHomeClick) onHomeClick();
     if (closeSidebar) closeSidebar();
   };
@@ -306,7 +291,6 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   const navigate = useNavigate();
   
   const handleClick = () => {
-    console.log('🏠 LogoIcon clicked - go to home');
     if (onHomeClick) onHomeClick();
     if (closeSidebar) closeSidebar();
   };

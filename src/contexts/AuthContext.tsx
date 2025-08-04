@@ -38,18 +38,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('❌ Error getting initial session:', error)
+    
         } else {
           setSession(initialSession)
           setUser(initialSession?.user ?? null)
           if (initialSession?.user) {
-            console.log('✅ Found existing session for:', initialSession.user.email)
+    
           } else {
-            console.log('ℹ️ No existing session found')
+    
           }
         }
       } catch (error) {
-        console.error('❌ Error initializing auth:', error)
+  
       } finally {
         setLoading(false)
       }
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Auth state changed:', event, session?.user?.email)
+  
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, options?: { data?: any }) => {
     try {
-      console.log('📝 Attempting signup for:', email)
+  
       
       // Using Vite's injected BASE_URL to respect subfolder deployments (e.g., "/SatLog/")
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
       
       if (error) {
-        console.error('❌ Signup error:', error)
+
         
         // Handle specific error cases
         if (error.message.includes('User already registered')) {
@@ -110,16 +110,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (data.user) {
         if (!data.session) {
-          console.log('⚠️ Signup successful but email confirmation required for:', email)
-          console.log('Please check your email and click the confirmation link.')
+          
         } else {
-          console.log('✅ Signup successful with immediate session for:', email)
+  
         }
       }
       
       return { user: data.user, error: null }
     } catch (error) {
-      console.error('❌ Signup exception:', error)
+
       return { user: null, error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -127,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 Attempting sign in for:', email)
+  
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -135,7 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
       
       if (error) {
-        console.error('❌ Sign in error:', error)
+
         
         // Handle specific error cases
         if (error.message.includes('Invalid login credentials')) {
@@ -149,10 +148,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { user: null, error }
       }
       
-      console.log('✅ Sign in successful for:', data.user?.email)
+      
       return { user: data.user, error: null }
     } catch (error) {
-      console.error('❌ Sign in exception:', error)
+
       return { user: null, error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -160,19 +159,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      console.log('🚪 Signing out...')
+  
       
       const { error } = await supabase.auth.signOut()
       
       if (error) {
-        console.error('❌ Sign out error:', error)
+
         return { error }
       }
       
-      console.log('✅ Sign out successful')
+
       return { error: null }
     } catch (error) {
-      console.error('❌ Sign out exception:', error)
+
       return { error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -185,14 +184,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
       
       if (error) {
-        console.error('❌ Reset password error:', error)
+
         return { error }
       }
       
-      console.log('✅ Reset password email sent')
+      
       return { error: null }
     } catch (error) {
-      console.error('❌ Reset password exception:', error)
+
       return { error: error as AuthError }
     }
   }

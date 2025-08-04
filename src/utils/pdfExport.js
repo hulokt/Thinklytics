@@ -388,7 +388,7 @@ export const exportQuestionsAsPDF = async (exportableQuestions, filename = 'Thin
           pdf.addImage(question.passageImage, imgType, textX, cursorY, colWidth, measurement.imgH);
           cursorY += measurement.imgH + 2;
         } catch (error) {
-          console.warn('Failed to add image to PDF:', error);
+  
         }
       }
 
@@ -565,7 +565,7 @@ export const exportQuestionsAsPDF = async (exportableQuestions, filename = 'Thin
     
     return { success: true, filename: finalFilename };
   } catch (error) {
-    console.error('Error generating PDF:', error);
+
     return { success: false, error: error.message };
   }
 }; 

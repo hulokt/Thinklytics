@@ -69,11 +69,7 @@ function App() {
   const isProd = import.meta.env.PROD;
   const basename = isProd ? "/SatLog" : "/";
   
-  console.log('🏠 App component - Environment:', {
-    isProd,
-    basename,
-    env: import.meta.env
-  });
+
   
   return (
     <Router basename={basename}>
@@ -133,7 +129,7 @@ function AuthCallback() {
           // Some email confirmations return an error "invalid request: both auth code and code verifier should be non-empty"
           // even though a session is silently created. So if we get that specific error, attempt to fetch session again.
           if (exchangeError) {
-            console.warn('Auth exchange returned error:', exchangeError.message);
+    
 
             const {
               data: { session: retrySession },
@@ -159,7 +155,7 @@ function AuthCallback() {
           setStatus('Authentication failed');
         }
       } catch (err) {
-        console.error('Auth callback exception:', err);
+  
         setError(err.message);
         setStatus('Authentication failed');
       }
@@ -294,14 +290,7 @@ function AppContent() {
 
   // Log data loading status
   useEffect(() => {
-    if (user && questions) {
-      console.log('📊 Data loaded:', {
-        questions: questions?.length || 0,
-        inProgress: inProgressQuizzes?.length || 0,
-        questionsLoading,
-        allQuizzesLoading
-      });
-    }
+    // Data loading tracking for debugging if needed
   }, [user, questions, inProgressQuizzes, questionsLoading, allQuizzesLoading]);
 
   // Navigation helper with scroll to top
@@ -312,7 +301,7 @@ function AppContent() {
 
   const handleLogin = async (formData = null) => {
     try {
-      console.log('🔐 Attempting login with:', formData);
+  
       
       const email = formData?.email || 'demo@thinklytics.com';
       const password = formData?.password || 'demo123';
@@ -320,22 +309,22 @@ function AppContent() {
       const { user: loggedInUser, error } = await signIn(email, password);
       
       if (error) {
-        console.error('❌ Login failed:', error);
+
         throw new Error(error.message || 'Invalid email or password. Please check your credentials and try again.');
       }
       
-      console.log('✅ Login successful:', loggedInUser?.email);
+
       navigateWithScroll('/questions');
       return { success: true };
     } catch (error) {
-      console.error('❌ Login exception:', error);
+
       throw new Error(error.message || 'Invalid email or password. Please check your credentials and try again.');
     }
   };
 
   const handleSignup = async (formData) => {
     try {
-      console.log('📝 Attempting signup with:', formData);
+  
       
       const email = formData?.email || 'user@thinklytics.com';
       const password = formData?.password || 'user123';
@@ -349,15 +338,15 @@ function AppContent() {
       });
       
       if (error) {
-        console.error('❌ Signup failed:', error);
+
         throw new Error(error.message || 'Signup failed. Please try again.');
       }
       
-      console.log('✅ Signup successful:', newUser?.email);
+      
       
       // Check if user was created but needs email confirmation
       if (newUser && !newUser.email_confirmed_at) {
-        console.log('📧 Email confirmation required for:', newUser.email);
+
         return { success: true, requiresConfirmation: true };
       }
       
@@ -368,14 +357,14 @@ function AppContent() {
       
       return { success: true };
     } catch (error) {
-      console.error('❌ Signup exception:', error);
+
       throw new Error(error.message || 'Signup failed. Please try again.');
     }
   };
 
   const handleLogout = async () => {
     try {
-      console.log('🚪 Logging out...');
+  
       
       // Clear local state first
       setCurrentQuiz(null);
@@ -385,15 +374,15 @@ function AppContent() {
       const { error } = await signOut();
       
       if (error) {
-        console.error('❌ Logout failed:', error);
+
       }
       
       // Navigate to home after logout is complete
       navigateWithScroll('/home');
       
-      console.log('✅ Logout completed');
+
     } catch (error) {
-      console.error('❌ Logout exception:', error);
+
       // Clear local state regardless of error
       setCurrentQuiz(null);
       setIsResumingQuiz(false);
@@ -498,7 +487,7 @@ function AppContent() {
     // Merge and save
     const updatedQuestions = [...questions, ...questionsWithIds];
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to save questions to database:', error);
+      
     });
   };
 
@@ -537,7 +526,7 @@ function AppContent() {
       return q;
     });
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to update question in database:', error);
+      
     });
   };
 
@@ -557,7 +546,7 @@ function AppContent() {
     
     // Update UI immediately
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to update UI for question deletion:', error);
+      
     });
     
     // Add to undo stack
@@ -568,12 +557,12 @@ function AppContent() {
       onUndo: (data) => {
         // Restore using the original questions state captured at deletion time
         upsertQuestions(data.originalQuestions).catch(error => {
-          console.error('Failed to restore question to database:', error);
+
         });
       },
       onConfirm: () => {
         // The deletion is already persisted, just confirm it
-        console.log('Question deletion confirmed');
+  
       }
     });
   };
@@ -590,7 +579,7 @@ function AppContent() {
     
     // Update UI immediately
     upsertQuestions(updatedQuestions).catch(error => {
-      console.error('Failed to update UI for bulk question deletion:', error);
+      
     });
     
     // Add to undo stack
@@ -601,12 +590,12 @@ function AppContent() {
       onUndo: (data) => {
         // Restore using the original questions state captured at deletion time
         upsertQuestions(data.originalQuestions).catch(error => {
-          console.error('Failed to restore questions to database:', error);
+
         });
       },
       onConfirm: () => {
         // The deletion is already done, just confirm it
-        console.log('Bulk question deletion confirmed');
+  
       }
     });
   };
@@ -622,7 +611,7 @@ function AppContent() {
     try {
       if (!event) return;
 
-      console.log('📅 Calendar start/resume triggered:', event);
+  
 
       if (event.status === 'planned') {
         const plannedDate = event.plannedDate || event.metadata?.plannedDate;
@@ -708,14 +697,14 @@ function AppContent() {
         }
       }
 
-      console.warn('⚠️ Fallback path triggered for calendar start – treating as ad-hoc quiz');
+      
       const adHocQuestions = event.questions || [];
       setCurrentQuiz(adHocQuestions);
       setIsResumingQuiz(false);
       setResumingQuizData(null);
       navigateWithScroll('/quiz');
     } catch (err) {
-      console.error('❌ Failed to start calendar quiz:', err);
+      
     }
   };
 
@@ -741,21 +730,19 @@ function AppContent() {
   };
 
   const handleLogoClick = () => {
-    console.log('🏠 handleLogoClick called!');
-    console.log('🏠 Current user:', user);
-    console.log('🏠 Current location:', location.pathname);
+
     
     // Clear quiz state
-    console.log('🏠 Clearing quiz state...');
+    
     setCurrentQuiz(null);
     setIsResumingQuiz(false);
     setResumingQuizData(null);
     localStorage.removeItem('satlog:resumeQuizId');
     
-    console.log('🏠 Navigating to /home (Homepage)');
+    
     navigateWithScroll('/home');
     
-    console.log('🏠 handleLogoClick completed');
+
   };
 
   // When entering quiz page store resume id, clear on leave/finish

@@ -330,7 +330,7 @@ const AccountPage = ({ onBack }) => {
   const handleSave = async () => {
     setUserData(tempData);
     setIsEditing(false);
-    console.log('User profile update would be implemented here:', tempData);
+    // User profile update would be implemented here
   };
 
   const handleCancel = () => {

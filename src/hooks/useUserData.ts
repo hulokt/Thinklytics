@@ -52,7 +52,7 @@ export function useUserData<K extends DataType>(
 
   const openCircuitBreaker = () => {
     circuitBreakerOpenUntilRef.current = Date.now() + CIRCUIT_BREAKER_TIMEOUT
-    console.warn(`Circuit breaker opened for ${dataType}. Will retry after 30 seconds.`)
+    
   }
 
   const closeCircuitBreaker = () => {
@@ -94,7 +94,7 @@ export function useUserData<K extends DataType>(
       closeCircuitBreaker() // Close circuit breaker on success
       
     } catch (err: any) {
-      console.error(`Error loading ${dataType}:`, err)
+
       consecutiveFailuresRef.current++
       
       // Open circuit breaker if too many consecutive failures
@@ -157,7 +157,7 @@ export function useUserData<K extends DataType>(
       return true
       
     } catch (err: any) {
-      console.error(`❌ Error saving ${dataType}:`, err)
+
       consecutiveFailuresRef.current++
       
       // Open circuit breaker if too many consecutive failures
@@ -195,7 +195,7 @@ export function useUserData<K extends DataType>(
       return true
       
     } catch (err: any) {
-      console.error(`Error deleting ${dataType}:`, err)
+
       setError(`Failed to delete ${dataType}: ${err.message}`)
       return false
     } finally {

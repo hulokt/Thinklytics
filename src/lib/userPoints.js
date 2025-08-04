@@ -31,10 +31,10 @@ export const incrementEditCounter = () => {
     const current = getEditCounter();
     const newValue = current + 1;
     localStorage.setItem(EDIT_COUNTER_KEY, newValue.toString());
-    console.log('📝 Edit counter incremented to:', newValue);
+  
     return newValue;
   } catch (error) {
-    console.error('Error incrementing edit counter:', error);
+
     return 0;
   }
 };
@@ -52,10 +52,10 @@ export const incrementHighScoreCounter = () => {
     const current = getHighScoreCounter();
     const newValue = current + 1;
     localStorage.setItem(HIGH_SCORE_COUNTER_KEY, newValue.toString());
-    console.log('🏆 High score counter incremented to:', newValue);
+  
     return newValue;
   } catch (error) {
-    console.error('Error incrementing high score counter:', error);
+
     return 0;
   }
 };
@@ -65,23 +65,23 @@ export const resetCounters = () => {
   try {
     localStorage.removeItem(EDIT_COUNTER_KEY);
     localStorage.removeItem(HIGH_SCORE_COUNTER_KEY);
-    console.log('🔄 Counters reset');
+  
   } catch (error) {
-    console.error('Error resetting counters:', error);
+
   }
 };
 
 // Calculate user stats in real-time from actual data
 export async function getUserStats(userId) {
-  console.log('📊 Real-time getUserStats called for:', userId);
+
   
   if (!userId) {
-    console.log('❌ getUserStats: No userId provided');
+
     return null;
   }
 
   try {
-    console.log('🔄 Starting real-time stats calculation...');
+  
     
     // Get all user data from Supabase
     const { data: allUserData, error: dataError } = await supabase
@@ -90,11 +90,11 @@ export async function getUserStats(userId) {
       .eq('user_id', userId);
 
     if (dataError) {
-      console.error('❌ Error fetching user data:', dataError);
+  
       return null;
     }
 
-    console.log('📊 Found user data types:', allUserData?.map(item => item.data_type) || []);
+  
 
     // Get user profile info
     const { data: profile } = await supabase.auth.getUser();
@@ -103,7 +103,7 @@ export async function getUserStats(userId) {
                     'SAT User';
 
     // Wait for all stats calculations to complete
-    console.log('⏳ Waiting for all stat calculations to complete...');
+  
     const stats = await calculateRealTimeStats(allUserData || []);
     
     // Calculate rank based on total points
@@ -128,17 +128,17 @@ export async function getUserStats(userId) {
       nextRankPoints: nextRankPoints
     };
 
-    console.log('✅ Real-time getUserStats result:', result);
+  
     return result;
   } catch (error) {
-    console.error('❌ Error in getUserStats:', error);
+
     return null;
   }
 }
 
 // Calculate all stats from real data and local counters
 async function calculateRealTimeStats(allUserData) {
-  console.log('🧮 Calculating real-time stats from data and local counters...');
+
   
   // Get direct counts from actual data
   const questionsCount = await getActualQuestionsCount(allUserData);
@@ -167,25 +167,6 @@ async function calculateRealTimeStats(allUserData) {
   const totalPoints = pointsFromQuestions + pointsFromQuizzes + pointsFromEdits + 
                      pointsFromHighScores + pointsFromLogins + streakBonuses;
 
-  console.log('💰 Real-time stats calculated:', {
-    questionsCount,
-    quizzesCompleted,
-    editsCount,
-    highScoresCount,
-    dailyLogins,
-    streakDays,
-    totalPoints
-  });
-
-  console.log('💰 Points breakdown:', {
-    questions: `${questionsCount} × ${POINTS_CONFIG.ADD_QUESTION} = ${pointsFromQuestions}`,
-    quizzes: `${quizzesCompleted} × ${POINTS_CONFIG.COMPLETE_QUIZ} = ${pointsFromQuizzes}`,
-    edits: `${editsCount} × ${POINTS_CONFIG.EDIT_QUESTION} = ${pointsFromEdits}`,
-    highScores: `${highScoresCount} × ${POINTS_CONFIG.HIGH_SCORE_BONUS} = ${pointsFromHighScores}`,
-    logins: `${dailyLogins} × ${POINTS_CONFIG.DAILY_LOGIN} = ${pointsFromLogins}`,
-    streakBonuses: `${Math.floor(streakDays / 3)} × ${POINTS_CONFIG.STREAK_BONUS} = ${streakBonuses}`,
-    total: totalPoints
-  });
 
   return {
     questionsCount,
@@ -201,7 +182,7 @@ async function calculateRealTimeStats(allUserData) {
 
 // Get actual number of questions in question bank
 async function getActualQuestionsCount(allUserData) {
-  console.log('📝 Getting actual questions count from question bank...');
+
   
   // Try multiple possible data type names
   const possibleQuestionTypes = [
@@ -213,14 +194,14 @@ async function getActualQuestionsCount(allUserData) {
   for (const dataType of possibleQuestionTypes) {
     questionsData = allUserData.find(item => item.data_type === dataType);
     if (questionsData?.data) {
-      console.log(`📝 Found questions data with type: ${dataType}`);
+  
       break;
     }
   }
   
   if (!questionsData?.data) {
-    console.log('❌ No questions data found in any of these types:', possibleQuestionTypes);
-    console.log('❌ Available data types:', allUserData.map(item => item.data_type));
+  
+  
     return 0;
   }
 
@@ -228,11 +209,11 @@ async function getActualQuestionsCount(allUserData) {
   
   if (Array.isArray(questionsData.data)) {
     count = questionsData.data.length;
-    console.log('📝 Found questions in array format:', count);
+
   } else if (typeof questionsData.data === 'object') {
     // Sometimes the data might be stored as an object
     count = Object.keys(questionsData.data).length;
-    console.log('📝 Found questions in object format:', count);
+
   }
   
   return count;
@@ -240,7 +221,7 @@ async function getActualQuestionsCount(allUserData) {
 
 // Get actual number of completed quizzes from quiz history
 async function getActualCompletedQuizzesCount(allUserData) {
-  console.log('🎯 Getting actual completed quizzes count from quiz history...');
+
   
   // Try multiple possible data type names for quiz data
   const possibleQuizTypes = [
@@ -255,7 +236,7 @@ async function getActualCompletedQuizzesCount(allUserData) {
     const allQuizzesData = allUserData.find(item => item.data_type === dataType);
     if (allQuizzesData?.data && Array.isArray(allQuizzesData.data)) {
       const completedQuizzes = allQuizzesData.data.filter(quiz => quiz.status === 'completed');
-      console.log(`🎯 Completed quizzes found in ${dataType}:`, completedQuizzes.length);
+  
       return completedQuizzes.length;
     }
   }
@@ -265,13 +246,13 @@ async function getActualCompletedQuizzesCount(allUserData) {
     const quizHistoryData = allUserData.find(item => item.data_type === dataType);
     if (quizHistoryData?.data && Array.isArray(quizHistoryData.data)) {
       const completedQuizzes = quizHistoryData.data.filter(quiz => !quiz.isInProgress);
-      console.log(`🎯 Completed quizzes found in ${dataType}:`, completedQuizzes.length);
+  
       return completedQuizzes.length;
     }
   }
   
-  console.log('❌ No quiz history data found in any of these types:', possibleQuizTypes);
-  console.log('❌ Available data types:', allUserData.map(item => item.data_type));
+
+
   return 0;
 }
 
@@ -326,11 +307,11 @@ function calculateLoginStats(allUserData) {
 // Award points and increment counters as needed
 export async function awardPoints(userId, actionType, additionalData = {}) {
   if (!userId) {
-    console.log('❌ awardPoints: No userId provided');
+
     return { success: false, pointsAwarded: 0 };
   }
 
-  console.log('🎯 awardPoints called:', { userId, actionType, additionalData });
+
 
   try {
     const pointsToAward = POINTS_CONFIG[actionType] || 0;
@@ -359,27 +340,27 @@ export async function awardPoints(userId, actionType, additionalData = {}) {
       };
     }
 
-    console.log('🎉 Points awarded:', pointsToAward);
+  
     return { 
       success: true, 
       pointsAwarded: pointsToAward,
       actionType
     };
   } catch (error) {
-    console.error('❌ Exception in awardPoints:', error);
+
     return { success: false, pointsAwarded: 0 };
   }
 }
 
 // Function to handle quiz edits from quiz history
 export function handleQuizEdit() {
-  console.log('📝 Quiz edit detected, incrementing edit counter');
+
   return incrementEditCounter();
 }
 
 // Function to handle high scores
 export function handleHighScore() {
-  console.log('🏆 High score achieved, incrementing high score counter');
+
   return incrementHighScoreCounter();
 }
 
@@ -407,7 +388,7 @@ export async function getLeaderboard(limit = 10) {
 
     return sortedStats.slice(0, limit);
   } catch (error) {
-    console.error('Error getting leaderboard:', error);
+
     return [];
   }
 }
@@ -418,14 +399,14 @@ export async function getUserRank(userId) {
     const userStats = await getUserStats(userId);
     return userStats?.rank || 1;
   } catch (error) {
-    console.error('Error getting user rank:', error);
+
     return 1;
   }
 }
 
 // Remove the sync function since we no longer need it
 export async function syncExistingUserData(userId) {
-  console.log('🔄 Real-time stats system enabled - no sync needed');
+
   
   // Get current stats to show what we found
   const stats = await getUserStats(userId);

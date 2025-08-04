@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { formatRelativeTime } from '../lib/utils';
-import './AnimatedList.css';
+import '../styles/AnimatedList.css';
 
 const AnimatedQuestionItem = ({ children, delay = 0, index, onMouseEnter, onClick }) => {
   const ref = useRef(null);

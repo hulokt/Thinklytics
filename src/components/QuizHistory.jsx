@@ -111,7 +111,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           const freshAudio = new Audio(quizFinishedSound);
           freshAudio.volume = 0.5;
           freshAudio.play().catch(error => {
-            console.log('Celebration audio play failed:', error);
+            // Audio play failed
           });
         }
       }
@@ -169,7 +169,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     try {
       const result = await awardPoints(user.id, actionType, additionalData);
       if (result.success && result.pointsAwarded !== 0) {
-        console.log('🎯 Starting points animation:', { actionType, points: result.pointsAwarded, celebrationActive: showCelebration });
+
         setPointsAnimation({
           show: true,
           points: result.pointsAwarded,
@@ -183,7 +183,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Handle points animation completion
   const handlePointsAnimationComplete = () => {
-    console.log('🎯 Points animation completed');
     setPointsAnimation({ show: false, points: 0, action: '' });
   };
 
@@ -198,7 +197,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Handle celebration completion
   const handleCelebrationComplete = () => {
-    console.log('🎉 Celebration completed - cleaning up all states');
     setShowCelebration(false);
     // Clean up celebration session
     celebrationSessionRef.current = null;
@@ -216,7 +214,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       if (showCelebration) {
         // Only start if not already running
         if (!animationStartedRef.current) {
-          console.log('🎉 Starting celebration animation');
           animationStartedRef.current = true;
           
           // Create confetti particles with better physics
@@ -256,12 +253,11 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
             handleCelebrationComplete();
           }, 4000);
         } else {
-          console.log('🎉 Celebration animation already running - skipping restart');
+          // Celebration animation already running - skipping restart
         }
       } else {
         // Clean up when celebration ends
         if (animationStartedRef.current) {
-          console.log('🎉 Cleaning up celebration animation');
           animationStartedRef.current = false;
           
           // Clear intervals and timeouts
@@ -292,7 +288,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     // Debug re-renders
     useEffect(() => {
       if (showCelebration) {
-        console.log('🔄 CelebrationAnimation re-rendered while celebration active');
+        // CelebrationAnimation re-rendered while celebration active
       }
     });
 
@@ -328,11 +324,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   // Sync local state with QuizManager state
   useEffect(() => {
-    console.log('🔄 QuizHistory re-render: Quiz data changed', {
-      inProgressCount: Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw.length : 'not-array',
-      completedCount: Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw.length : 'not-array',
-      celebrationActive: showCelebration
-    });
     setLocalInProgressQuizzes(Array.isArray(inProgressQuizzesRaw) ? inProgressQuizzesRaw : []);
     setLocalCompletedQuizzes(Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : []);
   }, [inProgressQuizzesRaw, completedQuizzesRaw]);
@@ -356,18 +347,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   renderCountRef.current++;
   
   useEffect(() => {
-    console.log(`🔄 QuizHistory render #${renderCountRef.current}:`, {
-      showCelebration,
-      celebrationSession: celebrationSessionRef.current,
-      inProgressCount: localInProgressQuizzes.length,
-      completedCount: localCompletedQuizzes.length,
-      pointsAnimationActive: pointsAnimation.show,
-      editingQuiz: !!editingQuiz,
-      audioLoaded,
-      allQuizzesLoading,
-      isInitialLoading,
-      timestamp: new Date().toISOString().split('T')[1].split('.')[0]
-    });
+    // QuizHistory render tracking removed
   });
 
   const inProgressQuizzes = localInProgressQuizzes;
@@ -452,7 +432,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     if (deleteAudio) {
       deleteAudio.currentTime = 0;
       deleteAudio.play().catch(error => {
-        console.log('Delete audio play failed:', error);
+        // Delete audio play failed
       });
     }
     
@@ -486,12 +466,12 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         if (hasChanges) {
           // Fire and forget - don't wait for this operation
           upsertQuestionAnswers(updatedAnswers).catch(error => {
-            console.log('Failed to update question answers:', error);
+            // Failed to update question answers
           });
         }
       }
     } catch (error) {
-      console.error('Failed to delete quiz from database:', error);
+    
       // If database deletion fails, restore the UI
       setLocalInProgressQuizzes(originalInProgress);
       setLocalCompletedQuizzes(originalCompleted);
@@ -518,12 +498,11 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         try {
           await quizManager.addQuiz(data.quiz);
         } catch (error) {
-          console.error('Failed to restore quiz to database:', error);
+         
         }
       },
       onConfirm: () => {
         // The deletion is already done, just confirm it
-        console.log('Quiz deletion confirmed');
       }
     });
   };
@@ -549,7 +528,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       if (deleteAudio) {
         deleteAudio.currentTime = 0;
         deleteAudio.play().catch(error => {
-          console.log('Delete audio play failed:', error);
+          // Delete audio play failed
         });
       }
 
@@ -705,7 +684,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       if (saveAudio) {
         saveAudio.currentTime = 0;
         saveAudio.play().catch(error => {
-          console.log('Save audio play failed:', error);
+          // Save audio play failed
         });
       }
       
@@ -716,7 +695,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         
         // Run points animation non-blocking (don't await it)
         awardPointsAndAnimate('EDIT_ANSWER').catch(error => {
-          console.log('Points animation failed:', error);
+          // Points animation failed
         });
         
         // Update question answers for analytics (non-blocking)
@@ -746,7 +725,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         
         // Run analytics update non-blocking
         upsertQuestionAnswers(updatedAnswers).catch(error => {
-          console.log('Analytics update failed:', error);
         });
       }
       
@@ -755,7 +733,6 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       setEditingAnswers({});
       
     } catch (error) {
-      console.error('Error saving changes:', error);
       alert('Error saving changes. Please try again.');
     } finally {
       setIsSaving(false);

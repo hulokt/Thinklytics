@@ -20,10 +20,7 @@ export default defineConfig({
           'charts': ['chart.js', 'react-chartjs-2'],
           
           // PDF generation (lazy load)
-          'pdf-utils': ['jspdf', 'html2canvas'],
-          
-          // 3D libraries (lazy load) 
-          'three-libs': ['three', '@react-three/fiber'],
+          'pdf-utils': ['jspdf'],
           
           // UI libraries
           'ui-libs': ['framer-motion', 'lucide-react'],
@@ -59,10 +56,7 @@ export default defineConfig({
     ],
     exclude: [
       'jspdf',
-      'html2canvas', 
-      'chart.js',
-      'three',
-      '@react-three/fiber'
+      'chart.js'
     ]
   },
   

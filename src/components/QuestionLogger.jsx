@@ -128,7 +128,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
 
   // Debug useEffect to track importedQuestions state
   useEffect(() => {
-    console.log('importedQuestions state changed:', importedQuestions.length, importedQuestions);
+
   }, [importedQuestions]);
 
   // Update current time every minute for relative timestamp updates
@@ -191,7 +191,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         });
       }
     } catch (error) {
-      console.error('Error awarding points:', error);
+      // Error handling
     }
   };
 
@@ -325,7 +325,6 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       // Show validation error without toast
-      console.warn('Validation failed: Please fill in all required fields');
       throw new Error('Validation failed');
     }
 
@@ -347,7 +346,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       
       // Show animation and award points in the background
       awardPointsAndAnimate('EDIT_QUESTION').catch(error => {
-        console.error('Error awarding points:', error);
+        // Error handling
       });
       
       setEditingId(null);
@@ -367,7 +366,7 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
       
       // Show animation and award points in the background
       awardPointsAndAnimate('ADD_QUESTION').catch(error => {
-        console.error('Error awarding points:', error);
+        // Error handling
       });
     }
 

@@ -126,13 +126,7 @@ const AnalyticsPage = ({ questions }) => {
       });
     });
 
-    console.log('🔄 Generating analytics with data:', {
-      range: timeRange,
-      completedQuizzes: completedQuizzesArray.length,
-      inProgressQuizzes: inProgressQuizzesArray.length,
-      totalQuestions: questionsRangeArray.length,
-      questionAnswersKeys: Object.keys(questionAnswersObjFiltered).length
-    });
+
 
     // Basic stats
     const totalQuizzes = completedQuizzesArray.length + inProgressQuizzesArray.length;
@@ -163,18 +157,7 @@ const AnalyticsPage = ({ questions }) => {
       completedQuizzesArray.reduce((sum, quiz) => sum + (quiz.timeSpent || 0), 0) / 60
     );
 
-    console.log('⏱️ Study time calculation:', {
-      totalStudyTime,
-      completedQuizzesWithTime: completedQuizzesArray.filter(q => q.timeSpent && q.timeSpent > 0).length,
-      totalTimeSpent: completedQuizzesArray.reduce((sum, quiz) => sum + (quiz.timeSpent || 0), 0),
-      completedQuizzes: completedQuizzesArray.map(q => ({ 
-        id: q.id, 
-        timeSpent: q.timeSpent, 
-        score: q.score,
-        status: q.status,
-        hasEndTime: !!q.endTime
-      }))
-    });
+
 
     // Performance by section - calculate based on completed quiz results only
     const sectionStats = {};
@@ -251,16 +234,6 @@ const AnalyticsPage = ({ questions }) => {
     const questionTypeStats = {};
     
     // Debug: Log all questions to see their types
-    console.log('🔍 Question Type Analysis - All Questions (range applied):', {
-      totalQuestions: questionsRangeArray.length,
-      questionTypes: questionsRangeArray.map(q => ({
-        id: q.id,
-        section: q.section,
-        domain: q.domain,
-        questionType: q.questionType,
-        difficulty: q.difficulty
-      }))
-    });
     
     questionsRangeArray.forEach(question => {
       const type = question.questionType || 'Unknown';
@@ -300,15 +273,6 @@ const AnalyticsPage = ({ questions }) => {
     });
     
     // Debug: Log the final question type stats
-    console.log('🔍 Question Type Statistics Final:', {
-      questionTypeStats: Object.entries(questionTypeStats).map(([type, stats]) => ({
-        type,
-        total: stats.total,
-        attempted: stats.attempted,
-        correct: stats.correct,
-        wrong: stats.wrong
-      }))
-    });
 
     // Find most struggling areas (max 3 each) - only for domains/types with 2+ wrong answers
     const strugglingDomains = Object.entries(domainStats)
@@ -343,17 +307,7 @@ const AnalyticsPage = ({ questions }) => {
         date: new Date(quiz.date || quiz.lastUpdated).toLocaleDateString()
       }));
 
-    console.log('📊 Recent quizzes data:', {
-      completedQuizzesArray: completedQuizzesArray.map(q => ({
-        id: q.id,
-        quizNumber: q.quizNumber,
-        score: q.score,
-        date: q.date,
-        lastUpdated: q.lastUpdated
-      })),
-      recentQuizzes: recentQuizzes,
-      averageScore
-    });
+    // Recent quizzes data
 
     // Question difficulty analysis - calculate based on completed quiz results only
     const difficultyStats = {
@@ -390,117 +344,13 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
-    console.log('📊 Analytics generated:', {
-      totalQuizzes,
-      completedQuizzes: completedQuizzesArray.length,
-      averageScore,
-      totalStudyTime,
-      answeredQuestions,
-      totalQuestions,
-      recentQuizzes: recentQuizzes.length,
-      strugglingDomains: strugglingDomains.length,
-      strugglingTypes: strugglingTypes.length,
-      difficultyStats,
-      sectionStats,
-      domainStats: Object.keys(domainStats).length,
-      questionTypeStats: Object.keys(questionTypeStats).length
-    });
+    // Analytics generated
 
     // Debug struggling domains calculation
-    console.log('🔍 Struggling domains calculation:', {
-      allDomains: Object.entries(domainStats).map(([domain, stats]) => ({
-        domain,
-        attempted: stats.attempted,
-        correct: stats.correct,
-        wrong: stats.wrong,
-        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0
-      })),
-      filteredDomains: Object.entries(domainStats)
-        .filter(([_, stats]) => stats.wrong >= 2)
-        .map(([domain, stats]) => ({
-          domain,
-          attempted: stats.attempted,
-          correct: stats.correct,
-          wrong: stats.wrong,
-          incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0
-        })),
-      finalStrugglingDomains: strugglingDomains,
-      completedQuizzesForValidation: completedQuizzesArray.map(q => ({
-        id: q.id,
-        score: q.score,
-        status: q.status,
-        hasEndTime: !!q.endTime
-      }))
-    });
 
     // Debug section performance calculation
-    console.log('🔍 Section performance calculation:', {
-      sectionStats: Object.entries(sectionStats).map(([section, stats]) => ({
-        section,
-        total: stats.total,
-        attempted: stats.attempted,
-        correct: stats.correct,
-        accuracy: stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0
-      })),
-      completedQuizzesCount: completedQuizzesArray.length,
-      questionAnswersSample: Object.keys(questionAnswersObjFiltered).slice(0, 3).map(qId => ({
-        questionId: qId,
-        answers: questionAnswersObjFiltered[qId]?.length || 0,
-        completedAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
-          completedQuizzesArray.some(quiz => 
-            quiz.id === answer.quizId && 
-            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
-             quiz.status === 'completed')
-          )
-        ).length || 0
-      }))
-    });
 
     // Debug question type performance calculation
-    console.log('🔍 Question type performance calculation:', {
-      allQuestionTypes: Object.entries(questionTypeStats).map(([type, stats]) => ({
-        type,
-        attempted: stats.attempted,
-        correct: stats.correct,
-        wrong: stats.wrong,
-        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0
-      })),
-      filteredQuestionTypes: Object.entries(questionTypeStats)
-        .filter(([_, stats]) => stats.wrong >= 2)
-        .map(([type, stats]) => ({
-          type,
-          attempted: stats.attempted,
-          correct: stats.correct,
-          wrong: stats.wrong,
-          incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0
-        })),
-      finalStrugglingTypes: strugglingTypes,
-      completedQuizzesForValidation: completedQuizzesArray.map(q => ({
-        id: q.id,
-        score: q.score,
-        status: q.status,
-        hasEndTime: !!q.endTime
-      })),
-      questionAnswersValidation: Object.keys(questionAnswersObjFiltered).slice(0, 3).map(qId => ({
-        questionId: qId,
-        totalAnswers: questionAnswersObjFiltered[qId]?.length || 0,
-        completedAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
-          completedQuizzesArray.some(quiz => 
-            quiz.id === answer.quizId && 
-            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
-             quiz.status === 'completed')
-          )
-        ).length || 0,
-        correctAnswers: questionAnswersObjFiltered[qId]?.filter(answer => 
-          answer.isCorrect === true && 
-          completedQuizzesArray.some(quiz => 
-            quiz.id === answer.quizId && 
-            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
-             quiz.status === 'completed')
-          )
-        ).length || 0
-      }))
-    });
 
     setAnalytics({
       totalQuizzes,
@@ -524,12 +374,6 @@ const AnalyticsPage = ({ questions }) => {
 
   // Call generateAnalytics when data changes
   useEffect(() => {
-    console.log('🔄 Analytics useEffect triggered:', {
-      completedQuizzesLength: allCompletedQuizzesArray.length,
-      questionAnswersKeys: Object.keys(questionAnswersObj).length,
-      questionsLength: questionsInRange.length,
-      inProgressQuizzesLength: allInProgressQuizzesArray.length
-    });
     
     if (allCompletedQuizzesArray !== undefined && questionAnswersObj !== undefined && allInProgressQuizzesArray !== undefined) {
       generateAnalytics();
@@ -1003,9 +847,9 @@ const AnalyticsPage = ({ questions }) => {
       const fileName = `SAT_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
       
-      console.log('PDF report generated successfully');
+      
     } catch (error) {
-      console.error('Error generating PDF report:', error);
+     
       alert('Error generating PDF report. Please make sure you have an internet connection and try again.');
     }
   }, [analytics, questionsArray, questionAnswersObj, allCompletedQuizzesArray]);
@@ -2467,15 +2311,6 @@ const AnalyticsPage = ({ questions }) => {
                         }
                         
                         const trend = recentAvg - comparisonValue;
-                        
-                        console.log('📈 Score trend calculation:', {
-                          recentQuizzes: recentQuizzes.map(q => q.score),
-                          recentAvg,
-                          comparisonValue,
-                          trend,
-                          totalQuizzes: analytics.recentQuizzes.length
-                        });
-                        
                         return trend > 0 ? `+${trend}%` : `${trend}%`;
                       })()
                     ) : '0%'}

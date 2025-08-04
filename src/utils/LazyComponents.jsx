@@ -22,7 +22,7 @@ class LazyComponentError extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Lazy component error:', error, errorInfo);
+
   }
 
   render() {

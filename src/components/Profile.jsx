@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDarkMode } from '../contexts/DarkModeContext';
 import { getUserStats } from '../lib/userPoints';
 import { Calculator, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,6 +11,7 @@ import rankingLoadedSound from '../assets/rankingLoadedPage.wav';
 
 const Profile = () => {
   const { user } = useAuth();
+  const { isDarkMode } = useDarkMode();
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -111,6 +113,26 @@ const Profile = () => {
     loadUserStats();
   }, [user, rankingAudio]);
 
+  // Memoize particle effect to avoid recreating on every render
+  const particleEffect = useMemo(() => 
+    [...Array(15)].map((_, i) => {
+      const left = Math.random() * 100;
+      const top = Math.random() * 100;
+      const delay = Math.random() * 3;
+      const duration = 2 + Math.random() * 2;
+      const size = Math.random() * 3 + 1;
+      
+      return {
+        id: i,
+        left: `${left}%`,
+        top: `${top}%`,
+        size: `${size}px`,
+        delay: `${delay}s`,
+        duration: `${duration}s`
+      };
+    }), [isDarkMode]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -135,7 +157,160 @@ const Profile = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="relative h-full overflow-hidden">
+      {/* Enhanced Background with Geometric Shapes */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Base gradient */}
+        <div className={`absolute inset-0 ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-blue-950/20 via-indigo-950/10 to-purple-950/20' 
+            : 'bg-gradient-to-br from-blue-100/60 via-indigo-100/40 to-purple-100/60'
+        }`}></div>
+        
+        {/* Main Floating Orbs */}
+        <div className={`absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20' 
+            : 'bg-gradient-to-r from-blue-500/15 to-cyan-500/15'
+        }`}></div>
+        <div className={`absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl animate-pulse delay-1000 ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20' 
+            : 'bg-gradient-to-r from-indigo-500/15 to-purple-500/15'
+        }`}></div>
+        
+        {/* Additional Floating Elements */}
+        <div className={`absolute top-1/3 right-1/3 w-64 h-64 rounded-full blur-3xl animate-pulse delay-500 ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/15' 
+            : 'bg-gradient-to-r from-purple-500/12 to-pink-500/12'
+        }`}></div>
+        <div className={`absolute bottom-1/3 left-1/4 w-48 h-48 rounded-full blur-3xl animate-pulse delay-1500 ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-cyan-500/15 to-blue-500/15' 
+            : 'bg-gradient-to-r from-cyan-500/12 to-blue-500/12'
+        }`}></div>
+        
+        {/* Geometric Shapes */}
+        <div className={`absolute top-20 left-10 w-32 h-32 border-2 rounded-2xl rotate-12 animate-float ${
+          isDarkMode 
+            ? 'border-blue-400/30 bg-transparent' 
+            : 'border-blue-400/25 bg-white/10'
+        } backdrop-blur-sm`}></div>
+        <div className={`absolute top-40 right-20 w-24 h-24 rounded-full animate-float-delayed ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20' 
+            : 'bg-gradient-to-br from-blue-500/15 to-indigo-500/15'
+        }`}></div>
+        <div className={`absolute bottom-32 left-20 w-20 h-20 border-2 rounded-lg rotate-45 animate-float-slow ${
+          isDarkMode 
+            ? 'border-purple-400/30 bg-transparent' 
+            : 'border-purple-400/25 bg-white/10'
+        } backdrop-blur-sm`}></div>
+        
+        {/* Modern Abstract Shapes */}
+        <div className={`absolute top-1/3 left-16 w-24 h-32 rounded-tl-3xl rounded-br-3xl animate-float delay-800 ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-blue-400/20 to-cyan-400/20' 
+            : 'bg-gradient-to-r from-blue-400/15 to-cyan-400/15'
+        }`}></div>
+        <div className={`absolute bottom-1/3 right-16 w-32 h-24 rounded-tr-3xl rounded-bl-3xl animate-float-delayed ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-purple-400/20 to-indigo-400/20' 
+            : 'bg-gradient-to-r from-purple-400/15 to-indigo-400/15'
+        }`}></div>
+        
+        {/* Star-like Shapes */}
+        <div className={`absolute top-1/3 right-1/6 w-8 h-8 transform rotate-45 animate-float delay-900 ${
+          isDarkMode 
+            ? 'bg-amber-400/25' 
+            : 'bg-amber-400/20'
+        }`} style={{clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'}}></div>
+        <div className={`absolute bottom-2/5 left-1/8 w-6 h-6 transform -rotate-15 animate-float-slow delay-1100 ${
+          isDarkMode 
+            ? 'bg-lime-400/25' 
+            : 'bg-lime-400/20'
+        }`} style={{clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'}}></div>
+        
+        {/* Triangle Accents */}
+        <div className={`absolute top-1/4 right-1/4 w-8 h-8 transform rotate-45 animate-float delay-1000 ${
+          isDarkMode 
+            ? 'bg-cyan-400/20' 
+            : 'bg-cyan-400/15'
+        }`} style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+        <div className={`absolute bottom-1/4 left-1/3 w-12 h-12 transform -rotate-30 animate-float-delayed ${
+          isDarkMode 
+            ? 'bg-rose-400/20' 
+            : 'bg-rose-400/15'
+        }`} style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+        
+        {/* Shining Light Effects */}
+        <div className={`absolute top-1/5 right-1/4 w-2 h-2 rounded-full animate-ping delay-500 ${
+          isDarkMode ? 'bg-white/60' : 'bg-blue-300/70'
+        }`}></div>
+        <div className={`absolute bottom-1/5 left-1/4 w-1 h-1 rounded-full animate-ping delay-1200 ${
+          isDarkMode ? 'bg-yellow-300/80' : 'bg-yellow-300/70'
+        }`}></div>
+        <div className={`absolute top-2/5 left-3/4 w-1.5 h-1.5 rounded-full animate-ping delay-800 ${
+          isDarkMode ? 'bg-cyan-300/70' : 'bg-cyan-300/60'
+        }`}></div>
+        <div className={`absolute bottom-2/5 right-3/4 w-2.5 h-2.5 rounded-full animate-ping delay-1800 ${
+          isDarkMode ? 'bg-pink-300/60' : 'bg-pink-300/50'
+        }`}></div>
+        
+        {/* Particle Effect */}
+        <div className="absolute inset-0">
+          {particleEffect.map((particle) => (
+            <div
+              key={`particle-${particle.id}`}
+              className={`absolute rounded-full animate-ping ${
+                isDarkMode ? 'bg-blue-500/40' : 'bg-blue-500/30'
+              }`}
+              style={{
+                left: particle.left,
+                top: particle.top,
+                width: particle.size,
+                height: particle.size,
+                animationDelay: particle.delay,
+                animationDuration: particle.duration
+              }}
+            ></div>
+          ))}
+        </div>
+        
+        {/* Subtle Grid Pattern */}
+        <div className={`absolute inset-0 opacity-[0.03] dark:opacity-[0.05]`}>
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, #3b82f6 1px, transparent 1px), 
+                             radial-gradient(circle at 75% 75%, #6366f1 1px, transparent 1px)`,
+            backgroundSize: '60px 60px',
+            backgroundPosition: '0 0, 30px 30px'
+          }}></div>
+        </div>
+        
+        {/* Floating Lines */}
+        <div className={`absolute top-1/4 left-0 w-32 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent transform rotate-45 animate-pulse delay-1000`}></div>
+        <div className={`absolute bottom-1/3 right-0 w-40 h-px bg-gradient-to-r from-transparent via-purple-400/30 to-transparent transform -rotate-45 animate-pulse delay-2000`}></div>
+        <div className={`absolute top-2/3 left-0 w-24 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent transform rotate-12 animate-pulse delay-500`}></div>
+        
+        {/* Corner Accents */}
+        <div className={`absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 rounded-tl-3xl ${
+          isDarkMode ? 'border-blue-400/20' : 'border-blue-400/15'
+        }`}></div>
+        <div className={`absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 rounded-tr-3xl ${
+          isDarkMode ? 'border-purple-400/20' : 'border-purple-400/15'
+        }`}></div>
+        <div className={`absolute bottom-0 left-0 w-20 h-20 border-l-2 border-b-2 rounded-bl-3xl ${
+          isDarkMode ? 'border-cyan-400/20' : 'border-cyan-400/15'
+        }`}></div>
+        <div className={`absolute bottom-0 right-0 w-20 h-20 border-r-2 border-b-2 rounded-br-3xl ${
+          isDarkMode ? 'border-indigo-400/20' : 'border-indigo-400/15'
+        }`}></div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 h-full overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
       {/* Real-time Stats Info */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -400,6 +575,8 @@ const Profile = () => {
           </motion.div>
         </div>
       </motion.div>
+        </div>
+      </div>
     </div>
   );
 };

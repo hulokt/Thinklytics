@@ -7,54 +7,71 @@ const CallToAction = () => {
   const navigate = useNavigate();
 
   const handleStartFree = () => navigate("/signup");
-  const handleViewDemo = () => navigate("/home"); // adjust path if demo page exists
+  const handleViewDemo = () => navigate("/home");
 
   return (
-    <section className="py-20 px-6">
-      <div className="max-w-4xl mx-auto text-center">
-        <div className="bg-gradient-to-r from-[var(--brand-60)]/20 via-[var(--brand-50p)]/20 to-[var(--brand-70)]/20 dark:from-[var(--brand-60)]/20 dark:via-[var(--brand-50p)]/20 dark:to-[var(--brand-70)]/20 rounded-3xl p-12 border border-gray-200 dark:border-white/10 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all duration-300">
-          <div className="flex justify-center space-x-8 mb-8">
-            <div className="flex items-center space-x-2 text-blue-500 dark:text-blue-400">
-              <BookOpen className="w-6 h-6" />
+    <section className="py-24 px-6">
+      <div className="max-w-6xl mx-auto text-center">
+        <div className="homepage-card backdrop-blur-sm border homepage-hover-glow rounded-3xl p-12 sm:p-16 md:p-20 shadow-2xl hover:shadow-3xl transition-all duration-500">
+          {/* Feature Icons */}
+          <div className="flex flex-wrap justify-center gap-8 mb-12">
+            <div className="flex items-center space-x-3 text-blue-600 dark:text-blue-400">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                <BookOpen className="w-6 h-6" />
+              </div>
               <span className="text-lg font-semibold">Smart Analytics</span>
             </div>
-            <div className="flex items-center space-x-2 text-blue-500 dark:text-blue-400">
-              <TrendingUp className="w-6 h-6" />
+            <div className="flex items-center space-x-3 text-blue-600 dark:text-blue-400">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6" />
+              </div>
               <span className="text-lg font-semibold">Proven Results</span>
             </div>
           </div>
           
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-            Ready to Transform Your 
-            <span className="blue-gradient-text"> SAT Score?</span>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
+            <span className="homepage-text-primary">Ready to Transform Your</span>
+            <br />
+            <span className="homepage-gradient-text">SAT Score?</span>
           </h2>
           
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl sm:text-2xl homepage-text-secondary mb-12 max-w-4xl mx-auto leading-relaxed">
             Join thousands of students who have already improved their scores with our AI-powered analytics platform.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button 
-              size="lg" 
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
+            <button
               onClick={handleStartFree}
-              className="blue-gradient-bg text-white px-8 py-3 text-lg rounded-xl transform transition-transform duration-300 ease-out hover:scale-105 hover:opacity-95 flex items-center gap-2"
+              className="group relative inline-flex items-center justify-center gap-3 h-16 w-full sm:w-auto px-12 rounded-3xl homepage-cta-primary text-white font-bold text-xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden transform hover:scale-105"
             >
-              Start Free
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[var(--brand-70)] via-[var(--brand-50p)] to-[var(--brand-60)] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <span className="relative z-10">Start Free Today</span>
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300 relative z-10" />
+            </button>
+            
+            <button
               onClick={handleViewDemo}
-              className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 text-lg rounded-xl transform transition-transform duration-300 ease-out hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white hover:scale-105"
+              className="group inline-flex items-center justify-center gap-3 h-16 w-full sm:w-auto px-12 rounded-3xl homepage-cta-secondary backdrop-blur-sm border-2 font-bold text-xl transition-all duration-300 hover:scale-105 hover:shadow-xl"
             >
-              View Demo
-            </Button>
+              <span>View Demo</span>
+            </button>
           </div>
           
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-            No credit card required • 14-day free trial • Cancel anytime
-          </p>
+          <div className="flex flex-wrap justify-center gap-6 text-sm homepage-text-muted">
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              No credit card required
+            </span>
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              14-day free trial
+            </span>
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              Cancel anytime
+            </span>
+          </div>
         </div>
       </div>
     </section>

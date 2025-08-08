@@ -1155,21 +1155,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         /* Prevent touch scrolling beyond boundaries */
         .quiz-page-container {
           touch-action: pan-x pan-y !important;
-          -webkit-touch-callout: none !important;
-          -webkit-user-select: none !important;
-          -khtml-user-select: none !important;
-          -moz-user-select: none !important;
-          -ms-user-select: none !important;
-          user-select: none !important;
+          /* allow text selection */
         }
         
         /* Save and Exit button styling */
         .save-exit-btn {
           cursor: pointer !important;
-          user-select: none !important;
-          -webkit-user-select: none !important;
-          -moz-user-select: none !important;
-          -ms-user-select: none !important;
         }
         .save-exit-btn:disabled {
           cursor: not-allowed !important;

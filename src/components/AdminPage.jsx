@@ -1,6 +1,47 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import QuestionLogger from './QuestionLogger';
 import { useGlobalCatalogQuestions } from '../hooks/useCatalogGlobal';
+
+// Advanced search utilities
+const normalizeText = (text) => {
+  if (!text) return '';
+  return text.toString().toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const calculateSimilarity = (text1, text2) => {
+  const normalized1 = normalizeText(text1);
+  const normalized2 = normalizeText(text2);
+  
+  if (normalized1 === normalized2) return 1;
+  if (!normalized1 || !normalized2) return 0;
+  
+  // Check if one contains the other
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+    return 0.8;
+  }
+  
+  // Simple word-based similarity
+  const words1 = normalized1.split(' ');
+  const words2 = normalized2.split(' ');
+  const commonWords = words1.filter(word => words2.includes(word));
+  const totalWords = new Set([...words1, ...words2]).size;
+  
+  return commonWords.length / totalWords;
+};
+
+const fuzzySearch = (searchTerm, text, threshold = 0.3) => {
+  if (!searchTerm || !text) return false;
+  
+  const normalizedSearch = normalizeText(searchTerm);
+  const normalizedText = normalizeText(text);
+  
+  // Exact match
+  if (normalizedText.includes(normalizedSearch)) return true;
+  
+  // Fuzzy match
+  const similarity = calculateSimilarity(normalizedSearch, normalizedText);
+  return similarity >= threshold;
+};
 
 const AdminPage = () => {
   const { data: catalog, loading, addQuestions, updateQuestion, deleteQuestion, bulkDeleteQuestions } = useGlobalCatalogQuestions();
@@ -9,6 +50,7 @@ const AdminPage = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [localAdminPassword, setLocalAdminPassword] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('satlog:adminSession') === 'yes';
@@ -19,6 +61,82 @@ const AdminPage = () => {
 
   const adminPassword = import.meta?.env?.VITE_ADMIN_PASSWORD || import.meta?.env?.NEXT_PUBLIC_ADMIN_PASSWORD || '';
   const effectivePassword = adminPassword || localAdminPassword;
+
+  // Advanced search filtering
+  const filteredCatalog = useMemo(() => {
+    if (!searchTerm.trim()) return catalog || [];
+    
+    const searchLower = searchTerm.toLowerCase();
+    const catalogArray = Array.isArray(catalog) ? catalog : [];
+    
+    // Special syntax for "con:" - find all questions with "con:" anywhere
+    if (searchLower === 'con:') {
+      return catalogArray.filter(question => {
+        const questionText = (question.questionText || '').toLowerCase();
+        const explanation = (question.explanation || '').toLowerCase();
+        
+        // Check if question text contains "con:" anywhere
+        if (questionText.includes('con:')) {
+          return true;
+        }
+        
+        // Check if explanation contains "con:" anywhere
+        if (explanation.includes('con:')) {
+          return true;
+        }
+        
+        return false;
+      });
+    }
+    
+    // Special syntax for "con:" followed by answer choice - find anywhere in text
+    const conMatch = searchLower.match(/^con:\s*([abcd])$/i);
+    if (conMatch) {
+      const answerChoice = conMatch[1].toLowerCase();
+      return catalogArray.filter(question => {
+        const questionText = (question.questionText || '').toLowerCase();
+        const explanation = (question.explanation || '').toLowerCase();
+        
+        // Check if question text contains "con:answer" anywhere
+        if (questionText.includes(`con:${answerChoice}`) || questionText.includes(`con: ${answerChoice}`)) {
+          return true;
+        }
+        
+        // Check if explanation contains "con:answer" anywhere
+        if (explanation.includes(`con:${answerChoice}`) || explanation.includes(`con: ${answerChoice}`)) {
+          return true;
+        }
+        
+        return false;
+      });
+    }
+    
+    return catalogArray.filter(question => {
+      // Search across all fields
+      const fields = [
+        question.section,
+        question.domain,
+        question.questionType,
+        question.passageText,
+        question.questionText,
+        question.explanation,
+        question.difficulty,
+        question.correctAnswer,
+        ...Object.values(question.answerChoices || {}),
+        question.id
+      ].filter(Boolean);
+      
+      // Check for exact matches first
+      const hasExactMatch = fields.some(field => 
+        field.toString().toLowerCase().includes(searchLower)
+      );
+      
+      if (hasExactMatch) return true;
+      
+      // Check for fuzzy matches
+      return fields.some(field => fuzzySearch(searchTerm, field, 0.4));
+    });
+  }, [catalog, searchTerm]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -188,7 +306,7 @@ const AdminPage = () => {
 
   return (
     <QuestionLogger
-      questions={catalogArray}
+      questions={filteredCatalog}
       loading={loading}
       onAddQuestion={handleAddCatalogQuestion}
       onUpdateQuestion={handleUpdateCatalogQuestion}
@@ -196,7 +314,9 @@ const AdminPage = () => {
       onBulkDeleteQuestions={handleBulkDeleteCatalogQuestions}
       headerTitle={"Create Global Question"}
       headerSubtitle={"Changes here update the global catalog for all users"}
-      listTitle={"Global Question Bank"}
+      listTitle={`Global Question Bank${searchTerm ? ` (${filteredCatalog?.length || 0} results)` : ''}`}
+      searchTerm={searchTerm}
+      onSearchChange={setSearchTerm}
     />
   );
 };

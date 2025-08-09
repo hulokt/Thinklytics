@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export interface CatalogQuestion {
@@ -94,9 +94,18 @@ export function useGlobalCatalogQuestions(): UseGlobalCatalogResult {
   }, [load])
 
   // Realtime sync
+  const channelRef = useRef<any | null>(null)
+
   useEffect(() => {
+    // Ensure no duplicate subscriptions by cleaning any existing channel first
+    if (channelRef.current) {
+      try { supabase.removeChannel(channelRef.current) } catch {}
+      channelRef.current = null
+    }
+
+    const uniqueName = `catalog_questions_changes_${Date.now()}_${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel('catalog_questions_changes')
+      .channel(uniqueName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'catalog_questions' }, payload => {
         setData(prev => {
           const current = Array.isArray(prev) ? [...prev] : []
@@ -120,10 +129,15 @@ export function useGlobalCatalogQuestions(): UseGlobalCatalogResult {
           return current
         })
       })
-      .subscribe()
+
+    channel.subscribe()
+    channelRef.current = channel
 
     return () => {
-      supabase.removeChannel(channel)
+      if (channelRef.current) {
+        try { supabase.removeChannel(channelRef.current) } catch {}
+        channelRef.current = null
+      }
     }
   }, [])
 

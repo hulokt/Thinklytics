@@ -133,7 +133,8 @@ export const DATA_TYPES = {
   IN_PROGRESS_QUIZZES: 'sat_master_log_in_progress_quizzes',
   QUESTION_ANSWERS: 'sat_master_log_question_answers',
   ALL_QUIZZES: 'sat_master_log_all_quizzes',
-  CALENDAR_EVENTS: 'sat_master_log_calendar_events'
+  CALENDAR_EVENTS: 'sat_master_log_calendar_events',
+  CATALOG_QUESTIONS: 'sat_master_log_catalog_questions'
 } as const
 
 export type DataType = typeof DATA_TYPES[keyof typeof DATA_TYPES] 

@@ -120,3 +120,87 @@ GRANT EXECUTE ON FUNCTION upsert_user_data(UUID, VARCHAR(50), JSONB) TO authenti
 GRANT EXECUTE ON FUNCTION get_user_data(UUID, VARCHAR(50)) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_user_data(UUID, VARCHAR(50)) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_user_data(UUID) TO authenticated; 
+
+-- Global catalog questions (visible to all users)
+CREATE TABLE IF NOT EXISTS catalog_questions (
+    id TEXT PRIMARY KEY,
+    origin TEXT DEFAULT 'catalog',
+    section TEXT,
+    domain TEXT,
+    questionType TEXT,
+    passageText TEXT,
+    passageImage TEXT,
+    questionText TEXT,
+    answerChoices JSONB,
+    correctAnswer TEXT,
+    explanation TEXT,
+    explanationImage TEXT,
+    difficulty TEXT,
+    hidden BOOLEAN DEFAULT FALSE,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    lastUpdated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_catalog_questions_lastUpdated ON catalog_questions(lastUpdated DESC);
+CREATE INDEX IF NOT EXISTS idx_catalog_questions_section ON catalog_questions(section);
+
+-- RLS
+ALTER TABLE catalog_questions ENABLE ROW LEVEL SECURITY;
+
+-- Anyone authenticated can view catalog
+CREATE POLICY "catalog select for all authenticated" ON catalog_questions
+  FOR SELECT USING (true);
+
+-- Allow authenticated users to insert/update/delete (client gate handles admin)
+CREATE POLICY "catalog write for authenticated" ON catalog_questions
+  FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Trigger to update lastUpdated
+CREATE OR REPLACE FUNCTION update_catalog_lastUpdated()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.lastUpdated = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_update_catalog_lastUpdated ON catalog_questions;
+CREATE TRIGGER trg_update_catalog_lastUpdated
+BEFORE UPDATE ON catalog_questions
+FOR EACH ROW EXECUTE FUNCTION update_catalog_lastUpdated();
+
+-- Grants for PostgREST roles
+GRANT SELECT ON catalog_questions TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON catalog_questions TO authenticated;
+
+-- Admins table: list of user_ids that are admins
+CREATE TABLE IF NOT EXISTS public.admins (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+-- Do not expose admin membership list by default
+DROP POLICY IF EXISTS "admins select" ON public.admins;
+DROP POLICY IF EXISTS "admins modify" ON public.admins;
+-- (Optional) Allow admins to see their own membership
+CREATE POLICY "admins self select" ON public.admins
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
+
+-- Tighten catalog write policies to admins only
+DROP POLICY IF EXISTS "catalog write for authenticated" ON public.catalog_questions;
+
+CREATE POLICY "catalog insert for admins" ON public.catalog_questions
+  FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = auth.uid()));
+
+CREATE POLICY "catalog update for admins" ON public.catalog_questions
+  FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = auth.uid()));
+
+CREATE POLICY "catalog delete for admins" ON public.catalog_questions
+  FOR DELETE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = auth.uid()));

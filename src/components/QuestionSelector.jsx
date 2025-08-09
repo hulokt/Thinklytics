@@ -31,7 +31,8 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
     domain: 'All',
     questionType: 'All',
     difficulty: 'All',
-    status: 'All'
+    status: 'All',
+    source: 'All' // All | Catalog | Wrong Log
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -93,6 +94,14 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
       
       return hasValidData;
     });
+
+    // Apply source filter (visually distinguish catalog vs user wrong-log)
+    if (filters.source !== 'All') {
+      filtered = filtered.filter(q => {
+        const origin = q.origin || 'user';
+        return filters.source === 'Catalog' ? origin === 'catalog' : origin !== 'catalog';
+      });
+    }
 
     // Apply section filter
     if (filters.section !== 'All') {
@@ -930,7 +939,19 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Source</label>
+                <select
+                  value={filters.source}
+                  onChange={(e) => handleFilterChange('source', e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
+                >
+                  {['All','Catalog','Wrong Log'].map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">Section</label>
                 <select

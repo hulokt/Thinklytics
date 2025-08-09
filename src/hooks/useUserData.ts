@@ -19,6 +19,7 @@ type DataTypeMap = {
   [DATA_TYPES.QUESTION_ANSWERS]: Record<string, any>
   [DATA_TYPES.ALL_QUIZZES]: any[] // New unified quiz array
   [DATA_TYPES.CALENDAR_EVENTS]: any[]
+  [DATA_TYPES.CATALOG_QUESTIONS]: any[]
 }
 
 
@@ -241,6 +242,7 @@ function getDefaultData(dataType: DataType): any {
     case DATA_TYPES.IN_PROGRESS_QUIZZES:
     case DATA_TYPES.ALL_QUIZZES:
     case DATA_TYPES.CALENDAR_EVENTS:
+    case DATA_TYPES.CATALOG_QUESTIONS:
       return []
     case DATA_TYPES.QUESTION_ANSWERS:
       return {}
@@ -254,4 +256,5 @@ export const useQuizHistory = () => useUserData(DATA_TYPES.QUIZ_HISTORY)
 export const useInProgressQuizzes = () => useUserData(DATA_TYPES.IN_PROGRESS_QUIZZES)
 export const useQuestionAnswers = () => useUserData(DATA_TYPES.QUESTION_ANSWERS)
 export const useAllQuizzes = () => useUserData(DATA_TYPES.ALL_QUIZZES)
-export const useCalendarEvents = () => useUserData(DATA_TYPES.CALENDAR_EVENTS) 
+export const useCalendarEvents = () => useUserData(DATA_TYPES.CALENDAR_EVENTS)
+export const useCatalogQuestions = () => useUserData(DATA_TYPES.CATALOG_QUESTIONS)

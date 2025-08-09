@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Sidebar, SidebarBody, SidebarProvider } from "./ui/sidebar";
 import { 
-  FileText as IconFileText, 
-  PlayCircle as IconPlayCircle, 
+  FileX as IconFileX,
+  BookOpen as IconBookOpen,
   History as IconHistory, 
-  BarChart as IconBarChart, 
+  TrendingUp as IconTrendingUp,
   User as IconUser,
   LogOut as IconLogout,
   Star as IconStar
@@ -61,17 +61,10 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
 
   const links = [
     {
-      label: "Question Logger",
-      href: "/questions",
-      icon: (
-        <IconFileText className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
-      ),
-    },
-    {
-      label: "Quiz",
+      label: "Question Bank",
       href: "/selector",
       icon: (
-        <IconPlayCircle className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <IconBookOpen className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
@@ -85,7 +78,7 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
       label: "Analytics",
       href: "/analytics",
       icon: (
-        <IconBarChart className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <IconTrendingUp className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
     {
@@ -93,6 +86,13 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
       href: "/calendar",
       icon: (
         <CalendarIcon className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+      ),
+    },
+    {
+      label: "Log Mistakes",
+      href: "/questions",
+      icon: (
+        <IconFileX className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
   ];

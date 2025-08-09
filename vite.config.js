@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: '/SatLog/',
+  base: mode === 'production' ? '/SatLog/' : '/',
   
   // Optimize bundle splitting for better memory usage
   build: {
@@ -66,4 +66,4 @@ export default defineConfig({
       strict: false
     }
   }
-}) 
+}))

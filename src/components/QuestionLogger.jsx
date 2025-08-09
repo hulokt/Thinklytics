@@ -60,7 +60,17 @@ const fuzzyChoose = (raw, candidates, threshold = 0.45) => {
   return bestScore >= threshold ? best : null;
 };
 
-const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onBulkDeleteQuestions }) => {
+const QuestionLogger = ({ 
+  questions, 
+  loading = false, 
+  onAddQuestion, 
+  onUpdateQuestion, 
+  onDeleteQuestion, 
+  onBulkDeleteQuestions,
+  headerTitle: headerTitleOverride,
+  headerSubtitle: headerSubtitleOverride,
+  listTitle: listTitleOverride,
+}) => {
   // Ensure questions is always an array
   const questionsArray = Array.isArray(questions) ? questions : [];
 
@@ -1629,44 +1639,71 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
     setImageModal({ isOpen: false, imageSrc: '', imageAlt: '' });
   };
 
-  // Clean up duplicate questions
+  // Clean up duplicate questions by content signature (keeps newest per signature)
   const handleCleanupDuplicates = async () => {
     if (!questionsArray || questionsArray.length === 0) return;
-    
-    const questionIds = questionsArray.map(q => q.id);
-    const duplicateIds = [];
-    const seenIds = new Set();
-    
-    // Find IDs that appear more than once
-    questionsArray.forEach(question => {
-      if (seenIds.has(question.id)) {
-        duplicateIds.push(question.id);
-      } else {
-        seenIds.add(question.id);
-      }
+
+    const normalize = (v) => (v ?? '').toString().trim().replace(/\s+/g, ' ');
+    const getTime = (q) => {
+      const val = q.lastUpdated || q.createdAt || q.date || 0;
+      const t = new Date(val).getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+    const signatureFor = (q) => JSON.stringify({
+      section: normalize(q.section),
+      domain: normalize(q.domain),
+      questionType: normalize(q.questionType),
+      passageText: normalize(q.passageText),
+      questionText: normalize(q.questionText),
+      explanation: normalize(q.explanation),
+      difficulty: normalize(q.difficulty),
+      correctAnswer: normalize(q.correctAnswer),
+      A: normalize(q.answerChoices?.A),
+      B: normalize(q.answerChoices?.B),
+      C: normalize(q.answerChoices?.C),
+      D: normalize(q.answerChoices?.D),
     });
-    
-    if (duplicateIds.length === 0) {
+
+    const keepIdBySig = new Map();
+    const dropIds = [];
+
+    // Decide which question to keep per signature (newest wins)
+    for (const q of questionsArray) {
+      const sig = signatureFor(q);
+      if (!keepIdBySig.has(sig)) {
+        keepIdBySig.set(sig, q.id);
+      } else {
+        const currentKeepId = keepIdBySig.get(sig);
+        const currentKeep = questionsArray.find(x => x.id === currentKeepId) || q;
+        const candidateIsNewer = getTime(q) > getTime(currentKeep);
+        if (candidateIsNewer) {
+          // Replace keep, drop old keep
+          keepIdBySig.set(sig, q.id);
+          dropIds.push(currentKeep.id);
+        } else {
+          // Drop candidate
+          dropIds.push(q.id);
+        }
+      }
+    }
+
+    if (dropIds.length === 0) {
       alert('No duplicate questions found!');
       return;
     }
-    
+
     const confirmed = window.confirm(
-      `Found ${duplicateIds.length} duplicate questions. Do you want to remove them? This action cannot be undone.`
+      `Found ${dropIds.length} duplicate question${dropIds.length > 1 ? 's' : ''}. Remove them? This action cannot be undone.`
     );
-    
     if (!confirmed) return;
-    
-    console.log('🧹 Cleaning up duplicates:', {
-      original: questionsArray.length,
-      duplicatesToRemove: duplicateIds.length,
-      duplicateIds: duplicateIds
-    });
-    
-    // Delete the duplicate questions using bulk delete
-    onBulkDeleteQuestions(duplicateIds);
-    
-    alert(`Successfully removed ${duplicateIds.length} duplicate questions!`);
+
+    try {
+      onBulkDeleteQuestions(dropIds);
+      alert(`Successfully removed ${dropIds.length} duplicate question${dropIds.length > 1 ? 's' : ''}.`);
+    } catch (err) {
+      console.error('Duplicate cleanup failed', err);
+      alert('Failed to remove duplicates. Please try again.');
+    }
   };
 
   // Export questions as PDF
@@ -1993,16 +2030,18 @@ const QuestionLogger = ({ questions, loading = false, onAddQuestion, onUpdateQue
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
-              {isImportMode 
-                ? `Importing Questions (${currentQuestionIndex + 1}/${importProgress.total})`
-                : editingId ? 'Edit Question' : 'Create New Question'
-              }
+              {headerTitleOverride 
+                ? headerTitleOverride 
+                : (isImportMode 
+                    ? `Importing Questions (${currentQuestionIndex + 1}/${importProgress.total})`
+                    : editingId ? 'Edit Question' : 'Create New Question')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1 transition-colors duration-300">
-              {isImportMode 
-                ? `Question ${currentQuestionIndex + 1} of ${importProgress.total} - ${importProgress.completed} completed`
-                : editingId ? 'Update the question details below with modern tools' : 'Add a new question to your question bank with advanced features'
-              }
+              {headerSubtitleOverride 
+                ? headerSubtitleOverride 
+                : (isImportMode 
+                    ? `Question ${currentQuestionIndex + 1} of ${importProgress.total} - ${importProgress.completed} completed`
+                    : editingId ? 'Update the question details below with modern tools' : 'Add a new question to your question bank with advanced features')}
             </p>
             {isImportMode && (
               <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -2649,7 +2688,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                 {/* Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Question Bank</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Wrong Log</h2>
                     <div className="flex items-center gap-3 text-sm transition-colors duration-300">
                       <p className="text-gray-600 dark:text-gray-400">
                         {isImportMode ? 'Import in progress - editing disabled' : (() => {
@@ -2716,20 +2755,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                   </div>
                 )}
                 
-                {/* Search Bar */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    disabled={isImportMode}
-                    placeholder="Search questions, sections, domains, or type 'hidden'..."
-                    className={`w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm transition-colors duration-300 ${isImportMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  />
-                  <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M4 10a6 6 0 1112 0 6 6 0 01-12 0z" />
-                  </svg>
-                </div>
+                {/* Search removed per request */}
               </div>
             </div>
 
@@ -2748,7 +2774,15 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                     </svg>
                   </div>
                   <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-300">No questions found</h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Create your first question using the form.</p>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300 mb-4">Create your first question using the form or import from CSV.</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => setShowCsvModal(true)}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
+                    >
+                      Paste CSV
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="lg:h-full relative">

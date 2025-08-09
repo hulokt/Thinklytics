@@ -212,7 +212,11 @@ const AnimatedQuestionList = ({
                 className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
               {/* Question Number */}
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded min-w-[20px] text-center flex-shrink-0">
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded min-w-[20px] text-center flex-shrink-0 ${
+                (question.origin === 'catalog')
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+              }`}>
                 {index + 1}
               </span>
               <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 flex-1 min-w-0 transition-colors duration-300">
@@ -245,6 +249,15 @@ const AnimatedQuestionList = ({
             <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="truncate">{question.questionType}</span>
+                {question.origin === 'catalog' ? (
+                  <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    Catalog
+                  </span>
+                ) : (
+                  <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    Wrong Log
+                  </span>
+                )}
                 {status && (
                   <>
                     <span className="text-gray-400 dark:text-gray-500">•</span>

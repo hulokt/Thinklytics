@@ -20,6 +20,7 @@ import { DarkModeProvider } from './contexts/DarkModeContext';
 import { UndoProvider, useUndo } from './contexts/UndoContext';
 import UndoToast from './components/ui/UndoToast';
 import { useQuestions, useCalendarEvents } from './hooks/useUserData';
+import { useGlobalCatalogQuestions, useIsAdmin } from './hooks/useCatalogGlobal';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 import { supabase } from './lib/supabaseClient';
 // Footer pages
@@ -43,6 +44,7 @@ import APIDocsPage from './pages/APIDocsPage';
 import StatusPage from './pages/StatusPage';
 import FeaturesPage from './pages/FeaturesPage';
 import PricingPage from './pages/PricingPage';
+import AdminPage from './components/AdminPage';
 
 // Simple Coming Soon placeholder
 const ComingSoonPage = ({ title }) => (
@@ -50,6 +52,15 @@ const ComingSoonPage = ({ title }) => (
     <h1 className="text-4xl font-bold mb-4 text-blue-700 dark:text-blue-300">Coming Soon</h1>
     <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">{title ? title : 'This page is under construction.'}</p>
     <a href="/" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">Back to Home</a>
+  </div>
+);
+
+// Simple 404 Page
+const NotFoundPage = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+    <h1 className="text-5xl font-extrabold mb-2 text-gray-900 dark:text-white">404</h1>
+    <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">Page not found</p>
+    <a href="/" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">Go Home</a>
   </div>
 );
 
@@ -245,6 +256,7 @@ function AppContent() {
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isResumingQuiz, setIsResumingQuiz] = useState(false);
   const [resumingQuizData, setResumingQuizData] = useState(null);
+  const { isAdmin: hasAdminRole, loading: adminCheckLoading } = useIsAdmin();
   
   // Use Supabase data hooks
   const { 
@@ -263,8 +275,55 @@ function AppContent() {
   // Calendar data (for planned quizzes)
   const { data: calendarEvents, upsertData: upsertCalendarEvents } = useCalendarEvents();
 
+  // Global catalog questions available to all users
+  const { data: catalog, loading: catalogLoading } = useGlobalCatalogQuestions();
+
   // Ensure questions is always an array
   const questions = Array.isArray(questionsData) ? questionsData : [];
+
+  // No seeding here; Admin will populate catalog globally
+
+  // Listen for wrong catalog items to add to user's wrong log
+  useEffect(() => {
+    const handler = (e) => {
+      const incoming = Array.isArray(e.detail) ? e.detail : [];
+      if (incoming.length === 0) return;
+      const nowIso = new Date().toISOString();
+      const toAdd = incoming.map((q, idx) => ({
+        ...q,
+        id: q.id?.toString?.().startsWith('catalog-') ? `${q.id}-copied-${Date.now()}-${idx}` : q.id,
+        origin: 'user',
+        sourceId: q.id,
+        createdAt: nowIso,
+        lastUpdated: nowIso,
+      }));
+
+      // Deduplicate against existing wrong log using the same signature as add
+      const isSame = (a, b) => (
+        (a.section||'')===(b.section||'') &&
+        (a.domain||'')===(b.domain||'') &&
+        (a.questionType||'')===(b.questionType||'') &&
+        (a.passageText||'')===(b.passageText||'') &&
+        (a.questionText||'')===(b.questionText||'') &&
+        (a.correctAnswer||'')===(b.correctAnswer||'') &&
+        (a.explanation||'')===(b.explanation||'') &&
+        (a.difficulty||'')===(b.difficulty||'') &&
+        ((a.answerChoices?.A)||'')===((b.answerChoices?.A)||'') &&
+        ((a.answerChoices?.B)||'')===((b.answerChoices?.B)||'') &&
+        ((a.answerChoices?.C)||'')===((b.answerChoices?.C)||'') &&
+        ((a.answerChoices?.D)||'')===((b.answerChoices?.D)||'')
+      );
+
+      const merged = [...questions];
+      toAdd.forEach(addq => {
+        const exists = merged.some(q => isSame(q, addq));
+        if (!exists) merged.push(addq);
+      });
+      upsertQuestions(merged).catch(()=>{});
+    };
+    window.addEventListener('satlog:addWrongFromCatalog', handler);
+    return () => window.removeEventListener('satlog:addWrongFromCatalog', handler);
+  }, [questions, upsertQuestions]);
 
   // Handle authentication state changes
   useEffect(() => {
@@ -759,7 +818,7 @@ function AppContent() {
       <ScrollToTop />
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+         <Route path="/" element={<Navigate to="/selector" replace />} />
         
         <Route path="/home" element={
           <PublicRoute>
@@ -792,6 +851,7 @@ function AppContent() {
 
         {/* Auth Callback Route */}
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/404" element={<NotFoundPage />} />
 
         {/* Protected Routes */}
         <Route path="/questions" element={
@@ -835,7 +895,7 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(questionsLoading || allQuizzesLoading) ? (
+              {(questionsLoading || allQuizzesLoading || catalogLoading) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -843,12 +903,32 @@ function AppContent() {
                   </div>
                 </div>
               ) : (
-                <QuestionSelector
-                  questions={questions || []}
-                  onStartQuiz={handleStartQuiz}
-                  onResumeQuiz={handleResumeQuiz}
-                  inProgressQuizzes={inProgressQuizzes || []}
-                />
+                (() => {
+                  const wrongLog = Array.isArray(questions) ? questions : [];
+                  const catalogList = Array.isArray(catalog) ? catalog : [];
+                  // Build signature to dedupe Catalog vs Wrong Log (prefer user origin)
+                  const signature = (q) => [
+                    q.section||'', q.domain||'', q.questionType||'',
+                    (q.passageText||'').trim(), (q.questionText||'').trim(),
+                    (q.answerChoices?.A)||'', (q.answerChoices?.B)||'', (q.answerChoices?.C)||'', (q.answerChoices?.D)||'',
+                    q.correctAnswer||''
+                  ].join('|');
+                  const map = new Map();
+                  wrongLog.forEach(q => { map.set(signature(q), q); });
+                  catalogList.forEach(q => {
+                    const sig = signature(q);
+                    if (!map.has(sig)) map.set(sig, q);
+                  });
+                  const combined = Array.from(map.values());
+                  return (
+                    <QuestionSelector
+                      questions={combined}
+                      onStartQuiz={handleStartQuiz}
+                      onResumeQuiz={handleResumeQuiz}
+                      inProgressQuizzes={inProgressQuizzes || []}
+                    />
+                  );
+                })()
               )}
             </SidebarLayout>
           </ProtectedRoute>
@@ -987,17 +1067,45 @@ function AppContent() {
         <Route path="/status" element={<StatusPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/features" element={<FeaturesPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/pricing" element={<PricingPage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminOnlyRoute>
+              <SidebarLayout 
+                currentPage="admin" 
+                onPageChange={handlePageChange} 
+                onLogout={handleLogout}
+                onAccountClick={() => navigateWithScroll('/account')}
+                onProfileClick={() => navigateWithScroll('/profile')}
+                onHomeClick={handleLogoClick}
+              >
+                <AdminPage />
+              </SidebarLayout>
+            </AdminOnlyRoute>
+          </ProtectedRoute>
+        } />
         {/* Placeholder for remaining /coming-soon/:slug */}
         <Route path="/coming-soon/:slug" element={<ComingSoonPage title={null} />} />
 
         {/* Redirect any unknown routes */}
-        <Route path="*" element={<Navigate to={user ? "/questions" : "/home"} replace />} />
+         <Route path="*" element={<Navigate to={user ? "/selector" : "/home"} replace />} />
       </Routes>
       
       {/* Undo Toast */}
       <UndoToast />
     </>
   );
+}
+
+function AdminOnlyRoute({ children }) {
+  const { isAdmin, loading } = useIsAdmin();
+  if (loading) {
+    // Hide while checking admin status (no loading UI)
+    return null;
+  }
+  if (!isAdmin) {
+    return <Navigate to="/404" replace />;
+  }
+  return children;
 }
 
 export default App; 

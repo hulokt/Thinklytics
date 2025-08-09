@@ -670,6 +670,17 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       
       const completedQuiz = await quizManager.finishQuiz(quizData, syncedQuestions, userAnswers, flaggedQuestions, elapsedTime);
 
+      // Auto-log wrong catalog questions into user's wrong log
+      try {
+        const wrongFromCatalog = syncedQuestions.filter(q => (q.origin === 'catalog') && q.isCorrect === false);
+        if (wrongFromCatalog.length > 0) {
+          // Pull current wrong-log questions via hook directly in App; here we persist by dispatching a custom event
+          // Emit an event that App can listen to and merge into QUESTIONS to avoid importing hooks here
+          const event = new CustomEvent('satlog:addWrongFromCatalog', { detail: wrongFromCatalog });
+          window.dispatchEvent(event);
+        }
+      } catch (_) {}
+
       // 5. Update question answers for analytics
       const currentAnswers = questionAnswers || {};
       const updatedAnswers = { ...currentAnswers };

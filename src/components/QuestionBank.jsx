@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useCatalogQuestions } from '../hooks/useUserData';
+import { useGlobalCatalogQuestions } from '../hooks/useCatalogGlobal';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
 
 const QuestionBank = () => {
-  const { data: catalog, loading } = useCatalogQuestions();
+  const { data: catalog, loading } = useGlobalCatalogQuestions();
   const { isDarkMode } = useDarkMode();
   const [search, setSearch] = useState('');
   const [section, setSection] = useState('All');
@@ -21,6 +21,29 @@ const QuestionBank = () => {
     if (questionType !== 'All') arr = arr.filter(q => q.questionType === questionType);
     if (difficulty !== 'All') arr = arr.filter(q => q.difficulty === difficulty);
     if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      
+      // Special syntax for "con:" - find all questions with "con:" anywhere
+      if (searchLower === 'con:') {
+        return arr.filter(question => {
+          const questionText = (question.questionText || '').toLowerCase();
+          const explanation = (question.explanation || '').toLowerCase();
+          return questionText.includes('con:') || explanation.includes('con:');
+        });
+      }
+      
+      // Special syntax for "con:" followed by answer choice
+      const conMatch = searchLower.match(/^con:\s*([abcd])$/i);
+      if (conMatch) {
+        const answerChoice = conMatch[1].toLowerCase();
+        return arr.filter(question => {
+          const questionText = (question.questionText || '').toLowerCase();
+          const explanation = (question.explanation || '').toLowerCase();
+          return (questionText.includes(`con:${answerChoice}`) || questionText.includes(`con: ${answerChoice}`)) ||
+                 (explanation.includes(`con:${answerChoice}`) || explanation.includes(`con: ${answerChoice}`));
+        });
+      }
+      
       const fuse = new Fuse(arr, {
         includeScore: true,
         threshold: 0.3,

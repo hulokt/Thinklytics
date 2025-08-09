@@ -162,10 +162,28 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
       const normalized = searchQuery.trim().toLowerCase();
 
+      // Special syntax for "con:" - find all questions with "con:" anywhere
+      if (normalized === 'con:') {
+        filtered = filtered.filter(question => {
+          const questionText = (question.questionText || '').toLowerCase();
+          const explanation = (question.explanation || '').toLowerCase();
+          return questionText.includes('con:') || explanation.includes('con:');
+        });
+      }
+      // Special syntax for "con:" followed by answer choice
+      else if (normalized.match(/^con:\s*([abcd])$/i)) {
+        const conMatch = normalized.match(/^con:\s*([abcd])$/i);
+        const answerChoice = conMatch[1].toLowerCase();
+        filtered = filtered.filter(question => {
+          const questionText = (question.questionText || '').toLowerCase();
+          const explanation = (question.explanation || '').toLowerCase();
+          return (questionText.includes(`con:${answerChoice}`) || questionText.includes(`con: ${answerChoice}`)) ||
+                 (explanation.includes(`con:${answerChoice}`) || explanation.includes(`con: ${answerChoice}`));
+        });
+      }
       // Single-letter correct answer search
-      const upper = normalized.toUpperCase();
-      if (['A', 'B', 'C', 'D'].includes(upper) && normalized.length === 1) {
-        filtered = filtered.filter(q => q.correctAnswer === upper);
+      else if (['A', 'B', 'C', 'D'].includes(normalized.toUpperCase()) && normalized.length === 1) {
+        filtered = filtered.filter(q => q.correctAnswer === normalized.toUpperCase());
       } else {
         const mappedQuery = synonymMap[normalized] || searchQuery;
         const fuse = new Fuse(filtered, {

@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import QuestionLogger from './QuestionLogger';
 import { useGlobalCatalogQuestions } from '../hooks/useCatalogGlobal';
+import Fuse from 'fuse.js/dist/fuse.esm.js';
 
 // Advanced search utilities
 const normalizeText = (text) => {
@@ -51,6 +52,8 @@ const AdminPage = () => {
   const [localAdminPassword, setLocalAdminPassword] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  // Track recently added signatures to avoid duplicate imports when the import action fires twice
+  const recentlyAddedRef = useRef(new Set());
 
   useEffect(() => {
     const saved = localStorage.getItem('satlog:adminSession') === 'yes';
@@ -62,80 +65,86 @@ const AdminPage = () => {
   const adminPassword = import.meta?.env?.VITE_ADMIN_PASSWORD || import.meta?.env?.NEXT_PUBLIC_ADMIN_PASSWORD || '';
   const effectivePassword = adminPassword || localAdminPassword;
 
-  // Advanced search filtering
+  // Advanced search filtering with Fuse.js - same as Question Selector
   const filteredCatalog = useMemo(() => {
     if (!searchTerm.trim()) return catalog || [];
     
     const searchLower = searchTerm.toLowerCase();
     const catalogArray = Array.isArray(catalog) ? catalog : [];
+
+    // Special search: questions with no question type
+    if (searchLower === 'no question type' || searchLower === 'no type' || searchLower === 'missing type') {
+      return catalogArray.filter(q => !q.questionType || String(q.questionType).trim() === '');
+    }
     
     // Special syntax for "con:" - find all questions with "con:" anywhere
     if (searchLower === 'con:') {
       return catalogArray.filter(question => {
         const questionText = (question.questionText || '').toLowerCase();
         const explanation = (question.explanation || '').toLowerCase();
-        
-        // Check if question text contains "con:" anywhere
-        if (questionText.includes('con:')) {
-          return true;
-        }
-        
-        // Check if explanation contains "con:" anywhere
-        if (explanation.includes('con:')) {
-          return true;
-        }
-        
-        return false;
+        return questionText.includes('con:') || explanation.includes('con:');
       });
     }
     
-    // Special syntax for "con:" followed by answer choice - find anywhere in text
+    // Special syntax for "con:" followed by answer choice
     const conMatch = searchLower.match(/^con:\s*([abcd])$/i);
     if (conMatch) {
       const answerChoice = conMatch[1].toLowerCase();
       return catalogArray.filter(question => {
         const questionText = (question.questionText || '').toLowerCase();
         const explanation = (question.explanation || '').toLowerCase();
-        
-        // Check if question text contains "con:answer" anywhere
-        if (questionText.includes(`con:${answerChoice}`) || questionText.includes(`con: ${answerChoice}`)) {
-          return true;
-        }
-        
-        // Check if explanation contains "con:answer" anywhere
-        if (explanation.includes(`con:${answerChoice}`) || explanation.includes(`con: ${answerChoice}`)) {
-          return true;
-        }
-        
-        return false;
+        return (questionText.includes(`con:${answerChoice}`) || questionText.includes(`con: ${answerChoice}`)) ||
+               (explanation.includes(`con:${answerChoice}`) || explanation.includes(`con: ${answerChoice}`));
       });
     }
     
-    return catalogArray.filter(question => {
-      // Search across all fields
-      const fields = [
-        question.section,
-        question.domain,
-        question.questionType,
-        question.passageText,
-        question.questionText,
-        question.explanation,
-        question.difficulty,
-        question.correctAnswer,
-        ...Object.values(question.answerChoices || {}),
-        question.id
-      ].filter(Boolean);
-      
-      // Check for exact matches first
-      const hasExactMatch = fields.some(field => 
-        field.toString().toLowerCase().includes(searchLower)
-      );
-      
-      if (hasExactMatch) return true;
-      
-      // Check for fuzzy matches
-      return fields.some(field => fuzzySearch(searchTerm, field, 0.4));
+    // Single-letter correct answer search
+    if (['A', 'B', 'C', 'D'].includes(searchLower.toUpperCase()) && searchLower.length === 1) {
+      return catalogArray.filter(q => q.correctAnswer === searchLower.toUpperCase());
+    }
+    
+    // Advanced fuzzy search with synonym mapping and comprehensive data coverage
+    const synonymMap = {
+      'english': 'Reading and Writing',
+      'reading writing': 'Reading and Writing',
+      'reading and writing': 'Reading and Writing',
+      'reading & writing': 'Reading and Writing',
+      'rw': 'Reading and Writing',
+      'r/w': 'Reading and Writing',
+      'maths': 'Math',
+      'mathematics': 'Math',
+      'mth': 'Math',
+      'mths': 'Math'
+    };
+    
+    const normalized = searchTerm.trim().toLowerCase();
+    const mappedQuery = synonymMap[normalized] || searchTerm;
+    
+    const fuse = new Fuse(catalogArray, {
+      includeScore: true,
+      shouldSort: true,
+      threshold: 0.4, // More lenient threshold for better fuzzy matching
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+      keys: [
+        { name: 'section', weight: 0.1 },
+        { name: 'domain', weight: 0.1 },
+        { name: 'questionType', weight: 0.1 },
+        { name: 'difficulty', weight: 0.05 },
+        { name: 'correctAnswer', weight: 0.1 },
+        { name: 'questionText', weight: 0.3 },
+        { name: 'passageText', weight: 0.25 },
+        { name: 'explanation', weight: 0.15 },
+        { name: 'answerChoices.A', weight: 0.1 },
+        { name: 'answerChoices.B', weight: 0.1 },
+        { name: 'answerChoices.C', weight: 0.1 },
+        { name: 'answerChoices.D', weight: 0.1 }
+      ]
     });
+    
+    const fuseResults = fuse.search(mappedQuery);
+    // More lenient filtering - include results with higher scores for better recall
+    return fuseResults.filter(r => r.score !== undefined && r.score <= 0.6).map(r => r.item);
   }, [catalog, searchTerm]);
 
   const handleLogin = (e) => {
@@ -230,11 +239,17 @@ const AdminPage = () => {
     });
     incoming.forEach(q => {
       const sig = signatureFor(q);
+      // Skip if we've just added this signature recently to prevent double insertions
+      if (recentlyAddedRef.current.has(sig)) return;
       if (!seenSignatures.has(sig) && !catalogArray.some(exQ => signatureFor(exQ) === sig)) {
         seenSignatures.add(sig);
         dedupedIncoming.push(q);
       }
     });
+
+    if (dedupedIncoming.length === 0) {
+      return; // Nothing new to add
+    }
 
     const nowIso = new Date().toISOString();
     const questionsWithIds = dedupedIncoming.map((q, index) => ({
@@ -248,7 +263,19 @@ const AdminPage = () => {
 
     // Persist to global catalog (realtime will update local state)
     const ok = await addQuestions(questionsWithIds);
-    if (!ok) alert('Failed to add to catalog. Ensure DB table and permissions exist.');
+    if (!ok) {
+      alert('Failed to add to catalog. Ensure DB table and permissions exist.');
+      return;
+    }
+
+    // Mark signatures as recently added, and clear after a short delay
+    questionsWithIds.forEach(q => {
+      const sig = signatureFor(q);
+      recentlyAddedRef.current.add(sig);
+      setTimeout(() => {
+        recentlyAddedRef.current.delete(sig);
+      }, 30000); // 30s window to suppress accidental duplicate submissions
+    });
   };
 
   const handleUpdateCatalogQuestion = async (questionId, updatedQuestion) => {

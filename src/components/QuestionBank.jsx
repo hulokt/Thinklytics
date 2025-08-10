@@ -44,13 +44,32 @@ const QuestionBank = () => {
         });
       }
       
+      // Advanced fuzzy search with comprehensive data coverage
       const fuse = new Fuse(arr, {
         includeScore: true,
-        threshold: 0.3,
+        threshold: 0.3, // Stricter threshold for better relevance
         ignoreLocation: true,
-        keys: ['section','domain','questionType','difficulty','questionText','passageText','answerChoices.A','answerChoices.B','answerChoices.C','answerChoices.D']
+        minMatchCharLength: 2,
+        shouldSort: true,
+        keys: [
+          { name: 'section', weight: 0.05 },
+          { name: 'domain', weight: 0.05 },
+          { name: 'questionType', weight: 0.05 },
+          { name: 'difficulty', weight: 0.02 },
+          { name: 'questionText', weight: 0.4 },
+          { name: 'passageText', weight: 0.35 },
+          { name: 'explanation', weight: 0.2 },
+          { name: 'answerChoices.A', weight: 0.08 },
+          { name: 'answerChoices.B', weight: 0.08 },
+          { name: 'answerChoices.C', weight: 0.08 },
+          { name: 'answerChoices.D', weight: 0.08 },
+          { name: 'correctAnswer', weight: 0.02 }
+        ]
       });
-      return fuse.search(search).filter(r => (r.score ?? 0) <= 0.5).map(r => r.item);
+      
+      const results = fuse.search(search);
+      // Stricter filtering - only include highly relevant results
+      return results.filter(r => (r.score ?? 0) <= 0.4).map(r => r.item);
     }
     return arr;
   }, [questions, section, domain, questionType, difficulty, search]);

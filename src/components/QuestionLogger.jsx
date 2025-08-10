@@ -1349,15 +1349,26 @@ const QuestionLogger = ({
       // Validate the current question without adding it
       const errors = {};
       
-      // Always validate section, domain, and questionType for all questions
+      // Always validate section and domain for all questions
       if (!formData.section) {
         errors.section = true;
       }
       if (!formData.domain) {
         errors.domain = true;
       }
-      if (!formData.questionType) {
+      
+      // Validate questionType only for Reading & Writing questions
+      console.log('Validation check:', {
+        section: formData.section,
+        expectedSection: SAT_SECTIONS.READING_WRITING,
+        questionType: formData.questionType,
+        isReadingWriting: formData.section === SAT_SECTIONS.READING_WRITING,
+        hasQuestionType: formData.questionType && String(formData.questionType).trim() !== ''
+      });
+      
+      if (formData.section === SAT_SECTIONS.READING_WRITING && (!formData.questionType || String(formData.questionType).trim() === '')) {
         errors.questionType = true;
+        console.log('Setting questionType error - missing question type for Reading & Writing');
       }
       
       // If not a hidden question, validate additional required fields
@@ -1395,6 +1406,7 @@ const QuestionLogger = ({
 
       // If there are validation errors, set them and return
       if (Object.keys(errors).length > 0) {
+        console.log('Validation errors found:', errors);
         setValidationErrors(errors);
         console.warn('Validation failed: Please fill in all required fields');
         return;
@@ -1422,11 +1434,30 @@ const QuestionLogger = ({
         setFormData(nextQuestion);
         setImportProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
       } else {
-        // Prevent duplicate submissions while finalization is in progress
-        setIsFinalizingImport(true);
         // Import complete - this is the last question
         console.log('Import complete - processing last question');
         console.log('Current formData:', formData);
+        
+        // 1) Validate: Check if current form data (last question) has required question type
+        if (formData.section === SAT_SECTIONS.READING_WRITING && (!formData.questionType || String(formData.questionType).trim() === '')) {
+          alert('Please set a Question Type for this Reading & Writing question before finishing.');
+          return; // Stop here, don't proceed with import
+        }
+        
+        // 2) Validate: Check all previously collected questions
+        const currentImportedQuestions = importedQuestions || [];
+        const missingEnglishTypeIndex = currentImportedQuestions.findIndex(q => 
+          q && q.section === SAT_SECTIONS.READING_WRITING && (!q.questionType || String(q.questionType).trim() === '')
+        );
+        if (missingEnglishTypeIndex !== -1) {
+          alert('Please set a Question Type for all Reading & Writing (English) questions before finishing.\nTaking you to the first one that needs it.');
+          setCurrentQuestionIndex(missingEnglishTypeIndex);
+          setFormData(currentImportedQuestions[missingEnglishTypeIndex]);
+          return; // Stop here, don't proceed with import
+        }
+        
+        // Prevent duplicate submissions while finalization is in progress
+        setIsFinalizingImport(true);
         
         // Get the current imported questions and add the final one
         setImportedQuestions(prev => {
@@ -1443,6 +1474,21 @@ const QuestionLogger = ({
           setCurrentQuestionIndex(0);
           setImportProgress({ total: 0, completed: 0 });
           setEditedQuestions({}); // Clear edited questions state
+          
+          // Clear the form so last question info isn't left behind
+          setFormData({
+            section: SAT_SECTIONS.READING_WRITING,
+            domain: '',
+            questionType: '',
+            passageText: '',
+            passageImage: null,
+            questionText: '',
+            answerChoices: { A: '', B: '', C: '', D: '' },
+            correctAnswer: 'A',
+            explanation: '',
+            explanationImage: null,
+            difficulty: DIFFICULTY_LEVELS.MEDIUM
+          });
           
           // Show completion message
           setPointsAnimation({
@@ -1489,6 +1535,32 @@ const QuestionLogger = ({
 
   // Skip current question in import mode
   const handleSkipQuestion = () => {
+    // Validate the current question before skipping
+    const errors = {};
+    
+    // Always validate section and domain for all questions
+    if (!formData.section) {
+      errors.section = true;
+    }
+    if (!formData.domain) {
+      errors.domain = true;
+    }
+    
+    // Validate questionType only for Reading & Writing questions
+    if (formData.section === SAT_SECTIONS.READING_WRITING && (!formData.questionType || String(formData.questionType).trim() === '')) {
+      errors.questionType = true;
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      console.warn('Validation failed: Please fill in all required fields');
+      return;
+    }
+    
+    // Clear validation errors if validation passes
+    setValidationErrors({});
+    
     // Save current question's edits before skipping
     setEditedQuestions(prev => ({
       ...prev,
@@ -1506,16 +1578,34 @@ const QuestionLogger = ({
       const nextQuestion = editedQuestions[nextIndex] || csvQuestions[nextIndex];
       setFormData(nextQuestion);
       setImportProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
-    } else {
-      // Import complete - this is the last question
-      console.log('Skip - Import complete - processing last question');
-      console.log('Current formData:', formData);
-      
-      // Get the current imported questions and add the final one
-      setImportedQuestions(prev => {
-        const finalQuestions = [...prev, { ...formData }];
-        console.log('Skip - Final questions to add:', finalQuestions.length);
-        console.log('Skip - Questions:', finalQuestions);
+          } else {
+        // Import complete - this is the last question
+        console.log('Skip - Import complete - processing last question');
+        console.log('Current formData:', formData);
+        
+        // 1) Validate: Check if current form data (last question) has required question type
+        if (formData.section === SAT_SECTIONS.READING_WRITING && (!formData.questionType || String(formData.questionType).trim() === '')) {
+          alert('Please set a Question Type for this Reading & Writing question before finishing.');
+          return; // Stop here, don't proceed with import
+        }
+        
+        // 2) Validate: Check all previously collected questions
+        const currentImportedQuestions = importedQuestions || [];
+        const missingEnglishTypeIndex = currentImportedQuestions.findIndex(q => 
+          q && q.section === SAT_SECTIONS.READING_WRITING && (!q.questionType || String(q.questionType).trim() === '')
+        );
+        if (missingEnglishTypeIndex !== -1) {
+          alert('Please set a Question Type for all Reading & Writing (English) questions before finishing.\nTaking you to the first one that needs it.');
+          setCurrentQuestionIndex(missingEnglishTypeIndex);
+          setFormData(currentImportedQuestions[missingEnglishTypeIndex]);
+          return; // Stop here, don't proceed with import
+        }
+        
+        // Get the current imported questions and add the final one
+        setImportedQuestions(prev => {
+          const finalQuestions = [...prev, { ...formData }];
+          console.log('Skip - Final questions to add:', finalQuestions.length);
+          console.log('Skip - Questions:', finalQuestions);
         
         // Add all questions to the database
         onAddQuestion(finalQuestions);
@@ -1526,6 +1616,21 @@ const QuestionLogger = ({
         setCurrentQuestionIndex(0);
         setImportProgress({ total: 0, completed: 0 });
         setEditedQuestions({}); // Clear edited questions state
+        
+        // Clear the form so last question info isn't left behind
+        setFormData({
+          section: SAT_SECTIONS.READING_WRITING,
+          domain: '',
+          questionType: '',
+          passageText: '',
+          passageImage: null,
+          questionText: '',
+          answerChoices: { A: '', B: '', C: '', D: '' },
+          correctAnswer: 'A',
+          explanation: '',
+          explanationImage: null,
+          difficulty: DIFFICULTY_LEVELS.MEDIUM
+        });
         
         // Show completion message
         setPointsAnimation({

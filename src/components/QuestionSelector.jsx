@@ -188,29 +188,29 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
         const mappedQuery = synonymMap[normalized] || searchQuery;
         const fuse = new Fuse(filtered, {
           includeScore: true,
-          shouldSort: false,
-          threshold: 0.3,
+          shouldSort: true,
+          threshold: 0.4, // More lenient threshold for better fuzzy matching
           ignoreLocation: true,
           minMatchCharLength: 2,
           keys: [
-            { name: 'section', weight: 0.3 },
-            { name: 'domain', weight: 0.3 },
-            { name: 'questionType', weight: 0.3 },
-            { name: 'difficulty', weight: 0.3 },
-            { name: 'correctAnswer', weight: 0.4 },
-            { name: 'questionText', weight: 0.2 },
-            { name: 'passageText', weight: 0.15 },
-            { name: 'answerChoices.A', weight: 0.05 },
-            { name: 'answerChoices.B', weight: 0.05 },
-            { name: 'answerChoices.C', weight: 0.05 },
-            { name: 'answerChoices.D', weight: 0.05 },
-            { name: 'explanation', weight: 0.05 }
+            { name: 'section', weight: 0.1 },
+            { name: 'domain', weight: 0.1 },
+            { name: 'questionType', weight: 0.1 },
+            { name: 'difficulty', weight: 0.05 },
+            { name: 'correctAnswer', weight: 0.1 },
+            { name: 'questionText', weight: 0.3 },
+            { name: 'passageText', weight: 0.25 },
+            { name: 'explanation', weight: 0.15 },
+            { name: 'answerChoices.A', weight: 0.1 },
+            { name: 'answerChoices.B', weight: 0.1 },
+            { name: 'answerChoices.C', weight: 0.1 },
+            { name: 'answerChoices.D', weight: 0.1 }
           ]
         });
 
-        const fuseResults = fuse.search(mappedQuery).filter(r => r.score !== undefined && r.score <= 0.5);
-        fuseResults.sort((a, b) => (a.score || 0) - (b.score || 0));
-        filtered = fuseResults.map(r => r.item);
+        const fuseResults = fuse.search(mappedQuery);
+        // More lenient filtering - include results with higher scores for better recall
+        filtered = fuseResults.filter(r => r.score !== undefined && r.score <= 0.6).map(r => r.item);
       }
     }
 

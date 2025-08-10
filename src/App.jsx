@@ -19,7 +19,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { UndoProvider, useUndo } from './contexts/UndoContext';
 import UndoToast from './components/ui/UndoToast';
-import { useQuestions, useCalendarEvents } from './hooks/useUserData';
+import { useCalendarEvents } from './hooks/useUserData';
+import { useUserQuestions } from './hooks/useUserQuestions';
 import { useGlobalCatalogQuestions, useIsAdmin } from './hooks/useCatalogGlobal';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 import { supabase } from './lib/supabaseClient';
@@ -258,12 +259,15 @@ function AppContent() {
   const [resumingQuizData, setResumingQuizData] = useState(null);
   const { isAdmin: hasAdminRole, loading: adminCheckLoading } = useIsAdmin();
   
-  // Use Supabase data hooks
+  // Use optimized user questions hook (uses existing sat_master_log_questions)
   const { 
     data: questionsData, 
-    upsertData: upsertQuestions, 
+    addQuestion,
+    updateQuestion,
+    deleteQuestion,
+    bulkDeleteQuestions,
     loading: questionsLoading 
-  } = useQuestions();
+  } = useUserQuestions();
   
   // Use new QuizManager
   const { 
@@ -278,14 +282,18 @@ function AppContent() {
   // Global catalog questions available to all users
   const { data: catalog, loading: catalogLoading } = useGlobalCatalogQuestions();
 
-  // Ensure questions is always an array
+  // Use the optimized questions data directly
   const questions = Array.isArray(questionsData) ? questionsData : [];
+  
+
+  
+
 
   // No seeding here; Admin will populate catalog globally
 
   // Listen for wrong catalog items to add to user's wrong log
   useEffect(() => {
-    const handler = (e) => {
+    const handler = async (e) => {
       const incoming = Array.isArray(e.detail) ? e.detail : [];
       if (incoming.length === 0) return;
       const nowIso = new Date().toISOString();
@@ -314,16 +322,17 @@ function AppContent() {
         ((a.answerChoices?.D)||'')===((b.answerChoices?.D)||'')
       );
 
-      const merged = [...questions];
-      toAdd.forEach(addq => {
-        const exists = merged.some(q => isSame(q, addq));
-        if (!exists) merged.push(addq);
-      });
-      upsertQuestions(merged).catch(()=>{});
+      // Add each question individually using the new addQuestion function
+      for (const addq of toAdd) {
+        const exists = questions.some(q => isSame(q, addq));
+        if (!exists) {
+          await addQuestion(addq);
+        }
+      }
     };
     window.addEventListener('satlog:addWrongFromCatalog', handler);
     return () => window.removeEventListener('satlog:addWrongFromCatalog', handler);
-  }, [questions, upsertQuestions]);
+  }, [questions, addQuestion]);
 
   // Handle authentication state changes
   useEffect(() => {
@@ -450,213 +459,147 @@ function AppContent() {
     }
   };
 
-  const handleAddQuestion = (newQuestion) => {
-    if (!questions) return;
-    
-    // Always treat incoming data as an array
+  const handleAddQuestion = async (newQuestion) => {
+    // Handle both single question and array of questions
     const incoming = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
+    
 
-    // Helper to decide if two questions are the same (ignores id & timestamps)
-    const isSameQuestion = (a, b) => {
-      // For hidden questions, consider them duplicates if they have the same section/domain/type
-      // This prevents duplicates within the same batch while still allowing different hidden questions
-      const aIsHidden = isHiddenQuestion(a);
-      const bIsHidden = isHiddenQuestion(b);
-      
-      // Allow multiple hidden questions even if they share identical metadata.
-      // Hidden questions often act as draft placeholders, so we should never
-      // prevent them from being added.
-      if (aIsHidden && bIsHidden) {
-        return false; // never treat two hidden questions as duplicates
+    
+    let successCount = 0;
+    
+    for (const question of incoming) {
+      try {
+        // Auto-detect if question should be hidden
+        const isHiddenQuestion = (q) => {
+          if (!q.section || !q.domain || !q.questionType) return false;
+          const passageTextEmpty = !q.passageText || q.passageText.trim() === '';
+          const passageImageEmpty = !q.passageImage;
+          const questionTextEmpty = !q.questionText || q.questionText.trim() === '';
+          const explanationEmpty = !q.explanation || q.explanation.trim() === '';
+          const answerChoicesEmpty = !q.answerChoices || 
+            Object.values(q.answerChoices).every(choice => !choice || choice.trim() === '');
+          return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+                 explanationEmpty && answerChoicesEmpty;
+        };
+
+        const questionToAdd = {
+          ...question,
+          hidden: isHiddenQuestion(question)
+        };
+
+        const success = await addQuestion(questionToAdd);
+        if (success) {
+          successCount++;
+        } else {
+          console.error(`Failed to add question ${successCount + 1}`);
+        }
+      } catch (error) {
+        console.error(`Error adding question:`, error);
       }
-      
-      // For regular questions, use comprehensive duplicate detection logic
-      // Compare all significant fields to ensure true duplicates are detected
-      const basicFieldsMatch = (
-        (a.section || "") === (b.section || "") &&
-        (a.domain || "") === (b.domain || "") &&
-        (a.questionType || "") === (b.questionType || "") &&
-        (a.passageText || "") === (b.passageText || "") &&
-        (a.questionText || "") === (b.questionText || "") &&
-        (a.correctAnswer || "") === (b.correctAnswer || "") &&
-        (a.explanation || "") === (b.explanation || "") &&
-        (a.difficulty || "") === (b.difficulty || "") &&
-        (a.passageImage || "") === (b.passageImage || "")
-      );
-      
-      // Compare answer choices
-      const aChoices = a.answerChoices || {};
-      const bChoices = b.answerChoices || {};
-      const answerChoicesMatch = (
-        (aChoices.A || "") === (bChoices.A || "") &&
-        (aChoices.B || "") === (bChoices.B || "") &&
-        (aChoices.C || "") === (bChoices.C || "") &&
-        (aChoices.D || "") === (bChoices.D || "")
-      );
-      
-      return basicFieldsMatch && answerChoicesMatch;
-    };
-
-    // Helper to detect if a question should be hidden
-    const isHiddenQuestion = (question) => {
-      // Must have section, domain, and questionType
-      if (!question.section || !question.domain || !question.questionType) {
-        return false;
-      }
-      
-      // Check if all other fields are empty
-      const passageTextEmpty = !question.passageText || question.passageText.trim() === '';
-      const passageImageEmpty = !question.passageImage;
-      const questionTextEmpty = !question.questionText || question.questionText.trim() === '';
-      const explanationEmpty = !question.explanation || question.explanation.trim() === '';
-      
-      // Check if all answer choices are empty
-      const answerChoicesEmpty = !question.answerChoices || 
-        Object.values(question.answerChoices).every(choice => !choice || choice.trim() === '');
-      
-      return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
-             explanationEmpty && answerChoicesEmpty;
-    };
-
-    // Build a list of unique incoming questions (dedupe within the batch)
-    const dedupedIncoming = [];
-    incoming.forEach((inc) => {
-      const alreadySeen = dedupedIncoming.some((dq) => isSameQuestion(dq, inc));
-      const alreadyInBank = questions.some((q) => isSameQuestion(q, inc));
-      if (!alreadySeen && !alreadyInBank) {
-        dedupedIncoming.push(inc);
-      }
-    });
-
-    // If everything is duplicated, simply exit
-    if (dedupedIncoming.length === 0) {
-      return;
     }
+    
+    if (successCount === incoming.length) {
 
-    // Assign fresh ids and mark hidden questions
-    const nowIso = new Date().toISOString();
-    const questionsWithIds = dedupedIncoming.map((q, index) => ({
-      ...q,
-      id: `${Date.now()}-${Math.floor(Math.random() * 1000000)}-${index}`, // More robust ID generation
-      hidden: isHiddenQuestion(q), // Auto-detect hidden status
-      createdAt: nowIso,
-      lastUpdated: nowIso,
-    }));
-
-    // Merge and save
-    const updatedQuestions = [...questions, ...questionsWithIds];
-    upsertQuestions(updatedQuestions).catch(error => {
-      
-    });
+    } else if (successCount > 0) {
+      alert(`${successCount} of ${incoming.length} questions added successfully`);
+    } else {
+      alert('Failed to add any questions. Please check your connection and try again.');
+    }
   };
 
-  const handleUpdateQuestion = (questionId, updatedQuestion) => {
-    if (!questions) return;
-    
-    // Helper to detect if a question should be hidden
-    const isHiddenQuestion = (question) => {
-      // Must have section, domain, and questionType
-      if (!question.section || !question.domain || !question.questionType) {
-        return false;
+  const handleUpdateQuestion = async (questionId, updatedQuestion) => {
+    try {
+      // Auto-detect if question should be hidden
+      const isHiddenQuestion = (q) => {
+        if (!q.section || !q.domain || !q.questionType) return false;
+        const passageTextEmpty = !q.passageText || q.passageText.trim() === '';
+        const passageImageEmpty = !q.passageImage;
+        const questionTextEmpty = !q.questionText || q.questionText.trim() === '';
+        const explanationEmpty = !q.explanation || q.explanation.trim() === '';
+        const answerChoicesEmpty = !q.answerChoices || 
+          Object.values(q.answerChoices).every(choice => !choice || choice.trim() === '');
+        return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+               explanationEmpty && answerChoicesEmpty;
+      };
+
+      const updates = {
+        ...updatedQuestion,
+        hidden: isHiddenQuestion({ ...questions.find(q => q.id === questionId), ...updatedQuestion })
+      };
+
+      const success = await updateQuestion(questionId, updates);
+      if (!success) {
+        alert('Failed to update question. Please check your connection and try again.');
       }
-      
-      // Check if all other fields are empty
-      const passageTextEmpty = !question.passageText || question.passageText.trim() === '';
-      const passageImageEmpty = !question.passageImage;
-      const questionTextEmpty = !question.questionText || question.questionText.trim() === '';
-      const explanationEmpty = !question.explanation || question.explanation.trim() === '';
-      
-      // Check if all answer choices are empty
-      const answerChoicesEmpty = !question.answerChoices || 
-        Object.values(question.answerChoices).every(choice => !choice || choice.trim() === '');
-      
-      return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
-             explanationEmpty && answerChoicesEmpty;
-    };
-    
-    const updatedQuestions = questions.map(q => {
-      if (q.id === questionId) {
-        const mergedQuestion = { ...q, ...updatedQuestion, lastUpdated: new Date().toISOString() };
-        return {
-          ...mergedQuestion,
-          hidden: isHiddenQuestion(mergedQuestion) // Re-evaluate hidden status
-        };
-      }
-      return q;
-    });
-    upsertQuestions(updatedQuestions).catch(error => {
-      
-    });
+    } catch (error) {
+      console.error('Failed to update question:', error);
+      alert('Failed to update question. Please check your connection and try again.');
+    }
   };
 
   const { addUndoAction } = useUndo();
 
-  const handleDeleteQuestion = (questionId) => {
-    if (!questions) return;
-    
+  const handleDeleteQuestion = async (questionId) => {
     const questionToDelete = questions.find(q => q.id === questionId);
     if (!questionToDelete) return;
-
-    // Store original questions before deletion
-    const originalQuestions = [...questions];
     
-    // Immediately remove from UI for instant feedback
-    const updatedQuestions = questions.filter(q => q.id !== questionId);
-    
-    // Update UI immediately
-    upsertQuestions(updatedQuestions).catch(error => {
-      
-    });
-    
-    // Add to undo stack
-    addUndoAction({
-      id: `question-${questionId}-${Date.now()}`,
-      type: 'question',
-      data: { question: questionToDelete, originalQuestions },
-      onUndo: (data) => {
-        // Restore using the original questions state captured at deletion time
-        upsertQuestions(data.originalQuestions).catch(error => {
-
-        });
-      },
-      onConfirm: () => {
-        // The deletion is already persisted, just confirm it
-  
+    try {
+      const success = await deleteQuestion(questionId);
+      if (!success) {
+        alert('Failed to delete question. Please check your connection and try again.');
+        return;
       }
-    });
+      
+      // Add to undo stack
+      addUndoAction({
+        id: `question-${questionId}-${Date.now()}`,
+        type: 'question',
+        data: { question: questionToDelete },
+        onUndo: async (data) => {
+          // Restore the deleted question
+          await addQuestion(data.question);
+        },
+        onConfirm: () => {
+          // The deletion is already persisted, nothing to do
+        }
+      });
+    } catch (error) {
+      console.error('Failed to delete question:', error);
+      alert('Failed to delete question. Please check your connection and try again.');
+    }
   };
 
-  const handleBulkDeleteQuestions = (questionIds) => {
-    if (!questions || !Array.isArray(questionIds) || questionIds.length === 0) return;
+  const handleBulkDeleteQuestions = async (questionIds) => {
+    if (!Array.isArray(questionIds) || questionIds.length === 0) return;
     
     const questionsToDelete = questions.filter(q => questionIds.includes(q.id));
     
-    // Store original questions before deletion
-    const originalQuestions = [...questions];
-    
-    const updatedQuestions = questions.filter(q => !questionIds.includes(q.id));
-    
-    // Update UI immediately
-    upsertQuestions(updatedQuestions).catch(error => {
-      
-    });
-    
-    // Add to undo stack
-    addUndoAction({
-      id: `questions-${questionIds.join('-')}-${Date.now()}`,
-      type: 'questions',
-      data: { questions: questionsToDelete, originalQuestions },
-      onUndo: (data) => {
-        // Restore using the original questions state captured at deletion time
-        upsertQuestions(data.originalQuestions).catch(error => {
-
-        });
-      },
-      onConfirm: () => {
-        // The deletion is already done, just confirm it
-  
+    try {
+      const success = await bulkDeleteQuestions(questionIds);
+      if (!success) {
+        alert('Failed to delete questions. Please check your connection and try again.');
+        return;
       }
-    });
+      
+      // Add to undo stack
+      addUndoAction({
+        id: `questions-${questionIds.join('-')}-${Date.now()}`,
+        type: 'questions',
+        data: { questions: questionsToDelete },
+        onUndo: async (data) => {
+          // Restore the deleted questions
+          for (const question of data.questions) {
+            await addQuestion(question);
+          }
+        },
+        onConfirm: () => {
+          // The deletion is already persisted, nothing to do
+        }
+      });
+    } catch (error) {
+      console.error('Failed to bulk delete questions:', error);
+      alert('Failed to delete questions. Please check your connection and try again.');
+    }
   };
 
   const handleStartQuiz = (selectedQuestions) => {

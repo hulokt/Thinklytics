@@ -10,6 +10,7 @@ const LoginPage = ({ onLogin, onSwitchToSignup }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const validate = () => {
     const errs = {};
@@ -23,16 +24,28 @@ const LoginPage = ({ onLogin, onSwitchToSignup }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    
     setLoading(true);
-    await onLogin(formData);
-    setLoading(false);
+    setLoginError(''); // Clear any previous errors
+    
+    try {
+      await onLogin(formData);
+      // If we get here, login was successful
+    } catch (error) {
+      setLoginError(error.message || 'Login failed. Please check your credentials and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    // Clear errors when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    if (loginError) {
+      setLoginError('');
     }
   };
 
@@ -322,6 +335,27 @@ const LoginPage = ({ onLogin, onSwitchToSignup }) => {
                 )}
               </div>
             </div>
+            
+            {/* Login Error Display */}
+            {loginError && (
+              <div className={`flex items-center gap-3 p-4 rounded-lg border ${
+                isDarkMode 
+                  ? 'bg-red-900/20 border-red-700/50 text-red-300' 
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+                  isDarkMode ? 'bg-red-500/20' : 'bg-red-100'
+                }`}>
+                  <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{loginError}</p>
+                </div>
+              </div>
+            )}
+            
             <button
               type="submit"
               className={`w-full py-3 rounded-full font-bold uppercase tracking-wide shadow-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${

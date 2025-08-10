@@ -67,6 +67,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Create optimized function to append questions without full replace
+CREATE OR REPLACE FUNCTION append_user_questions(
+    p_user_id UUID,
+    p_questions JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    existing_data JSONB;
+    new_data JSONB;
+    existing_questions JSONB;
+    result user_data;
+BEGIN
+    -- Get existing questions
+    SELECT data INTO existing_data
+    FROM user_data
+    WHERE user_id = p_user_id AND data_type = 'sat_master_log_questions';
+    
+    -- If no existing data, initialize as empty array
+    IF existing_data IS NULL THEN
+        existing_questions := '[]'::JSONB;
+    ELSE
+        existing_questions := existing_data;
+    END IF;
+    
+    -- Append new questions to existing ones
+    new_data := existing_questions || p_questions;
+    
+    -- Upsert the combined data
+    INSERT INTO user_data (user_id, data_type, data)
+    VALUES (p_user_id, 'sat_master_log_questions', new_data)
+    ON CONFLICT (user_id, data_type)
+    DO UPDATE SET 
+        data = new_data,
+        updated_at = NOW()
+    RETURNING * INTO result;
+    
+    RETURN result.data;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create function to get user data by type
 CREATE OR REPLACE FUNCTION get_user_data(
     p_user_id UUID,
@@ -117,9 +157,52 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT ALL ON user_data TO authenticated;
 GRANT EXECUTE ON FUNCTION upsert_user_data(UUID, VARCHAR(50), JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION append_user_questions(UUID, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_data(UUID, VARCHAR(50)) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_user_data(UUID, VARCHAR(50)) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_user_data(UUID) TO authenticated; 
+
+-- User-specific questions table (replaces JSONB storage for performance)
+CREATE TABLE IF NOT EXISTS user_questions (
+    id TEXT PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    origin TEXT DEFAULT 'user',
+    section TEXT,
+    domain TEXT,
+    questionType TEXT,
+    passageText TEXT,
+    passageImage TEXT,
+    questionText TEXT,
+    answerChoices JSONB,
+    correctAnswer TEXT,
+    explanation TEXT,
+    explanationImage TEXT,
+    difficulty TEXT,
+    hidden BOOLEAN DEFAULT FALSE,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    lastUpdated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for fast user question queries
+CREATE INDEX IF NOT EXISTS idx_user_questions_user_id ON user_questions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_questions_created ON user_questions(user_id, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_user_questions_section ON user_questions(user_id, section);
+
+-- RLS for user questions
+ALTER TABLE user_questions ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own questions
+CREATE POLICY "Users can view own questions" ON user_questions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own questions" ON user_questions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own questions" ON user_questions
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own questions" ON user_questions
+    FOR DELETE USING (auth.uid() = user_id);
 
 -- Global catalog questions (visible to all users)
 CREATE TABLE IF NOT EXISTS catalog_questions (
@@ -169,6 +252,63 @@ DROP TRIGGER IF EXISTS trg_update_catalog_lastUpdated ON catalog_questions;
 CREATE TRIGGER trg_update_catalog_lastUpdated
 BEFORE UPDATE ON catalog_questions
 FOR EACH ROW EXECUTE FUNCTION update_catalog_lastUpdated();
+
+-- Migration function to move JSONB questions to individual rows
+CREATE OR REPLACE FUNCTION migrate_jsonb_questions_to_table()
+RETURNS INTEGER AS $$
+DECLARE
+    user_record RECORD;
+    question_record JSONB;
+    migrated_count INTEGER := 0;
+BEGIN
+    -- Loop through all users with questions data
+    FOR user_record IN 
+        SELECT user_id, data 
+        FROM user_data 
+        WHERE data_type = 'sat_master_log_questions' 
+        AND jsonb_array_length(data) > 0
+    LOOP
+        -- Loop through each question in the JSONB array
+        FOR question_record IN 
+            SELECT jsonb_array_elements(user_record.data) as question
+        LOOP
+            -- Insert question into user_questions table
+            INSERT INTO user_questions (
+                id, user_id, origin, section, domain, questionType,
+                passageText, passageImage, questionText, answerChoices,
+                correctAnswer, explanation, explanationImage, difficulty,
+                hidden, createdAt, lastUpdated
+            ) VALUES (
+                COALESCE(question_record.question->>'id', gen_random_uuid()::text),
+                user_record.user_id,
+                COALESCE(question_record.question->>'origin', 'user'),
+                question_record.question->>'section',
+                question_record.question->>'domain',
+                question_record.question->>'questionType',
+                question_record.question->>'passageText',
+                question_record.question->>'passageImage',
+                question_record.question->>'questionText',
+                question_record.question->'answerChoices',
+                question_record.question->>'correctAnswer',
+                question_record.question->>'explanation',
+                question_record.question->>'explanationImage',
+                question_record.question->>'difficulty',
+                COALESCE((question_record.question->>'hidden')::boolean, false),
+                COALESCE((question_record.question->>'createdAt')::timestamp, NOW()),
+                COALESCE((question_record.question->>'lastUpdated')::timestamp, NOW())
+            ) ON CONFLICT (id) DO NOTHING; -- Skip duplicates
+            
+            migrated_count := migrated_count + 1;
+        END LOOP;
+    END LOOP;
+    
+    RETURN migrated_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grants for user questions table
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_questions TO authenticated;
+GRANT EXECUTE ON FUNCTION migrate_jsonb_questions_to_table() TO authenticated;
 
 -- Grants for PostgREST roles
 GRANT SELECT ON catalog_questions TO authenticated;

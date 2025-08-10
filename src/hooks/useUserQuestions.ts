@@ -35,6 +35,7 @@ interface UseUserQuestionsResult {
 
 export function useUserQuestions(): UseUserQuestionsResult {
   const { user } = useAuth()
+  const userId = user?.id
   const [data, setData] = useState<UserQuestion[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +43,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
   const isLoadingRef = useRef(false)
   
   const loadData = useCallback(async () => {
-    if (!user || isLoadingRef.current) {
+    if (!userId || isLoadingRef.current) {
       return
     }
 
@@ -53,7 +54,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
     try {
       // Use the existing sat_master_log_questions data
       const { data: jsonbData, error: fetchError } = await supabase.rpc('get_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: 'sat_master_log_questions'
       })
 
@@ -71,10 +72,10 @@ export function useUserQuestions(): UseUserQuestionsResult {
       isLoadingRef.current = false
       setLoading(false)
     }
-  }, [user])
+  }, [userId])
 
   const addQuestion = useCallback(async (question: Omit<UserQuestion, 'id' | 'user_id' | 'createdAt' | 'lastUpdated'>): Promise<boolean> => {
-    if (!user) {
+    if (!userId) {
       return false
     }
 
@@ -84,7 +85,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
     const newQuestion: UserQuestion = {
       ...question,
       id: questionId,
-      user_id: user.id,
+      user_id: userId,
       createdAt: now,
       lastUpdated: now,
     }
@@ -98,7 +99,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       const updatedData = [newQuestion, ...currentData]
       
       const { error: upsertError } = await supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: 'sat_master_log_questions',
         p_data: updatedData
       })
@@ -115,10 +116,10 @@ export function useUserQuestions(): UseUserQuestionsResult {
       setError(`Failed to add question: ${err.message}`)
       return false
     }
-  }, [user, data])
+  }, [userId, data])
 
   const updateQuestion = useCallback(async (id: string, updates: Partial<UserQuestion>): Promise<boolean> => {
-    if (!user) return false
+    if (!userId) return false
 
     try {
       const updateData = {
@@ -138,7 +139,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       )
       
       const { error: upsertError } = await supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: 'sat_master_log_questions',
         p_data: updatedData
       })
@@ -155,10 +156,10 @@ export function useUserQuestions(): UseUserQuestionsResult {
       setError(`Failed to update question: ${err.message}`)
       return false
     }
-  }, [user, loadData, data])
+  }, [userId, loadData, data])
 
   const deleteQuestion = useCallback(async (id: string): Promise<boolean> => {
-    if (!user) return false
+    if (!userId) return false
 
     try {
       // Optimistic update
@@ -169,7 +170,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       const updatedData = currentData.filter(q => q.id !== id)
       
       const { error: upsertError } = await supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: 'sat_master_log_questions',
         p_data: updatedData
       })
@@ -186,10 +187,10 @@ export function useUserQuestions(): UseUserQuestionsResult {
       setError(`Failed to delete question: ${err.message}`)
       return false
     }
-  }, [user, loadData, data])
+  }, [userId, loadData, data])
 
   const bulkDeleteQuestions = useCallback(async (ids: string[]): Promise<boolean> => {
-    if (!user || ids.length === 0) return false
+    if (!userId || ids.length === 0) return false
 
     try {
       // Optimistic update
@@ -200,7 +201,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       const updatedData = currentData.filter(q => !ids.includes(q.id))
       
       const { error: upsertError } = await supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: 'sat_master_log_questions',
         p_data: updatedData
       })
@@ -217,7 +218,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       setError(`Failed to delete questions: ${err.message}`)
       return false
     }
-  }, [user, loadData, data])
+  }, [userId, loadData, data])
 
   const migrateFromJsonb = useCallback(async (): Promise<boolean> => {
     // Migration not needed since we only use the database
@@ -229,14 +230,18 @@ export function useUserQuestions(): UseUserQuestionsResult {
   }, [loadData])
 
   useEffect(() => {
-    if (user) {
-      loadData()
+    if (userId) {
+      // Avoid unnecessary loading flicker when tab regains focus by deferring to next tick
+      const timer = setTimeout(() => {
+        loadData()
+      }, 0)
+      return () => clearTimeout(timer)
     } else {
       setData(null)
       setLoading(false)
       setError(null)
     }
-  }, [user, loadData])
+  }, [userId, loadData])
 
   return {
     data,

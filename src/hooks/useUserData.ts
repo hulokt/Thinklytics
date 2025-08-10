@@ -29,6 +29,7 @@ export function useUserData<K extends DataType>(
   dataType: K
 ): UseUserDataResult<DataTypeMap[K]> {
   const { user } = useAuth()
+  const userId = user?.id
   const [data, setData] = useState<DataTypeMap[K] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +64,7 @@ export function useUserData<K extends DataType>(
   }
 
   const loadData = useCallback(async (): Promise<void> => {
-    if (!user || isLoadingRef.current || isCircuitBreakerOpen()) {
+    if (!userId || isLoadingRef.current || isCircuitBreakerOpen()) {
       // Ensure we don't leave UI in a perpetual loading state
       setLoading(false);
       return;
@@ -82,7 +83,7 @@ export function useUserData<K extends DataType>(
       setError(null)
       
       const { data: result, error: fetchError } = await supabase.rpc('get_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: dataType
       })
 
@@ -155,10 +156,10 @@ export function useUserData<K extends DataType>(
       isLoadingRef.current = false
       setLoading(false)
     }
-  }, [user, dataType])
+  }, [userId, dataType])
 
   const upsertData = useCallback(async (newData: DataTypeMap[K]): Promise<boolean> => {
-    if (!user || isCircuitBreakerOpen()) {
+    if (!userId || isCircuitBreakerOpen()) {
       return false
     }
 
@@ -181,7 +182,7 @@ export function useUserData<K extends DataType>(
       });
       
       const savePromise = supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: dataType,
         p_data: newData
       });
@@ -210,11 +211,11 @@ export function useUserData<K extends DataType>(
     } finally {
       isSavingRef.current = false
     }
-  }, [user, dataType])
+  }, [userId, dataType])
 
   // Optimized append function for questions to avoid timeout
   const appendQuestions = useCallback(async (newQuestions: any[]): Promise<boolean> => {
-    if (!user || isCircuitBreakerOpen()) {
+    if (!userId || isCircuitBreakerOpen()) {
       return false
     }
 
@@ -236,7 +237,7 @@ export function useUserData<K extends DataType>(
       // This avoids the database timeout by saving incrementally
       
       // First, try to save just the new questions to backup storage
-      const backupKey = `satlog:questions_incremental_${user.id}`;
+      const backupKey = `satlog:questions_incremental_${userId}`;
       try {
         const existingBackup = JSON.parse(localStorage.getItem(backupKey) || '[]');
         const updatedBackup = [...existingBackup, ...newQuestions];
@@ -251,7 +252,7 @@ export function useUserData<K extends DataType>(
       });
       
       const savePromise = supabase.rpc('upsert_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: dataType,
         p_data: updatedData
       });
@@ -285,10 +286,10 @@ export function useUserData<K extends DataType>(
     } finally {
       isSavingRef.current = false
     }
-  }, [user, data, dataType])
+  }, [userId, data, dataType])
 
   const deleteData = useCallback(async (): Promise<boolean> => {
-    if (!user || isSavingRef.current) {
+    if (!userId || isSavingRef.current) {
       return false
     }
 
@@ -298,7 +299,7 @@ export function useUserData<K extends DataType>(
       setError(null)
       
       const { data: result, error: deleteError } = await supabase.rpc('delete_user_data', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_data_type: dataType
       })
 
@@ -316,7 +317,7 @@ export function useUserData<K extends DataType>(
     } finally {
       isSavingRef.current = false
     }
-  }, [user, dataType])
+  }, [userId, dataType])
 
   const refreshData = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -324,7 +325,7 @@ export function useUserData<K extends DataType>(
   }, [loadData])
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       // Add a small delay to prevent immediate multiple calls
       const timer = setTimeout(() => {
         loadData()
@@ -336,7 +337,7 @@ export function useUserData<K extends DataType>(
       setLoading(false)
       setError(null)
     }
-  }, [user, dataType, loadData])
+  }, [userId, dataType, loadData])
 
   return {
     data,

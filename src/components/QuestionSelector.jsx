@@ -73,27 +73,8 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
     let filtered = [...questions];
 
-    // First, exclude hidden questions from quiz builder
+    // Only exclude hidden questions from quiz builder
     filtered = filtered.filter(q => !q.hidden);
-    
-    // Additional validation: exclude questions with missing required data
-    filtered = filtered.filter(q => {
-      // Base requirements for all questions
-      const hasBaseData = q && q.section && q.id;
-      
-      // For Math questions, domain and questionType are optional (only section and passage required)
-      // For Reading/Writing questions, domain and questionType are required
-      const isMathQuestion = q.section === 'Math';
-      const hasValidData = hasBaseData && (
-        isMathQuestion ? true : (q.domain && q.questionType)
-      );
-      
-      if (!hasValidData) {
-        // Question with missing data filtered out
-      }
-      
-      return hasValidData;
-    });
 
     // Apply source filter (visually distinguish catalog vs user wrong-log)
     if (filters.source !== 'All') {

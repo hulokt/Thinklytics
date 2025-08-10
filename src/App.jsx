@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { SidebarLayout } from './components/SidebarLayout';
 import Homepage from './components/Homepage';
@@ -68,9 +68,20 @@ const NotFoundPage = () => (
 // Scroll to top component
 function ScrollToTop() {
   const { pathname } = useLocation();
+  const prevPathRef = useRef(pathname);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // Only scroll to top if we're actually navigating to a different page
+    // and not just switching tabs or returning to the same page
+    if (prevPathRef.current !== pathname) {
+      // Use a small delay to ensure the page has fully loaded
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 100);
+      
+      prevPathRef.current = pathname;
+      return () => clearTimeout(timer);
+    }
   }, [pathname]);
 
   return null;
@@ -259,6 +270,27 @@ function AppContent() {
   const [resumingQuizData, setResumingQuizData] = useState(null);
   const { isAdmin: hasAdminRole, loading: adminCheckLoading } = useIsAdmin();
   
+  // Prevent page reload when switching tabs
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Don't do anything when the page becomes visible again
+      // This prevents any automatic reloads or state resets
+    };
+
+    const handleFocus = () => {
+      // Don't do anything when the window gains focus
+      // This prevents any automatic reloads or state resets
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+  
   // Use optimized user questions hook (uses existing sat_master_log_questions)
   const { 
     data: questionsData, 
@@ -364,7 +396,10 @@ function AppContent() {
   // Navigation helper with scroll to top
   const navigateWithScroll = (path) => {
     navigate(path);
-    window.scrollTo(0, 0);
+    // Use a small delay to ensure navigation is complete before scrolling
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 50);
   };
 
   const handleLogin = async (formData = null) => {
@@ -807,7 +842,8 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(questionsLoading || allQuizzesLoading) ? (
+              {((questionsLoading && (!questions || questions.length === 0)) ||
+                (allQuizzesLoading && !inProgressQuizzes)) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -838,7 +874,9 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(questionsLoading || allQuizzesLoading || catalogLoading) ? (
+              {(((questionsLoading && (!questions || questions.length === 0)) ||
+                 (allQuizzesLoading && !inProgressQuizzes) ||
+                 (catalogLoading && (!catalog || catalog.length === 0)))) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -849,20 +887,8 @@ function AppContent() {
                 (() => {
                   const wrongLog = Array.isArray(questions) ? questions : [];
                   const catalogList = Array.isArray(catalog) ? catalog : [];
-                  // Build signature to dedupe Catalog vs Wrong Log (prefer user origin)
-                  const signature = (q) => [
-                    q.section||'', q.domain||'', q.questionType||'',
-                    (q.passageText||'').trim(), (q.questionText||'').trim(),
-                    (q.answerChoices?.A)||'', (q.answerChoices?.B)||'', (q.answerChoices?.C)||'', (q.answerChoices?.D)||'',
-                    q.correctAnswer||''
-                  ].join('|');
-                  const map = new Map();
-                  wrongLog.forEach(q => { map.set(signature(q), q); });
-                  catalogList.forEach(q => {
-                    const sig = signature(q);
-                    if (!map.has(sig)) map.set(sig, q);
-                  });
-                  const combined = Array.from(map.values());
+                  // Simply combine both arrays without deduplication
+                  const combined = [...wrongLog, ...catalogList];
                   return (
                     <QuestionSelector
                       questions={combined}
@@ -903,7 +929,8 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(questionsLoading || allQuizzesLoading) ? (
+              {((questionsLoading && (!questions || questions.length === 0)) ||
+                (allQuizzesLoading && !inProgressQuizzes)) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>

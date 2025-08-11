@@ -293,12 +293,14 @@ function AppContent() {
   
   // Use optimized user questions hook (uses existing sat_master_log_questions)
   const { 
-    data: questionsData, 
-    addQuestion,
-    updateQuestion,
-    deleteQuestion,
+    data: questions, 
+    addQuestion, 
+    bulkAddQuestions,
+    updateQuestion, 
+    deleteQuestion, 
     bulkDeleteQuestions,
-    loading: questionsLoading 
+    deleteAllQuestions,
+    loading: questionsLoading
   } = useUserQuestions();
   
   // Use new QuizManager
@@ -318,7 +320,7 @@ function AppContent() {
   const { data: questionAnswers } = useQuestionAnswers();
 
   // Use the optimized questions data directly
-  const questions = Array.isArray(questionsData) ? questionsData : [];
+  const questionsArray = Array.isArray(questions) ? questions : [];
   
 
   
@@ -353,7 +355,7 @@ function AppContent() {
   // Log data loading status
   useEffect(() => {
     // Data loading tracking for debugging if needed
-  }, [user, questions, inProgressQuizzes, questionsLoading, allQuizzesLoading]);
+  }, [user, questionsArray, inProgressQuizzes, questionsLoading, allQuizzesLoading]);
 
   // Navigation helper with scroll to top
   const navigateWithScroll = (path) => {
@@ -460,11 +462,8 @@ function AppContent() {
     // Handle both single question and array of questions
     const incoming = Array.isArray(newQuestion) ? newQuestion : [newQuestion];
     
-
-    
-    let successCount = 0;
-    
-    for (const question of incoming) {
+    if (incoming.length === 1) {
+      // Single question - use the regular addQuestion function
       try {
         // Auto-detect if question should be hidden
         const isHiddenQuestion = (q) => {
@@ -480,27 +479,47 @@ function AppContent() {
         };
 
         const questionToAdd = {
-          ...question,
-          hidden: isHiddenQuestion(question)
+          ...incoming[0],
+          hidden: isHiddenQuestion(incoming[0])
         };
 
         const success = await addQuestion(questionToAdd);
-        if (success) {
-          successCount++;
-        } else {
-          console.error(`Failed to add question ${successCount + 1}`);
+        if (!success) {
+          alert('Failed to add question. Please check your connection and try again.');
         }
       } catch (error) {
-        console.error(`Error adding question:`, error);
+        console.error('Error adding question:', error);
+        alert('Failed to add question. Please check your connection and try again.');
       }
-    }
-    
-    if (successCount === incoming.length) {
-
-    } else if (successCount > 0) {
-      alert(`${successCount} of ${incoming.length} questions added successfully`);
     } else {
-      alert('Failed to add any questions. Please check your connection and try again.');
+      // Multiple questions - use bulk add
+      try {
+        // Auto-detect if questions should be hidden
+        const isHiddenQuestion = (q) => {
+          if (!q.section || !q.domain || !q.questionType) return false;
+          const passageTextEmpty = !q.passageText || q.passageText.trim() === '';
+          const passageImageEmpty = !q.passageImage;
+          const questionTextEmpty = !q.questionText || q.questionText.trim() === '';
+          const explanationEmpty = !q.explanation || q.explanation.trim() === '';
+          const answerChoicesEmpty = !q.answerChoices || 
+            Object.values(q.answerChoices).every(choice => !choice || choice.trim() === '');
+          return passageTextEmpty && passageImageEmpty && questionTextEmpty && 
+                 explanationEmpty && answerChoicesEmpty;
+        };
+
+        const questionsToAdd = incoming.map(question => ({
+          ...question,
+          hidden: isHiddenQuestion(question)
+        }));
+
+        const success = await bulkAddQuestions(questionsToAdd);
+        if (!success) {
+          alert('Failed to add questions. Please check your connection and try again.');
+        }
+      } catch (error) {
+        console.error('Error adding questions:', error);
+        alert('Failed to add questions. Please check your connection and try again.');
+      }
     }
   };
 
@@ -521,7 +540,7 @@ function AppContent() {
 
       const updates = {
         ...updatedQuestion,
-        hidden: isHiddenQuestion({ ...questions.find(q => q.id === questionId), ...updatedQuestion })
+        hidden: isHiddenQuestion({ ...questionsArray.find(q => q.id === questionId), ...updatedQuestion })
       };
 
       const success = await updateQuestion(questionId, updates);
@@ -537,7 +556,7 @@ function AppContent() {
   const { addUndoAction } = useUndo();
 
   const handleDeleteQuestion = async (questionId) => {
-    const questionToDelete = questions.find(q => q.id === questionId);
+    const questionToDelete = questionsArray.find(q => q.id === questionId);
     if (!questionToDelete) return;
     
     try {
@@ -569,7 +588,7 @@ function AppContent() {
   const handleBulkDeleteQuestions = async (questionIds) => {
     if (!Array.isArray(questionIds) || questionIds.length === 0) return;
     
-    const questionsToDelete = questions.filter(q => questionIds.includes(q.id));
+    const questionsToDelete = questionsArray.filter(q => questionIds.includes(q.id));
     
     try {
       const success = await bulkDeleteQuestions(questionIds);
@@ -596,6 +615,35 @@ function AppContent() {
     } catch (error) {
       console.error('Failed to bulk delete questions:', error);
       alert('Failed to delete questions. Please check your connection and try again.');
+    }
+  };
+
+  const handleDeleteAllQuestions = async () => {
+    if (!questionsArray || questionsArray.length === 0) return;
+    
+    try {
+      const success = await deleteAllQuestions();
+      if (!success) {
+        alert('Failed to delete all questions. Please check your connection and try again.');
+        return;
+      }
+      
+      // Add to undo stack
+      addUndoAction({
+        id: `delete-all-questions-${Date.now()}`,
+        type: 'questions',
+        data: { questions: questionsArray },
+        onUndo: async (data) => {
+          // Restore all the deleted questions
+          await bulkAddQuestions(data.questions);
+        },
+        onConfirm: () => {
+          // The deletion is already persisted, nothing to do
+        }
+      });
+    } catch (error) {
+      console.error('Failed to delete all questions:', error);
+      alert('Failed to delete all questions. Please check your connection and try again.');
     }
   };
 
@@ -804,7 +852,7 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {((questionsLoading && (!questions || questions.length === 0)) ||
+              {((questionsLoading && (!questionsArray || questionsArray.length === 0)) ||
                 (allQuizzesLoading && !inProgressQuizzes)) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
@@ -814,12 +862,13 @@ function AppContent() {
                 </div>
               ) : (
                 <QuestionLogger
-                  questions={questions || []}
+                  questions={questionsArray || []}
                   loading={questionsLoading}
                   onAddQuestion={handleAddQuestion}
                   onUpdateQuestion={handleUpdateQuestion}
                   onDeleteQuestion={handleDeleteQuestion}
                   onBulkDeleteQuestions={handleBulkDeleteQuestions}
+                  onDeleteAllQuestions={handleDeleteAllQuestions}
                 />
               )}
             </SidebarLayout>
@@ -836,7 +885,7 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(((questionsLoading && (!questions || questions.length === 0)) ||
+              {(((questionsLoading && (!questionsArray || questionsArray.length === 0)) ||
                  (allQuizzesLoading && !inProgressQuizzes) ||
                  (catalogLoading && (!catalog || catalog.length === 0)))) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
@@ -847,7 +896,7 @@ function AppContent() {
                 </div>
               ) : (
                 (() => {
-                  const wrongLog = Array.isArray(questions) ? questions : [];
+                  const wrongLog = Array.isArray(questionsArray) ? questionsArray : [];
                   const catalogList = Array.isArray(catalog) ? catalog : [];
                   // Simply combine both arrays without deduplication
                   const combined = [...wrongLog, ...catalogList];
@@ -891,7 +940,7 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {((questionsLoading && (!questions || questions.length === 0)) ||
+              {((questionsLoading && (!questionsArray || questionsArray.length === 0)) ||
                 (allQuizzesLoading && !inProgressQuizzes)) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
@@ -919,7 +968,7 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {(((questionsLoading && (!questions || questions.length === 0)) ||
+              {(((questionsLoading && (!questionsArray || questionsArray.length === 0)) ||
                  (catalogLoading && (!catalog || catalog.length === 0)))) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
@@ -929,7 +978,7 @@ function AppContent() {
                 </div>
               ) : (
                 (() => {
-                  const wrongLog = Array.isArray(questions) ? questions : [];
+                  const wrongLog = Array.isArray(questionsArray) ? questionsArray : [];
                   const catalogList = Array.isArray(catalog) ? catalog : [];
                   
                   // For analytics, include:

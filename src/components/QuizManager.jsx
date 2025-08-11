@@ -1,5 +1,6 @@
 import { useAllQuizzes, useQuestionAnswers } from '../hooks/useUserData';
 import React from 'react';
+import { dbLogStart, dbLogSuccess, dbLogError } from '../lib/dbLogger';
 
 // Quiz status constants
 export const QUIZ_STATUS = {
@@ -94,11 +95,18 @@ export class QuizManager {
   // Add a new quiz to the array
   async addQuiz(newQuiz) {
     const updatedQuizzes = [...this.allQuizzes, newQuiz];
-    // Keep in-memory cache in sync immediately so subsequent look-ups work
     this.allQuizzes = updatedQuizzes;
-    await this.upsertAllQuizzes(updatedQuizzes);
-    await this.refreshAllQuizzes();
-    return newQuiz;
+    const logId = dbLogStart('QuizManager.addQuiz', 'upsert all quizzes', { nextCount: updatedQuizzes.length })
+    try {
+      await this.upsertAllQuizzes(updatedQuizzes);
+      dbLogSuccess('QuizManager.addQuiz', logId, { upsertOk: true })
+      await this.refreshAllQuizzes();
+      dbLogSuccess('QuizManager.addQuiz', logId, { refreshed: true })
+      return newQuiz;
+    } catch (e) {
+      dbLogError('QuizManager.addQuiz', logId, e)
+      throw e
+    }
   }
 
   // Update an existing quiz
@@ -109,12 +117,10 @@ export class QuizManager {
     
     // Update local state immediately for instant UI feedback
     this.allQuizzes = updatedQuizzes;
-    
-    // Make database call non-blocking for faster response
-    this.upsertAllQuizzes(updatedQuizzes).catch(error => {
-      console.error('Failed to save quiz update to database:', error);
-      // Could add retry logic here if needed
-    });
+    const logId = dbLogStart('QuizManager.updateQuiz', 'upsert all quizzes', { id: quizId })
+    this.upsertAllQuizzes(updatedQuizzes)
+      .then(() => dbLogSuccess('QuizManager.updateQuiz', logId, { upsertOk: true }))
+      .catch(error => dbLogError('QuizManager.updateQuiz', logId, error))
   }
 
   // Save quiz progress (for auto-save during quiz)
@@ -122,7 +128,8 @@ export class QuizManager {
     // Use the current quizzes array (don't refresh to avoid race conditions)
     const quizzes = Array.isArray(this.allQuizzes) ? this.allQuizzes : [];
 
-    const existingIndex = quizzes.findIndex(q => q.id === quizData.id);
+    // Normalize ID comparison to avoid string/number mismatches causing duplicates
+    const existingIndex = quizzes.findIndex(q => String(q.id) === String(quizData.id));
 
     let updatedQuizzes;
     if (existingIndex >= 0) {
@@ -132,18 +139,16 @@ export class QuizManager {
       updatedQuizzes = [...quizzes, { ...quizData, lastUpdated: new Date().toISOString() }];
     }
 
-    // Update local state immediately for instant UI feedback
     this.allQuizzes = updatedQuizzes;
-    
-    // Wait for database save to complete
+    const logId = dbLogStart('QuizManager.saveQuiz', 'upsert all quizzes', { id: quizData.id })
     try {
       await this.upsertAllQuizzes(updatedQuizzes);
+      dbLogSuccess('QuizManager.saveQuiz', logId, { upsertOk: true })
+      return quizData;
     } catch (error) {
-      console.error('Failed to save quiz progress to database:', error);
-      throw error; // Re-throw so the calling function can handle it
+      dbLogError('QuizManager.saveQuiz', logId, error)
+      throw error;
     }
-    
-    return quizData;
   }
 
   // Finish a quiz (complete it and move to completed status)
@@ -156,8 +161,28 @@ export class QuizManager {
     const totalQuestions = syncedQuestions.length;
     const score = Math.round((correctCount / totalQuestions) * 100);
 
-    // Keep full image data for completed quizzes - storage limits should be handled at the database level
-    const sanitizedQuestions = syncedQuestions.map(q => ({ ...q }));
+    // Sanitize questions: strip large/base64 image blobs and heavy fields to speed up saves
+    const sanitizeQuestionForStorage = (question) => {
+      const cleaned = { ...question };
+      // Remove known heavy fields by key name
+      const heavyKeys = [
+        'image', 'imageData', 'passageImage', 'passageImageData',
+        'solutionImage', 'solutionImageData', 'figureImage', 'figureImageData',
+        'images', 'screenshots'
+      ];
+      for (const key of heavyKeys) {
+        if (key in cleaned) delete cleaned[key];
+      }
+      // Drop any very large string fields (likely base64 blobs)
+      for (const [key, value] of Object.entries(cleaned)) {
+        if (typeof value === 'string' && value.length > 50000) {
+          delete cleaned[key];
+        }
+      }
+      return cleaned;
+    };
+
+    const sanitizedQuestions = syncedQuestions.map(sanitizeQuestionForStorage);
 
     const completedQuiz = {
       ...quizData,
@@ -174,8 +199,8 @@ export class QuizManager {
       lastUpdated: new Date().toISOString()
     };
 
-    // Check if the quiz exists in the array
-    const existingIndex = this.allQuizzes.findIndex(quiz => quiz.id === quizData.id);
+    // Check if the quiz exists in the array (normalize ID comparison)
+    const existingIndex = this.allQuizzes.findIndex(quiz => String(quiz.id) === String(quizData.id));
     
     let updatedQuizzes;
     if (existingIndex >= 0) {
@@ -187,28 +212,32 @@ export class QuizManager {
       updatedQuizzes = [...this.allQuizzes, completedQuiz];
     }
 
-    const saveSuccess = await this.upsertAllQuizzes(updatedQuizzes);
-    
+    const logId = dbLogStart('QuizManager.finishQuiz', 'upsert all quizzes', { id: quizData.id, score })
+    await this.upsertAllQuizzes(updatedQuizzes);
+    dbLogSuccess('QuizManager.finishQuiz', logId, { upsertOk: true })
     this.allQuizzes = updatedQuizzes;
-    
-    // Refresh global state so UI reflects completed status
     if (typeof this.refreshAllQuizzes === 'function') {
       await this.refreshAllQuizzes();
+      dbLogSuccess('QuizManager.finishQuiz', logId, { refreshed: true })
     }
-    
     return completedQuiz;
   }
 
   // Update entire quiz array (for migration purposes)
   async updateQuizzes(quizzes) {
+    const logId = dbLogStart('QuizManager.updateQuizzes', 'upsert all quizzes', { nextCount: (quizzes||[]).length })
     await this.upsertAllQuizzes(quizzes);
+    dbLogSuccess('QuizManager.updateQuizzes', logId, { upsertOk: true })
     this.allQuizzes = quizzes;
     await this.refreshAllQuizzes();
+    dbLogSuccess('QuizManager.updateQuizzes', logId, { refreshed: true })
   }
 
   // Refresh quizzes (alias for refreshAllQuizzes)
   async refreshQuizzes() {
+    const logId = dbLogStart('QuizManager.refreshQuizzes', 'refreshAllQuizzes')
     await this.refreshAllQuizzes();
+    dbLogSuccess('QuizManager.refreshQuizzes', logId)
   }
 
   // Complete a quiz (move from in-progress to completed)
@@ -228,8 +257,11 @@ export class QuizManager {
       q.id === quizId ? completedQuiz : q
     );
     
+    const logId = dbLogStart('QuizManager.completeQuiz', 'upsert all quizzes', { id: quizId })
     await this.upsertAllQuizzes(updatedQuizzes);
+    dbLogSuccess('QuizManager.completeQuiz', logId, { upsertOk: true })
     await this.refreshAllQuizzes();
+    dbLogSuccess('QuizManager.completeQuiz', logId, { refreshed: true })
     return completedQuiz;
   }
 
@@ -305,8 +337,11 @@ export class QuizManager {
   // Delete ALL quizzes and clear numbering
   async deleteAllQuizzes() {
     this.allQuizzes = [];
+    const logId = dbLogStart('QuizManager.deleteAllQuizzes', 'upsert all quizzes', { nextCount: 0 })
     await this.upsertAllQuizzes([]);
+    dbLogSuccess('QuizManager.deleteAllQuizzes', logId, { upsertOk: true })
     await this.refreshAllQuizzes();
+    dbLogSuccess('QuizManager.deleteAllQuizzes', logId, { refreshed: true })
   }
 }
 

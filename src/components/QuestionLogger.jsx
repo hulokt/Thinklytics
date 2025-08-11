@@ -67,6 +67,7 @@ const QuestionLogger = ({
   onUpdateQuestion, 
   onDeleteQuestion, 
   onBulkDeleteQuestions,
+  onDeleteAllQuestions,
   headerTitle: headerTitleOverride,
   headerSubtitle: headerSubtitleOverride,
   listTitle: listTitleOverride,
@@ -130,6 +131,8 @@ const QuestionLogger = ({
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
   // Prevent double-click on Finish Import
   const [isFinalizingImport, setIsFinalizingImport] = useState(false);
+  // Bulk import state to prevent double submission
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
   // Track the currently selected question for editing (not bulk selection)
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(-1);
   // Timer for updating relative timestamps every minute
@@ -1677,6 +1680,69 @@ const QuestionLogger = ({
     });
   };
 
+  // Import all parsed CSV questions at once without stepping through one by one
+  const handleImportAllNow = async () => {
+    if (!isImportMode || isBulkImporting) return;
+    try {
+      setIsBulkImporting(true);
+
+      // Merge current form edits + any edited questions + original CSV
+      const finalQuestions = (Array.isArray(csvQuestions) ? csvQuestions : []).map((original, index) => {
+        if (index === currentQuestionIndex) {
+          return { ...formData };
+        }
+        if (editedQuestions && editedQuestions[index]) {
+          return { ...editedQuestions[index] };
+        }
+        return { ...original };
+      });
+
+      // Minimal autofill for RW questions missing questionType to avoid validation blockers
+      const normalizedQuestions = finalQuestions.map(q => {
+        const isEnglish = (q.section || '') === SAT_SECTIONS.READING_WRITING;
+        const hasType = (q.questionType || '').trim().length > 0;
+        return isEnglish && !hasType ? { ...q, questionType: 'General' } : q;
+      });
+
+      // Persist all questions in a single call
+      await onAddQuestion(normalizedQuestions);
+
+      // Reset import state
+      setIsImportMode(false);
+      setCsvQuestions([]);
+      setCurrentQuestionIndex(0);
+      setImportProgress({ total: 0, completed: 0 });
+      setEditedQuestions({});
+      setImportedQuestions([]);
+
+      // Clear the form
+      setFormData({
+        section: SAT_SECTIONS.READING_WRITING,
+        domain: '',
+        questionType: '',
+        passageText: '',
+        passageImage: null,
+        questionText: '',
+        answerChoices: { A: '', B: '', C: '', D: '' },
+        correctAnswer: 'A',
+        explanation: '',
+        explanationImage: null,
+        difficulty: DIFFICULTY_LEVELS.MEDIUM
+      });
+
+      // Points animation
+      setPointsAnimation({
+        show: true,
+        points: normalizedQuestions.length * 10,
+        action: 'BULK_IMPORT'
+      });
+    } catch (error) {
+      alert('Failed to import all questions at once. Please try again.');
+    } finally {
+      setIsBulkImporting(false);
+    }
+  };
+
   // Handle image paste in passage
   const handlePassagePaste = (e) => {
     const items = e.clipboardData?.items;
@@ -1810,6 +1876,30 @@ const QuestionLogger = ({
     } catch (err) {
       console.error('Duplicate cleanup failed', err);
       alert('Failed to remove duplicates. Please try again.');
+    }
+  };
+
+  // Delete all questions
+  const handleDeleteAllQuestions = async () => {
+    if (!questionsArray || questionsArray.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ALL ${questionsArray.length} questions? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      if (onDeleteAllQuestions) {
+        await onDeleteAllQuestions();
+      } else {
+        // Fallback to bulk delete if onDeleteAllQuestions is not provided
+        const allQuestionIds = questionsArray.map(q => q.id);
+        await onBulkDeleteQuestions(allQuestionIds);
+      }
+      alert(`Successfully deleted all ${questionsArray.length} questions.`);
+    } catch (err) {
+      console.error('Delete all questions failed', err);
+      alert('Failed to delete all questions. Please try again.');
     }
   };
 
@@ -2758,7 +2848,16 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                       >
                         <span>Finish Import</span>
                       </AnimatedButton>
-                    ) : (
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        type="button"
+                        onClick={handleImportAllNow}
+                        disabled={isBulkImporting}
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center space-x-2 w-full sm:w-auto"
+                      >
+                        <span>{isBulkImporting ? 'Importing All...' : 'Import All'}</span>
+                      </button>
                       <button
                         type="button"
                         onClick={handleNextQuestion}
@@ -2769,7 +2868,8 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
-                    )
+                    </div>
+                  )
                   ) : (
                     // Show Update/Add button
                     <AnimatedButton
@@ -3013,6 +3113,18 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                             <span className="truncate">Clean Duplicates</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteAllQuestions();
+                              setShowActionsMenu(false);
+                            }}
+                            className="w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200 flex items-center gap-2 sm:gap-3"
+                          >
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span className="truncate">Delete All Questions</span>
                           </button>
                         </div>
                       )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, DATA_TYPES, type DataType } from '../lib/supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
+import { dbLogStart, dbLogSuccess, dbLogError } from '../lib/dbLogger'
 
 interface UseUserDataResult<T> {
   data: T | null
@@ -80,6 +81,7 @@ export function useUserData<K extends DataType>(
     lastRequestTimeRef.current = now
     
     try {
+      const logId = dbLogStart('useUserData.loadData', `rpc: get_user_data [${dataType}]`, { userId, dataType })
       setError(null)
       
       const { data: result, error: fetchError } = await supabase.rpc('get_user_data', {
@@ -88,6 +90,7 @@ export function useUserData<K extends DataType>(
       })
 
       if (fetchError) {
+        dbLogError('useUserData.loadData', logId, fetchError)
         throw new Error(`Supabase error: ${fetchError.message}`)
       }
 
@@ -123,10 +126,12 @@ export function useUserData<K extends DataType>(
         setData(parsedData);
       }
       
+      dbLogSuccess('useUserData.loadData', logId, { count: Array.isArray(parsedData) ? parsedData.length : Object.keys(parsedData || {}).length })
       retryCountRef.current = 0 // Reset retry count on success
       closeCircuitBreaker() // Close circuit breaker on success
       
     } catch (err: any) {
+      dbLogError('useUserData.loadData', 'n/a', err)
 
       consecutiveFailuresRef.current++
       
@@ -182,6 +187,7 @@ export function useUserData<K extends DataType>(
     lastSaveTimeRef.current = Date.now()
 
     try {
+      const logId = dbLogStart('useUserData.upsertData', `rpc: safe_upsert_user_data [${dataType}]`, { userId, dataType, preview: Array.isArray(newData) ? `array(${newData.length})` : typeof newData })
       const callWithTimeout = async <T>(promise: Promise<T>, ms = 25000): Promise<T> => {
         return await Promise.race([
           promise as Promise<any>,
@@ -191,15 +197,20 @@ export function useUserData<K extends DataType>(
 
       // First try the safer function
       const { data: resultSafe, error: errorSafe }: any = await callWithTimeout(
-        supabase.rpc('safe_upsert_user_data', {
-          p_user_id: userId,
-          p_data_type: dataType,
-          p_data: newData
-        })
+        supabase
+          .from('user_data')
+          .upsert([
+            {
+              user_id: userId as string,
+              data_type: dataType,
+              data: newData as any,
+            } as any,
+          ], { onConflict: 'user_id,data_type' })
       )
 
       // If safe function worked or returned structured success
       if (!errorSafe && !(resultSafe && resultSafe.error)) {
+        dbLogSuccess('useUserData.upsertData', logId, { mode: 'safe', result: typeof resultSafe })
         closeCircuitBreaker()
         return true
       }
@@ -213,28 +224,36 @@ export function useUserData<K extends DataType>(
 
       if (isFnMissing) {
         const { error: errorLegacy }: any = await callWithTimeout(
-          supabase.rpc('upsert_user_data', {
-            p_user_id: userId,
-            p_data_type: dataType,
-            p_data: newData
-          })
+          supabase
+            .from('user_data')
+            .upsert([
+              {
+                user_id: userId as string,
+                data_type: dataType,
+                data: newData as any,
+              } as any,
+            ], { onConflict: 'user_id,data_type' })
         )
 
         if (errorLegacy) {
+          dbLogError('useUserData.upsertData', logId, errorLegacy, { mode: 'legacy' })
           throw new Error(`Supabase error: ${errorLegacy.message}`)
         }
 
+        dbLogSuccess('useUserData.upsertData', logId, { mode: 'legacy' })
         closeCircuitBreaker()
         return true
       }
 
       // If safe function existed but returned an app-level error payload
       if (resultSafe && resultSafe.error) {
+        dbLogError('useUserData.upsertData', logId, resultSafe.error, { mode: 'safe-return' })
         throw new Error(resultSafe.error)
       }
 
       // Other errors from the safe function
       if (errorSafe) {
+        dbLogError('useUserData.upsertData', logId, errorSafe, { mode: 'safe-error' })
         throw new Error(`Supabase error: ${errorSafe.message}`)
       }
 
@@ -248,6 +267,7 @@ export function useUserData<K extends DataType>(
         openCircuitBreaker()
       }
       setError(`Failed to save ${dataType}: ${err.message}`)
+      dbLogError('useUserData.upsertData', 'n/a', err)
 
       // For questions, try to save to localStorage as backup
       if (dataType === 'sat_master_log_questions' && Array.isArray(newData)) {
@@ -283,6 +303,7 @@ export function useUserData<K extends DataType>(
     lastSaveTimeRef.current = Date.now()
 
     try {
+      const logId = dbLogStart('useUserData.appendQuestions', 'rpc: upsert_user_data (append fallback)', { userId, count: newQuestions.length })
       // FALLBACK: Use the regular upsert with only new questions for now
       // This avoids the database timeout by saving incrementally
       
@@ -310,10 +331,12 @@ export function useUserData<K extends DataType>(
       const { data: result, error: saveError } = await Promise.race([savePromise, timeoutPromise]) as any;
 
       if (saveError) {
+        dbLogError('useUserData.appendQuestions', logId, saveError)
         throw new Error(`Supabase error: ${saveError.message}`)
       }
 
 
+      dbLogSuccess('useUserData.appendQuestions', logId, { resultType: typeof result })
       closeCircuitBreaker()
       
       // Clear backup on successful save
@@ -331,6 +354,7 @@ export function useUserData<K extends DataType>(
       }
       
       // Don't fail completely - the optimistic update worked and we have backup
+      dbLogError('useUserData.appendQuestions', 'n/a', err)
       return true // Return true because the UI update worked
       
     } finally {
@@ -346,6 +370,7 @@ export function useUserData<K extends DataType>(
     isSavingRef.current = true
 
     try {
+      const logId = dbLogStart('useUserData.deleteData', `rpc: delete_user_data [${dataType}]`, { userId })
       setError(null)
       
       const { data: result, error: deleteError } = await supabase.rpc('delete_user_data', {
@@ -354,15 +379,18 @@ export function useUserData<K extends DataType>(
       })
 
       if (deleteError) {
+        dbLogError('useUserData.deleteData', logId, deleteError)
         throw new Error(`Supabase error: ${deleteError.message}`)
       }
 
       setData(getDefaultData(dataType))
+      dbLogSuccess('useUserData.deleteData', logId)
       return true
       
     } catch (err: any) {
 
       setError(`Failed to delete ${dataType}: ${err.message}`)
+      dbLogError('useUserData.deleteData', 'n/a', err)
       return false
     } finally {
       isSavingRef.current = false

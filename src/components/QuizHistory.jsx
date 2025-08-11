@@ -124,6 +124,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   // Use new QuizManager
   const { 
     quizManager, 
+    allQuizzes, 
     allQuizzesLoading,
     inProgressQuizzes: inProgressQuizzesRaw,
     completedQuizzes: completedQuizzesRaw
@@ -328,12 +329,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setLocalCompletedQuizzes(Array.isArray(completedQuizzesRaw) ? completedQuizzesRaw : []);
   }, [inProgressQuizzesRaw, completedQuizzesRaw]);
 
-  // Force refresh when component mounts to ensure latest data
-  useEffect(() => {
-    if (quizManager) {
-      quizManager.refreshQuizzes();
-    }
-  }, [quizManager]);
+  // Avoid forcing a refresh on mount to prevent extra RPC calls/flicker when backend is slow
 
   // Handle initial loading state
   useEffect(() => {
@@ -350,8 +346,35 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     // QuizHistory render tracking removed
   });
 
-  const inProgressQuizzes = localInProgressQuizzes;
-  const completedQuizzes = localCompletedQuizzes;
+  // De-duplicate quizzes by ID to prevent duplicates from transient data issues
+  const dedupeById = (items) => {
+    const seen = new Set();
+    const result = [];
+    for (const item of Array.isArray(items) ? items : []) {
+      const key = String(item?.id);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+    return result;
+  };
+
+  const inProgressQuizzes = dedupeById(localInProgressQuizzes);
+  const completedQuizzes = dedupeById(localCompletedQuizzes);
+
+  // One-time background cleanup: if duplicates exist in the unified array, persist a deduped version
+  useEffect(() => {
+    try {
+      if (quizManager && Array.isArray(allQuizzes)) {
+        const dedupedAll = dedupeById(allQuizzes);
+        if (dedupedAll.length !== allQuizzes.length) {
+          // Fire-and-forget; don't block UI
+          quizManager.updateQuizzes(dedupedAll).catch(() => {});
+        }
+      }
+    } catch {}
+  }, [quizManager, allQuizzes]);
 
   // Ensure both arrays are properly formatted
   const inProgressQuizzesArray = inProgressQuizzes;
@@ -782,7 +805,55 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const completedQuizzesSorted = completedQuizzes
     .sort((a, b) => new Date(b.date || b.lastUpdated) - new Date(a.date || a.lastUpdated));
 
+  // Group quizzes by date
+  const groupQuizzesByDate = (quizzes) => {
+    const groups = {};
+    
+    quizzes.forEach(quiz => {
+      const date = new Date(quiz.date || quiz.lastUpdated);
+      const dateKey = date.toDateString(); // This gives us "Mon Dec 25 2023" format
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
+      
+      let displayDate;
+      if (dateKey === today) {
+        displayDate = 'Today';
+      } else if (dateKey === yesterday) {
+        displayDate = 'Yesterday';
+      } else {
+        displayDate = date.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+      
+      if (!groups[displayDate]) {
+        groups[displayDate] = [];
+      }
+      groups[displayDate].push(quiz);
+    });
+    
+    // Sort groups by date (most recent first)
+    return Object.entries(groups)
+      .sort(([dateA], [dateB]) => {
+        if (dateA === 'Today') return -1;
+        if (dateB === 'Today') return 1;
+        if (dateA === 'Yesterday') return -1;
+        if (dateB === 'Yesterday') return 1;
+        
+        // For other dates, sort by actual date
+        const dateAObj = new Date(dateA);
+        const dateBObj = new Date(dateB);
+        return dateBObj - dateAObj;
+      })
+      .map(([date, quizzes]) => ({ date, quizzes }));
+  };
 
+  // Group in-progress and completed quizzes by date
+  const inProgressQuizzesGrouped = groupQuizzesByDate(inProgressQuizzesSorted);
+  const completedQuizzesGrouped = groupQuizzesByDate(completedQuizzesSorted);
 
     if (editingQuiz && editingQuiz.questions) {
     // Calculate real-time statistics using current answers
@@ -1258,7 +1329,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           ) : (
             <div className="space-y-4 sm:space-y-6">
               {/* In Progress Quizzes Section */}
-              {inProgressQuizzesSorted.length > 0 && (
+              {inProgressQuizzesGrouped.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1 h-6 bg-yellow-500 rounded-full"></div>
@@ -1267,42 +1338,57 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       {inProgressQuizzesSorted.length}
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    {inProgressQuizzesSorted.map((quiz) => (
-                      <div key={quiz.id} className="bg-white dark:bg-gray-800 rounded border-l-4 border-yellow-400 shadow-sm hover:shadow transition-shadow transition-colors duration-300">
-                        <div className="p-3 sm:p-4">
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                                <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">
-                                  Quiz #{getQuizDisplayNumber(quiz)} - {formatDate(quiz.lastUpdated || quiz.date)}
-                                </h3>
-                                <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded text-xs transition-colors duration-300 w-fit">
-                                  In Progress
-                                </span>
+                  <div className="space-y-4">
+                    {inProgressQuizzesGrouped.map((group) => (
+                      <div key={`ip-${group.date}`} className="space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                          <h3 className="text-gray-700 dark:text-gray-300 text-sm font-medium transition-colors duration-300">
+                            {group.date}
+                          </h3>
+                          <span className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded text-xs transition-colors duration-300">
+                            {group.quizzes.length} quiz{group.quizzes.length !== 1 ? 'zes' : ''}
+                          </span>
+                        </div>
+                        <div className="space-y-2 ml-4">
+                          {group.quizzes.map((quiz) => (
+                            <div key={`ip-${String(quiz.id)}`} className="bg-white dark:bg-gray-800 rounded border-l-4 border-yellow-400 shadow-sm hover:shadow transition-shadow transition-colors duration-300">
+                              <div className="p-3 sm:p-4">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                                  <div className="flex-1">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                                      <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">
+                                        Quiz #{getQuizDisplayNumber(quiz)} - {formatDate(quiz.lastUpdated || quiz.date)}
+                                      </h3>
+                                      <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded text-xs transition-colors duration-300 w-fit">
+                                        In Progress
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 transition-colors duration-300">
+                                      {quiz.questions.length} questions • Progress: {Object.keys(quiz.userAnswers || {}).length}/{quiz.questions.length} answered
+                                    </p>
+                                    <p className="text-gray-500 dark:text-gray-500 text-xs transition-colors duration-300">
+                                      Last updated: {new Date(quiz.lastUpdated || quiz.date).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2 sm:ml-4">
+                                    <button
+                                      onClick={() => onResumeQuiz(quiz)}
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-green-700 transition-colors flex-1 sm:flex-none"
+                                    >
+                                      Resume
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteQuiz(quiz)}
+                                      className="bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700 transition-colors flex-1 sm:flex-none"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 transition-colors duration-300">
-                                {quiz.questions.length} questions • Progress: {Object.keys(quiz.userAnswers || {}).length}/{quiz.questions.length} answered
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-500 text-xs transition-colors duration-300">
-                                Last updated: {new Date(quiz.lastUpdated || quiz.date).toLocaleString()}
-                              </p>
                             </div>
-                            <div className="flex gap-2 sm:ml-4">
-                              <button
-                                onClick={() => onResumeQuiz(quiz)}
-                                className="bg-green-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-green-700 transition-colors flex-1 sm:flex-none"
-                              >
-                                Resume
-                              </button>
-                              <button
-                                onClick={() => handleDeleteQuiz(quiz)}
-                                className="bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700 transition-colors flex-1 sm:flex-none"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -1311,7 +1397,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
               )}
 
               {/* Completed Quizzes Section */}
-              {completedQuizzesSorted.length > 0 && (
+              {completedQuizzesGrouped.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1 h-6 bg-green-500 rounded-full"></div>
@@ -1320,53 +1406,68 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       {completedQuizzesSorted.length}
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    {completedQuizzesSorted.map((quiz) => (
-                      <div
-                        key={quiz.id}
-                        className="bg-white dark:bg-gray-800 rounded border-l-4 border-green-400 shadow-sm transition-colors duration-300"
-                      >
-                        <div className="p-3 sm:p-4">
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                                <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">
-                                  Quiz #{getQuizDisplayNumber(quiz)} - {formatDate(quiz.date)}
-                                </h3>
-                                <span className={`px-2 py-1 rounded text-xs font-medium transition-colors duration-300 w-fit ${
-                                  quiz.score >= 80 
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
-                                    : quiz.score >= 60 
-                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-                                    : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                                }`}>
-                                  {quiz.score}%
-                                </span>
+                  <div className="space-y-4">
+                    {completedQuizzesGrouped.map((group) => (
+                      <div key={`comp-${group.date}`} className="space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                          <h3 className="text-gray-700 dark:text-gray-300 text-sm font-medium transition-colors duration-300">
+                            {group.date}
+                          </h3>
+                          <span className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded text-xs transition-colors duration-300">
+                            {group.quizzes.length} quiz{group.quizzes.length !== 1 ? 'zes' : ''}
+                          </span>
+                        </div>
+                        <div className="space-y-2 ml-4">
+                          {group.quizzes.map((quiz) => (
+                            <div
+                              key={`comp-${String(quiz.id)}`}
+                              className="bg-white dark:bg-gray-800 rounded border-l-4 border-green-400 shadow-sm transition-colors duration-300"
+                            >
+                              <div className="p-3 sm:p-4">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                                  <div className="flex-1">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                                      <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">
+                                        Quiz #{getQuizDisplayNumber(quiz)} - {formatDate(quiz.date)}
+                                      </h3>
+                                      <span className={`px-2 py-1 rounded text-xs font-medium transition-colors duration-300 w-fit ${
+                                        quiz.score >= 80 
+                                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                                          : quiz.score >= 60 
+                                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                                          : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                      }`}>
+                                        {quiz.score}%
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 transition-colors duration-300">
+                                      {quiz.questions.length} questions • 
+                                      {quiz.questions.filter(q => {
+                                        const correctAnswer = getCorrectAnswerLetter(q);
+                                        return q.userAnswer === correctAnswer;
+                                      }).length} correct • 
+                                      {quiz.timeSpent ? formatTime(quiz.timeSpent) : 'No time recorded'}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2 sm:ml-4">
+                                    <button
+                                      onClick={() => handleEditQuiz(quiz)}
+                                      className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex-1 sm:flex-none"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteQuiz(quiz)}
+                                      className="bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700 transition-colors flex-1 sm:flex-none"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 transition-colors duration-300">
-                                {quiz.questions.length} questions • 
-                                {quiz.questions.filter(q => {
-                                  const correctAnswer = getCorrectAnswerLetter(q);
-                                  return q.userAnswer === correctAnswer;
-                                }).length} correct • 
-                                {quiz.timeSpent ? formatTime(quiz.timeSpent) : 'No time recorded'}
-                              </p>
                             </div>
-                            <div className="flex gap-2 sm:ml-4">
-                              <button
-                                onClick={() => handleEditQuiz(quiz)}
-                                className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex-1 sm:flex-none"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteQuiz(quiz)}
-                                className="bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700 transition-colors flex-1 sm:flex-none"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
                     ))}

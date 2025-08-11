@@ -191,7 +191,7 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
-    // Domain statistics - calculate based on completed quiz results only
+    // Domain statistics - include all questions in wrong log, not just answered ones
     const domainStats = {};
     questionsRangeArray.forEach(question => {
       const domain = question.domain || 'Unknown';
@@ -230,10 +230,8 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
-    // Question type statistics - calculate based on completed quiz results only
+    // Question type statistics - include all questions in wrong log, not just answered ones
     const questionTypeStats = {};
-    
-    // Debug: Log all questions to see their types
     
     questionsRangeArray.forEach(question => {
       const type = question.questionType || 'Unknown';
@@ -242,7 +240,7 @@ const AnalyticsPage = ({ questions }) => {
       }
       questionTypeStats[type].total++;
       
-      // Check if this question has been answered in completed quizzes only
+      // Check if this question has been answered in completed quizzes
       if (questionAnswersObjFiltered[question.id]) {
         const answers = questionAnswersObjFiltered[question.id];
         // Only count answers from completed quizzes

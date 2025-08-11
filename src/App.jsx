@@ -19,7 +19,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { UndoProvider, useUndo } from './contexts/UndoContext';
 import UndoToast from './components/ui/UndoToast';
-import { useCalendarEvents } from './hooks/useUserData';
+import { useCalendarEvents, useQuestionAnswers } from './hooks/useUserData';
 import { useUserQuestions } from './hooks/useUserQuestions';
 import { useGlobalCatalogQuestions, useIsAdmin } from './hooks/useCatalogGlobal';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
@@ -314,6 +314,9 @@ function AppContent() {
   // Global catalog questions available to all users
   const { data: catalog, loading: catalogLoading } = useGlobalCatalogQuestions();
 
+  // Get question answers for analytics
+  const { data: questionAnswers } = useQuestionAnswers();
+
   // Use the optimized questions data directly
   const questions = Array.isArray(questionsData) ? questionsData : [];
   
@@ -323,48 +326,7 @@ function AppContent() {
 
   // No seeding here; Admin will populate catalog globally
 
-  // Listen for wrong catalog items to add to user's wrong log
-  useEffect(() => {
-    const handler = async (e) => {
-      const incoming = Array.isArray(e.detail) ? e.detail : [];
-      if (incoming.length === 0) return;
-      const nowIso = new Date().toISOString();
-      const toAdd = incoming.map((q, idx) => ({
-        ...q,
-        id: q.id?.toString?.().startsWith('catalog-') ? `${q.id}-copied-${Date.now()}-${idx}` : q.id,
-        origin: 'user',
-        sourceId: q.id,
-        createdAt: nowIso,
-        lastUpdated: nowIso,
-      }));
 
-      // Deduplicate against existing wrong log using the same signature as add
-      const isSame = (a, b) => (
-        (a.section||'')===(b.section||'') &&
-        (a.domain||'')===(b.domain||'') &&
-        (a.questionType||'')===(b.questionType||'') &&
-        (a.passageText||'')===(b.passageText||'') &&
-        (a.questionText||'')===(b.questionText||'') &&
-        (a.correctAnswer||'')===(b.correctAnswer||'') &&
-        (a.explanation||'')===(b.explanation||'') &&
-        (a.difficulty||'')===(b.difficulty||'') &&
-        ((a.answerChoices?.A)||'')===((b.answerChoices?.A)||'') &&
-        ((a.answerChoices?.B)||'')===((b.answerChoices?.B)||'') &&
-        ((a.answerChoices?.C)||'')===((b.answerChoices?.C)||'') &&
-        ((a.answerChoices?.D)||'')===((b.answerChoices?.D)||'')
-      );
-
-      // Add each question individually using the new addQuestion function
-      for (const addq of toAdd) {
-        const exists = questions.some(q => isSame(q, addq));
-        if (!exists) {
-          await addQuestion(addq);
-        }
-      }
-    };
-    window.addEventListener('satlog:addWrongFromCatalog', handler);
-    return () => window.removeEventListener('satlog:addWrongFromCatalog', handler);
-  }, [questions, addQuestion]);
 
   // Handle authentication state changes
   useEffect(() => {
@@ -957,7 +919,8 @@ function AppContent() {
               onProfileClick={() => navigateWithScroll('/profile')}
               onHomeClick={handleLogoClick}
             >
-              {questionsLoading ? (
+              {(((questionsLoading && (!questions || questions.length === 0)) ||
+                 (catalogLoading && (!catalog || catalog.length === 0)))) ? (
                 <div className="flex items-center justify-center h-full min-h-0">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -965,7 +928,32 @@ function AppContent() {
                   </div>
                 </div>
               ) : (
-                <AnalyticsPage questions={questions || []} />
+                (() => {
+                  const wrongLog = Array.isArray(questions) ? questions : [];
+                  const catalogList = Array.isArray(catalog) ? catalog : [];
+                  
+                  // For analytics, include:
+                  // 1. User's wrong log questions
+                  // 2. Catalog questions that have been marked as wrong (answered incorrectly in quizzes)
+                  const catalogQuestionsMarkedWrong = catalogList.filter(catalogQuestion => {
+                    // Check if this catalog question has been answered incorrectly in any quiz
+                    if (!questionAnswers || !questionAnswers[catalogQuestion.id]) {
+                      return false;
+                    }
+                    const answers = questionAnswers[catalogQuestion.id];
+                    if (!Array.isArray(answers) || answers.length === 0) {
+                      return false;
+                    }
+                    // Check if any answer is incorrect
+                    return answers.some(answer => answer.isCorrect === false);
+                  });
+                  
+                  // Combine user questions with catalog questions marked as wrong
+                  const combined = [...wrongLog, ...catalogQuestionsMarkedWrong];
+                  return (
+                    <AnalyticsPage questions={combined} />
+                  );
+                })()
               )}
             </SidebarLayout>
           </ProtectedRoute>

@@ -933,7 +933,15 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   return (
                     <div key={question.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 transition-colors duration-300">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
-                        <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                        <div className="flex flex-col gap-2">
+                          <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                          {/* Question Type Badge */}
+                          {question.questionType && (
+                            <div className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm">
+                              {question.questionType}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           {currentAnswer === getCorrectAnswerLetter(question) ? (
                             <span className="text-green-600 text-sm font-medium">✓ Correct</span>

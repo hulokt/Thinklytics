@@ -146,20 +146,34 @@ export function useUserQuestions(): UseUserQuestionsResult {
         q.id === id ? { ...q, ...updateData } : q
       ) : [])
       
-      // Persist by replacing the whole array (less frequent than adds)
-      const currentData = Array.isArray(data) ? data : []
-      const updatedData = currentData.map(q => 
-        q.id === id ? { ...q, ...updateData } : q
-      )
-      
-      const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+      // Prefer lightweight RPC to update only one question server-side
+      const { error: updateOneError }: any = await supabase.rpc('update_user_question', {
         p_user_id: userId,
-        p_data_type: 'sat_master_log_questions',
-        p_data: updatedData
+        p_question: { id, ...updateData }
       })
 
-      if (upsertError) {
-        throw new Error(`Database upsert error: ${upsertError.message}`)
+      if (updateOneError) {
+        const isFnMissing = (updateOneError?.status === 404) ||
+          (updateOneError?.code === '404') ||
+          (typeof updateOneError.message === 'string' && updateOneError.message.toLowerCase().includes('not found'))
+        
+        if (isFnMissing) {
+          // Fallback to full-array upsert if the RPC doesn't exist on the DB yet
+          const currentData = Array.isArray(data) ? data : []
+          const updatedData = currentData.map(q => 
+            q.id === id ? { ...q, ...updateData } : q
+          )
+          const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+            p_user_id: userId,
+            p_data_type: 'sat_master_log_questions',
+            p_data: updatedData
+          })
+          if (upsertError) {
+            throw new Error(`Database upsert error: ${upsertError.message}`)
+          }
+        } else {
+          throw new Error(`Database update error: ${updateOneError.message}`)
+        }
       }
 
       return true

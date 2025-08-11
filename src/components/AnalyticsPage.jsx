@@ -376,7 +376,14 @@ const AnalyticsPage = ({ questions }) => {
     if (allCompletedQuizzesArray !== undefined && questionAnswersObj !== undefined && allInProgressQuizzesArray !== undefined) {
       generateAnalytics();
     }
-  }, [allCompletedQuizzesArray.length, Object.keys(questionAnswersObj).length, questionsInRange.length, allInProgressQuizzesArray.length, validCustomDays, generateAnalytics]);
+  }, [
+    allCompletedQuizzesArray.length,
+    allInProgressQuizzesArray.length,
+    questionsInRange.length,
+    Object.keys(questionAnswersObj).length,
+    timeRange,
+    customDays
+  ]);
 
   // PDF Report Generation
   const generatePDFReport = useCallback(async () => {

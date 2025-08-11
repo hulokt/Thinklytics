@@ -35,21 +35,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         // Get initial session
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-    
-        } else {
-          setSession(initialSession)
-          setUser(initialSession?.user ?? null)
-          if (initialSession?.user) {
-    
-          } else {
-    
-          }
-        }
+        const { data: { session: initialSession } } = await supabase.auth.getSession()
+
+        setSession(initialSession ?? null)
+        setUser(initialSession?.user ?? null)
       } catch (error) {
-  
+        // If anything goes wrong, ensure we start from a clean state
+        await supabase.auth.signOut()
+        setSession(null)
+        setUser(null)
       } finally {
         setLoading(false)
       }
@@ -59,10 +53,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-  
-        setSession(session)
-        setUser(session?.user ?? null)
+      async (event, nextSession) => {
+        // Only use supported event names
+        if (event === 'SIGNED_OUT') {
+          setSession(null)
+          setUser(null)
+        } else {
+          setSession(nextSession)
+          setUser(nextSession?.user ?? null)
+        }
         setLoading(false)
       }
     )
@@ -72,13 +71,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, options?: { data?: any }) => {
     try {
-  
-      
       // Using Vite's injected BASE_URL to respect subfolder deployments (e.g., "/SatLog/")
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-      const redirectUrl = `${window.location.origin}${basePath}/auth/callback`;
+      const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+      const redirectUrl = `${window.location.origin}${basePath}/auth/callback`
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -90,35 +87,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
       
       if (error) {
-
-        
         // Handle specific error cases
         if (error.message.includes('User already registered')) {
           return { user: null, error: { ...error, message: 'An account with this email already exists. Please sign in instead.' } as AuthError }
         }
-        
         if (error.message.includes('Unable to validate email address')) {
           return { user: null, error: { ...error, message: 'Please enter a valid email address.' } as AuthError }
         }
-        
         if (error.message.includes('Password should be at least')) {
           return { user: null, error: { ...error, message: 'Password must be at least 6 characters long.' } as AuthError }
         }
-        
         return { user: null, error }
-      }
-      
-      if (data.user) {
-        if (!data.session) {
-          
-        } else {
-  
-        }
       }
       
       return { user: data.user, error: null }
     } catch (error) {
-
       return { user: null, error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -126,32 +109,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-  
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
       
       if (error) {
-
-        
         // Handle specific error cases
         if (error.message.includes('Invalid login credentials')) {
           return { user: null, error: { ...error, message: 'Invalid email or password. Please check your credentials and try again.' } as AuthError }
         }
-        
         if (error.message.includes('Email not confirmed')) {
           return { user: null, error: { ...error, message: 'Please check your email and click the confirmation link before signing in.' } as AuthError }
         }
-        
         return { user: null, error }
       }
       
-      
       return { user: data.user, error: null }
     } catch (error) {
-
       return { user: null, error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -159,19 +134,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-  
-      
       const { error } = await supabase.auth.signOut()
-      
       if (error) {
-
         return { error }
       }
-      
-
       return { error: null }
     } catch (error) {
-
       return { error: error as AuthError }
     }
     // Don't set loading to false here - let the auth state change handler do it
@@ -182,16 +150,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`
       })
-      
       if (error) {
-
         return { error }
       }
-      
-      
       return { error: null }
     } catch (error) {
-
       return { error: error as AuthError }
     }
   }

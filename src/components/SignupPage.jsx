@@ -22,6 +22,34 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
   const [emailSent, setEmailSent] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
+  // Memoize particle elements to keep hooks order stable across renders
+  const particles = useMemo(() =>
+    [...Array(15)].map((_, i) => {
+      const left = Math.random() * 100;
+      const top = Math.random() * 100;
+      const delay = Math.random() * 3;
+      const duration = 2 + Math.random() * 2;
+      const size = Math.random() * 3 + 1;
+
+      return (
+        <div
+          key={`particle-${i}`}
+          className={`absolute rounded-full animate-ping ${
+            isDarkMode ? 'bg-blue-500/40' : 'bg-blue-500/30'
+          }`}
+          style={{
+            left: `${left}%`,
+            top: `${top}%`,
+            width: `${size}px`,
+            height: `${size}px`,
+            animationDelay: `${delay}s`,
+            animationDuration: `${duration}s`
+          }}
+        ></div>
+      );
+    }),
+  [isDarkMode]);
+
   const validate = () => {
     const errs = {};
     if (!formData.firstName) errs.firstName = 'First name is required';
@@ -351,32 +379,7 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
         
         {/* Particle Effect */}
         <div className="absolute inset-0">
-          {useMemo(() => 
-            [...Array(15)].map((_, i) => {
-              const left = Math.random() * 100;
-              const top = Math.random() * 100;
-              const delay = Math.random() * 3;
-              const duration = 2 + Math.random() * 2;
-              const size = Math.random() * 3 + 1;
-              
-              return (
-                <div
-                  key={`particle-${i}`}
-                  className={`absolute rounded-full animate-ping ${
-                    isDarkMode ? 'bg-blue-500/40' : 'bg-blue-500/30'
-                  }`}
-                  style={{
-                    left: `${left}%`,
-                    top: `${top}%`,
-                    width: `${size}px`,
-                    height: `${size}px`,
-                    animationDelay: `${delay}s`,
-                    animationDuration: `${duration}s`
-                  }}
-                ></div>
-              );
-            }), [isDarkMode]
-          )}
+          {particles}
         </div>
         
         {/* Subtle Grid Pattern */}

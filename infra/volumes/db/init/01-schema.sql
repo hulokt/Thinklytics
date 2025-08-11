@@ -55,6 +55,28 @@ RETURNS user_data AS $$
 DECLARE
     result user_data;
 BEGIN
+    -- Validate inputs
+    IF p_user_id IS NULL THEN
+        RAISE EXCEPTION 'user_id cannot be null';
+    END IF;
+    
+    IF p_data_type IS NULL OR p_data_type = '' THEN
+        RAISE EXCEPTION 'data_type cannot be null or empty';
+    END IF;
+    
+    IF p_data IS NULL THEN
+        RAISE EXCEPTION 'data cannot be null';
+    END IF;
+    
+    -- Check data size (limit to 10MB to prevent issues)
+    IF jsonb_array_length(p_data) > 10000 THEN
+        RAISE EXCEPTION 'Data too large: maximum 10,000 items allowed';
+    END IF;
+    
+    -- Log the operation for debugging
+    RAISE NOTICE 'upsert_user_data: user_id=%, data_type=%, data_size=%', 
+        p_user_id, p_data_type, jsonb_array_length(p_data);
+    
     INSERT INTO user_data (user_id, data_type, data)
     VALUES (p_user_id, p_data_type, p_data)
     ON CONFLICT (user_id, data_type)
@@ -64,6 +86,12 @@ BEGIN
     RETURNING * INTO result;
     
     RETURN result;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Log the error details
+        RAISE NOTICE 'upsert_user_data error: %', SQLERRM;
+        RAISE EXCEPTION 'Failed to upsert user data: %', SQLERRM;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -160,7 +188,75 @@ GRANT EXECUTE ON FUNCTION upsert_user_data(UUID, VARCHAR(50), JSONB) TO authenti
 GRANT EXECUTE ON FUNCTION append_user_questions(UUID, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_data(UUID, VARCHAR(50)) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_user_data(UUID, VARCHAR(50)) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_all_user_data(UUID) TO authenticated; 
+GRANT EXECUTE ON FUNCTION get_all_user_data(UUID) TO authenticated;
+
+-- Create a safer upsert function for large data
+CREATE OR REPLACE FUNCTION safe_upsert_user_data(
+    p_user_id UUID,
+    p_data_type VARCHAR(50),
+    p_data JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    result JSONB;
+    existing_data JSONB;
+    merged_data JSONB;
+BEGIN
+    -- Validate inputs
+    IF p_user_id IS NULL THEN
+        RETURN jsonb_build_object('error', 'user_id cannot be null');
+    END IF;
+    
+    IF p_data_type IS NULL OR p_data_type = '' THEN
+        RETURN jsonb_build_object('error', 'data_type cannot be null or empty');
+    END IF;
+    
+    IF p_data IS NULL THEN
+        RETURN jsonb_build_object('error', 'data cannot be null');
+    END IF;
+    
+    -- Get existing data first
+    SELECT data INTO existing_data
+    FROM user_data
+    WHERE user_id = p_user_id AND data_type = p_data_type;
+    
+    -- If no existing data, use the new data directly
+    IF existing_data IS NULL THEN
+        merged_data := p_data;
+    ELSE
+        -- For arrays, merge them; for objects, merge them; for other types, replace
+        IF jsonb_typeof(p_data) = 'array' AND jsonb_typeof(existing_data) = 'array' THEN
+            merged_data := existing_data || p_data;
+        ELSIF jsonb_typeof(p_data) = 'object' AND jsonb_typeof(existing_data) = 'object' THEN
+            merged_data := existing_data || p_data;
+        ELSE
+            merged_data := p_data;
+        END IF;
+    END IF;
+    
+    -- Check size limits
+    IF jsonb_array_length(merged_data) > 5000 THEN
+        RETURN jsonb_build_object('error', 'Data too large after merge: maximum 5,000 items allowed');
+    END IF;
+    
+    -- Perform the upsert
+    INSERT INTO user_data (user_id, data_type, data)
+    VALUES (p_user_id, p_data_type, merged_data)
+    ON CONFLICT (user_id, data_type)
+    DO UPDATE SET 
+        data = merged_data,
+        updated_at = NOW();
+    
+    RETURN jsonb_build_object('success', true, 'data', merged_data);
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object('error', SQLERRM, 'details', 'Database operation failed');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permission for the new function
+GRANT EXECUTE ON FUNCTION safe_upsert_user_data(UUID, VARCHAR(50), JSONB) TO authenticated;
 
 -- User-specific questions table (replaces JSONB storage for performance)
 CREATE TABLE IF NOT EXISTS user_questions (

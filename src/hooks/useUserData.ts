@@ -163,6 +163,12 @@ export function useUserData<K extends DataType>(
       return false
     }
 
+    // Check data size before sending to prevent 500 errors
+    if (Array.isArray(newData) && newData.length > 5000) {
+      setError(`${dataType} data too large (${newData.length} items). Maximum 5,000 items allowed.`)
+      return false
+    }
+
     // Update UI immediately for instant feedback
     setData(newData)
     setError(null)
@@ -176,37 +182,81 @@ export function useUserData<K extends DataType>(
     lastSaveTimeRef.current = Date.now()
 
     try {
-      // For large datasets, implement timeout handling
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database operation timed out')), 25000); // 25 second timeout
-      });
-      
-      const savePromise = supabase.rpc('upsert_user_data', {
-        p_user_id: userId,
-        p_data_type: dataType,
-        p_data: newData
-      });
-      
-      const { data: result, error: saveError } = await Promise.race([savePromise, timeoutPromise]) as any;
-
-      if (saveError) {
-        throw new Error(`Supabase error: ${saveError.message}`)
+      const callWithTimeout = async <T>(promise: Promise<T>, ms = 25000): Promise<T> => {
+        return await Promise.race([
+          promise as Promise<any>,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Database operation timed out')), ms))
+        ]) as T
       }
 
+      // First try the safer function
+      const { data: resultSafe, error: errorSafe }: any = await callWithTimeout(
+        supabase.rpc('safe_upsert_user_data', {
+          p_user_id: userId,
+          p_data_type: dataType,
+          p_data: newData
+        })
+      )
 
-      closeCircuitBreaker() // Close circuit breaker on success
+      // If safe function worked or returned structured success
+      if (!errorSafe && !(resultSafe && resultSafe.error)) {
+        closeCircuitBreaker()
+        return true
+      }
+
+      // If function not found (404) or similar, fallback to legacy upsert_user_data
+      const isFnMissing = !!errorSafe && (
+        (errorSafe as any)?.status === 404 ||
+        (errorSafe as any)?.code === '404' ||
+        (typeof errorSafe.message === 'string' && errorSafe.message.toLowerCase().includes('not found'))
+      )
+
+      if (isFnMissing) {
+        const { error: errorLegacy }: any = await callWithTimeout(
+          supabase.rpc('upsert_user_data', {
+            p_user_id: userId,
+            p_data_type: dataType,
+            p_data: newData
+          })
+        )
+
+        if (errorLegacy) {
+          throw new Error(`Supabase error: ${errorLegacy.message}`)
+        }
+
+        closeCircuitBreaker()
+        return true
+      }
+
+      // If safe function existed but returned an app-level error payload
+      if (resultSafe && resultSafe.error) {
+        throw new Error(resultSafe.error)
+      }
+
+      // Other errors from the safe function
+      if (errorSafe) {
+        throw new Error(`Supabase error: ${errorSafe.message}`)
+      }
+
+      // Should not reach here
+      closeCircuitBreaker()
       return true
       
     } catch (err: any) {
-
       consecutiveFailuresRef.current++
-      
-      // Open circuit breaker if too many consecutive failures
       if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
         openCircuitBreaker()
       }
-      
       setError(`Failed to save ${dataType}: ${err.message}`)
+
+      // For questions, try to save to localStorage as backup
+      if (dataType === 'sat_master_log_questions' && Array.isArray(newData)) {
+        try {
+          localStorage.setItem('satlog:questions_backup', JSON.stringify(newData));
+          console.log('Saved questions to localStorage backup due to database error');
+        } catch {}
+      }
+      
       return false
     } finally {
       isSavingRef.current = false

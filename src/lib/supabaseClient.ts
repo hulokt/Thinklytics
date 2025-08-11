@@ -7,7 +7,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ||
                        import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-
+  
   throw new Error(`Missing Supabase environment variables. 
   
 Please create a .env.local file with:
@@ -20,6 +20,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // Use a project-specific storage key to avoid collisions with other apps
+    storageKey: 'satlog-auth',
     // Disable debug mode to reduce console spam
     debug: false,
     flowType: 'pkce'

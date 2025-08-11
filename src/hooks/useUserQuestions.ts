@@ -94,18 +94,32 @@ export function useUserQuestions(): UseUserQuestionsResult {
       // Optimistic update
       setData(prev => prev ? [newQuestion, ...prev] : [newQuestion])
       
-      // Use the existing sat_master_log_questions structure
-      const currentData = Array.isArray(data) ? data : []
-      const updatedData = [newQuestion, ...currentData]
-      
-      const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+      // Append just the new question to avoid sending the full array
+      const { error: appendError }: any = await supabase.rpc('append_user_questions', {
         p_user_id: userId,
-        p_data_type: 'sat_master_log_questions',
-        p_data: updatedData
+        p_questions: [newQuestion]
       })
 
-      if (upsertError) {
-        throw new Error(`Database upsert error: ${upsertError.message}`)
+      // If append function doesn't exist in the DB, fallback to full upsert
+      if (appendError) {
+        const isFnMissing = (appendError?.status === 404) ||
+          (appendError?.code === '404') ||
+          (typeof appendError.message === 'string' && appendError.message.toLowerCase().includes('not found'))
+
+        if (isFnMissing) {
+          const currentData = Array.isArray(data) ? data : []
+          const updatedData = [newQuestion, ...currentData]
+          const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+            p_user_id: userId,
+            p_data_type: 'sat_master_log_questions',
+            p_data: updatedData
+          })
+          if (upsertError) {
+            throw new Error(`Database upsert error: ${upsertError.message}`)
+          }
+        } else {
+          throw new Error(`Database append error: ${appendError.message}`)
+        }
       }
 
       return true
@@ -132,7 +146,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
         q.id === id ? { ...q, ...updateData } : q
       ) : [])
       
-      // Use the existing sat_master_log_questions structure
+      // Persist by replacing the whole array (less frequent than adds)
       const currentData = Array.isArray(data) ? data : []
       const updatedData = currentData.map(q => 
         q.id === id ? { ...q, ...updateData } : q
@@ -163,26 +177,40 @@ export function useUserQuestions(): UseUserQuestionsResult {
 
     try {
       // Optimistic update
+      const prevData = Array.isArray(data) ? data : []
       setData(prev => prev ? prev.filter(q => q.id !== id) : [])
       
-      // Use the existing sat_master_log_questions structure
-      const currentData = Array.isArray(data) ? data : []
-      const updatedData = currentData.filter(q => q.id !== id)
-      
-      const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+      // Prefer lightweight RPC on server to avoid sending full payload
+      const { error: removeError }: any = await supabase.rpc('remove_user_question', {
         p_user_id: userId,
-        p_data_type: 'sat_master_log_questions',
-        p_data: updatedData
+        p_question_id: id
       })
 
-      if (upsertError) {
-        throw new Error(`Database upsert error: ${upsertError.message}`)
+      if (removeError) {
+        const isFnMissing = (removeError?.status === 404) ||
+          (removeError?.code === '404') ||
+          (typeof removeError.message === 'string' && removeError.message.toLowerCase().includes('not found'))
+        
+        if (isFnMissing) {
+          // Fallback to full-array upsert
+          const updatedData = prevData.filter(q => q.id !== id)
+          const { error: upsertError } = await supabase.rpc('upsert_user_data', {
+            p_user_id: userId,
+            p_data_type: 'sat_master_log_questions',
+            p_data: updatedData
+          })
+          if (upsertError) {
+            throw new Error(`Database upsert error: ${upsertError.message}`)
+          }
+        } else {
+          throw new Error(`Database remove error: ${removeError.message}`)
+        }
       }
 
       return true
       
     } catch (err: any) {
-      // Reload data on failure to revert optimistic update
+      // Revert optimistic update on failure
       await loadData()
       setError(`Failed to delete question: ${err.message}`)
       return false
@@ -196,7 +224,7 @@ export function useUserQuestions(): UseUserQuestionsResult {
       // Optimistic update
       setData(prev => prev ? prev.filter(q => !ids.includes(q.id)) : [])
       
-      // Use the existing sat_master_log_questions structure
+      // Persist by replacing the whole array (bulk)
       const currentData = Array.isArray(data) ? data : []
       const updatedData = currentData.filter(q => !ids.includes(q.id))
       

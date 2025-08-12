@@ -5,6 +5,7 @@ import { getUserStats } from '../lib/userPoints';
 import { Calculator, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CountUp from './ui/CountUp';
+import { useSoundSettings } from '../contexts/SoundSettingsContext';
 
 // Import sound files
 import rankingLoadedSound from '../assets/rankingLoadedPage.wav';
@@ -12,6 +13,7 @@ import rankingLoadedSound from '../assets/rankingLoadedPage.wav';
 const Profile = () => {
   const { user } = useAuth();
   const { isDarkMode } = useDarkMode();
+  const { soundEnabled } = useSoundSettings();
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -48,7 +50,7 @@ const Profile = () => {
             setUserStats(stats);
             
             // Play ranking loaded sound when stats are successfully loaded
-            if (rankingAudio) {
+            if (rankingAudio && soundEnabled) {
               rankingAudio.currentTime = 0;
                       rankingAudio.play().catch(error => {
           // Audio play failed

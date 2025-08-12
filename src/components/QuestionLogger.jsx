@@ -19,6 +19,7 @@ import Fuse from 'fuse.js/dist/fuse.esm.js';
 import { formatRelativeTime } from '../lib/utils';
 import { exportQuestionsAsPDF } from '../utils/pdfExport';
 import ImageModal from './ImageModal';
+import { useSoundSettings } from '../contexts/SoundSettingsContext';
 
 // Import sound files
 import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wav';
@@ -79,6 +80,7 @@ const QuestionLogger = ({
 
   const { user } = useAuth();
   const { isDarkMode } = useDarkMode();
+  const { soundEnabled } = useSoundSettings();
   const [pointsAnimation, setPointsAnimation] = useState({ show: false, points: 0, action: '' });
   const [addEditAudio, setAddEditAudio] = useState(null);
   const [deleteAudio, setDeleteAudio] = useState(null);
@@ -352,7 +354,7 @@ const QuestionLogger = ({
       incrementEditCounter();
       
       // Play add/edit sound immediately
-      if (addEditAudio) {
+      if (addEditAudio && soundEnabled) {
         addEditAudio.currentTime = 0;
         addEditAudio.play().catch(error => {
           console.log('Add/edit audio play failed:', error);
@@ -372,7 +374,7 @@ const QuestionLogger = ({
       onAddQuestion(formData);
       
       // Play add/edit sound immediately
-      if (addEditAudio) {
+      if (addEditAudio && soundEnabled) {
         addEditAudio.currentTime = 0;
         addEditAudio.play().catch(error => {
           console.log('Add/edit audio play failed:', error);
@@ -451,7 +453,7 @@ const QuestionLogger = ({
     onDeleteQuestion(id);
     
     // Play delete sound immediately
-    if (deleteAudio) {
+    if (deleteAudio && soundEnabled) {
       deleteAudio.currentTime = 0;
       deleteAudio.play().catch(error => {
         console.log('Delete audio play failed:', error);
@@ -720,7 +722,7 @@ const QuestionLogger = ({
       const deleteCount = deleteIds.length;
 
       // Play delete sound immediately
-      if (deleteAudio) {
+      if (deleteAudio && soundEnabled) {
         deleteAudio.currentTime = 0;
         deleteAudio.play().catch(error => {
           console.log('Delete audio play failed:', error);

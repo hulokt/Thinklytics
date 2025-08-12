@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager } from './QuizManager';
+import { useSoundSettings } from '../contexts/SoundSettingsContext';
 import { 
   User, 
   Mail, 
@@ -35,6 +36,7 @@ const AccountPage = ({ onBack }) => {
   const { user, signOut } = useAuth();
   const { completedQuizzes } = useQuizManager();
   const { data: questionAnswers } = useQuestionAnswers();
+  const { soundEnabled, toggleSound } = useSoundSettings();
   
   const [userData, setUserData] = useState({
     name: '',
@@ -658,6 +660,25 @@ const AccountPage = ({ onBack }) => {
                       <option value="de">Deutsch</option>
                       <option value="zh">中文</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sound Effects</label>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">Enable Sound Effects</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Play sounds for correct answers, notifications, and interactions</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={soundEnabled}
+                          onChange={toggleSound}
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

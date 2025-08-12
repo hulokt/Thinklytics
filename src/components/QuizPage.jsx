@@ -6,6 +6,7 @@ import { useQuizManager, QUIZ_STATUS } from './QuizManager';
 import { awardPoints, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import ImageModal from './ImageModal';
+import { useSoundSettings } from '../contexts/SoundSettingsContext';
 
 // Import sound files
 import selectChoiceSound from '../assets/selectedChoiceSound.wav';
@@ -13,6 +14,7 @@ import correctChoiceSound from '../assets/correctChoiceSound.wav';
 import wrongChoiceSound from '../assets/wrongChoiceSound.wav';
 
 const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = null }) => {
+  const { soundEnabled } = useSoundSettings();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
@@ -115,6 +117,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   // Function to play sound effects
   const playSound = (audioRef) => {
+    if (!soundEnabled) return; // Skip if sound is disabled
+    
     if (audioRef.current) {
       audioRef.current.currentTime = 0; // Reset to beginning
       audioRef.current.play().catch(error => {

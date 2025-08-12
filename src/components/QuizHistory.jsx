@@ -8,6 +8,7 @@ import { awardPoints, handleQuizEdit } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
+import { useSoundSettings } from '../contexts/SoundSettingsContext';
 
 
 // Import sound files
@@ -17,6 +18,7 @@ import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wa
 
 const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const { isDarkMode } = useDarkMode();
+  const { soundEnabled } = useSoundSettings();
   // Initial props and state
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [editingAnswers, setEditingAnswers] = useState({});
@@ -108,11 +110,13 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
           setShowCelebration(true);
           
           // Create a fresh audio instance for this celebration
-          const freshAudio = new Audio(quizFinishedSound);
-          freshAudio.volume = 0.5;
-          freshAudio.play().catch(error => {
-            // Audio play failed
-          });
+          if (soundEnabled) {
+            const freshAudio = new Audio(quizFinishedSound);
+            freshAudio.volume = 0.5;
+            freshAudio.play().catch(error => {
+              // Audio play failed
+            });
+          }
         }
       }
       
@@ -452,7 +456,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setLocalCompletedQuizzes(prev => prev.filter(q => q.id !== quizToDelete.id));
     
     // Play delete sound immediately
-    if (deleteAudio) {
+    if (deleteAudio && soundEnabled) {
       deleteAudio.currentTime = 0;
       deleteAudio.play().catch(error => {
         // Delete audio play failed
@@ -548,7 +552,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       if (!quizManager) return;
 
       // Play delete sound
-      if (deleteAudio) {
+      if (deleteAudio && soundEnabled) {
         deleteAudio.currentTime = 0;
         deleteAudio.play().catch(error => {
           // Delete audio play failed
@@ -704,7 +708,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
       await quizManager.updateQuiz(editingQuiz.id, updatedQuiz);
       
       // Play save sound immediately after successful save
-      if (saveAudio) {
+      if (saveAudio && soundEnabled) {
         saveAudio.currentTime = 0;
         saveAudio.play().catch(error => {
           // Save audio play failed

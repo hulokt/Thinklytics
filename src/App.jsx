@@ -18,6 +18,7 @@ import {
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { UndoProvider, useUndo } from './contexts/UndoContext';
+import { SoundSettingsProvider } from './contexts/SoundSettingsContext';
 import UndoToast from './components/ui/UndoToast';
 import { useCalendarEvents, useQuestionAnswers } from './hooks/useUserData';
 import { useUserQuestions } from './hooks/useUserQuestions';
@@ -98,11 +99,13 @@ function App() {
     <Router basename={basename}>
       <AuthProvider>
         <DarkModeProvider>
-          <UndoProvider>
-            <Suspense fallback={<div>Loading...</div>}>
-              <AppContent />
-            </Suspense>
-          </UndoProvider>
+          <SoundSettingsProvider>
+            <UndoProvider>
+              <Suspense fallback={<div>Loading...</div>}>
+                <AppContent />
+              </Suspense>
+            </UndoProvider>
+          </SoundSettingsProvider>
         </DarkModeProvider>
       </AuthProvider>
     </Router>

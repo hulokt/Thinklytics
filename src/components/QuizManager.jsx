@@ -161,21 +161,48 @@ export class QuizManager {
     const totalQuestions = syncedQuestions.length;
     const score = Math.round((correctCount / totalQuestions) * 100);
 
-    // Sanitize questions: strip large/base64 image blobs and heavy fields to speed up saves
+    // Sanitize questions: strip only truly heavy blobs; preserve useful images (e.g., SVGs, URLs)
     const sanitizeQuestionForStorage = (question) => {
       const cleaned = { ...question };
-      // Remove known heavy fields by key name
+
+      // Helper to decide whether to retain an image string
+      const shouldKeepImage = (value) => {
+        if (typeof value !== 'string') return false;
+        // Keep external URLs
+        if (/^https?:\/\//i.test(value)) return true;
+        // Keep SVG data URIs (typically small and text-based)
+        if (/^data:image\/svg\+xml/i.test(value)) return true;
+        // Keep reasonably small data URIs (< 200 KB)
+        if (/^data:image\//i.test(value) && value.length < 200_000) return true;
+        return false;
+      };
+
+      // Remove known heavy fields by key name, but allow passage/explanation images when small/URL/SVG
       const heavyKeys = [
-        'image', 'imageData', 'passageImage', 'passageImageData',
+        'image', 'imageData', 'passageImageData',
         'solutionImage', 'solutionImageData', 'figureImage', 'figureImageData',
         'images', 'screenshots'
       ];
       for (const key of heavyKeys) {
         if (key in cleaned) delete cleaned[key];
       }
-      // Drop any very large string fields (likely base64 blobs)
+
+      // Special handling: preserve `passageImage` and `explanationImage` when appropriate
+      if ('passageImage' in cleaned && !shouldKeepImage(cleaned.passageImage)) {
+        delete cleaned.passageImage;
+      }
+      if ('explanationImage' in cleaned && !shouldKeepImage(cleaned.explanationImage)) {
+        delete cleaned.explanationImage;
+      }
+
+      // Drop any very large string fields (likely base64 blobs), but skip the whitelisted image fields
       for (const [key, value] of Object.entries(cleaned)) {
-        if (typeof value === 'string' && value.length > 50000) {
+        if (
+          typeof value === 'string' &&
+          value.length > 200_000 && // raise threshold to avoid stripping medium images
+          key !== 'passageImage' &&
+          key !== 'explanationImage'
+        ) {
           delete cleaned[key];
         }
       }

@@ -37,8 +37,43 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   useEffect(() => {
     const loadUserData = () => {
       if (user) {
+        const metadata = user.user_metadata || {};
+        
+        // Try to get the full name from the signup data
+        let displayName = 'User';
+        if (metadata.name && metadata.name.trim() && !/^new\s+user$/i.test(metadata.name)) {
+          displayName = metadata.name.trim();
+        } else {
+          // Try to construct name from first and last name
+          const firstName = metadata.first_name || metadata.given_name || '';
+          const lastName = metadata.last_name || metadata.family_name || '';
+          const constructedName = [firstName, lastName].filter(Boolean).join(' ').trim();
+          
+          if (constructedName) {
+            displayName = constructedName;
+          } else {
+            // Fall back to other metadata fields
+            const fallbackNames = [
+              metadata.full_name,
+              metadata.preferred_username,
+              metadata.nickname,
+              metadata.user_name,
+              metadata.username,
+              metadata.display_name
+            ].filter(Boolean);
+
+            for (const rawName of fallbackNames) {
+              const name = String(rawName).trim();
+              if (name && !/^new\s+user$/i.test(name)) {
+                displayName = name;
+                break;
+              }
+            }
+          }
+        }
+
         setUserData({
-          name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          name: displayName,
           email: user.email || ''
         });
       }

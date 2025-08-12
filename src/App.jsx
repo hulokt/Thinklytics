@@ -394,18 +394,29 @@ function AppContent() {
 
   const handleSignup = async (formData) => {
     try {
-  
-      
       const email = formData?.email || 'user@thinklytics.com';
       const password = formData?.password || 'user123';
-      const name = formData?.name || 'New User';
+      
+      // Combine firstName and lastName into full name
+      const firstName = formData?.firstName || '';
+      const lastName = formData?.lastName || '';
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'New User';
       
       const { user: newUser, error } = await signUp(email, password, {
         data: {
-          name: name,
+          name: fullName,
+          display_name: fullName,
+          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
           account_type: 'Standard'
         }
       });
+
+      // Persist intended display name for post-confirmation metadata sync
+      try {
+        localStorage.setItem('satlog:pendingDisplayName', fullName);
+      } catch {}
       
       if (error) {
 

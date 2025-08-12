@@ -175,23 +175,40 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   // Get user display name
   const getUserDisplayName = () => {
     if (!user) return 'User';
-    
-    // Try to get name from user metadata first
-    if (user.user_metadata?.name) {
-      return user.user_metadata.name;
+
+    const metadata = user.user_metadata || {};
+
+    // Try to get the full name from the signup data
+    if (metadata.name && metadata.name.trim() && !/^new\s+user$/i.test(metadata.name)) {
+      return metadata.name.trim();
     }
+
+    // Try to construct name from first and last name
+    const firstName = metadata.first_name || metadata.given_name || '';
+    const lastName = metadata.last_name || metadata.family_name || '';
+    const constructedName = [firstName, lastName].filter(Boolean).join(' ').trim();
     
-    // Fall back to email prefix
-    if (user.email) {
-      const emailPrefix = user.email.split('@')[0];
-      // Capitalize first letter and replace dots/underscores with spaces
-      return emailPrefix
-        .replace(/[._]/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+    if (constructedName) {
+      return constructedName;
     }
-    
+
+    // Fall back to other metadata fields
+    const fallbackNames = [
+      metadata.full_name,
+      metadata.preferred_username,
+      metadata.nickname,
+      metadata.user_name,
+      metadata.username,
+      metadata.display_name
+    ].filter(Boolean);
+
+    for (const rawName of fallbackNames) {
+      const name = String(rawName).trim();
+      if (name && !/^new\s+user$/i.test(name)) {
+        return name;
+      }
+    }
+
     return 'User';
   };
 
@@ -1389,7 +1406,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   
 
   return (
-    <div className="quiz-page-container bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col h-screen overflow-hidden">
+    <div className="quiz-page-container bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 transition-all duration-500 flex flex-col h-screen overflow-hidden">
       <style>{`
         /* Disable outer page scrolling */
         html, body {
@@ -1435,56 +1452,94 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         }
         
         .progress-bar-segment {
-          height: 6px;
+          height: 4px;
           flex-grow: 1;
+          border-radius: 2px;
+          transition: all 0.3s ease;
         }
         .progress-bar-segment.blue {
-          background-color: #3b82f6;
+          background: linear-gradient(90deg, #3b82f6, #60a5fa);
+          box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
         }
         .progress-bar-segment.yellow {
-          background-color: #facc15;
+          background: linear-gradient(90deg, #fbbf24, #f59e0b);
+          box-shadow: 0 1px 3px rgba(251, 191, 36, 0.3);
         }
         .progress-bar-segment.gray {
-          background-color: #e5e7eb;
+          background: linear-gradient(90deg, #e5e7eb, #d1d5db);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         .question-option {
           display: flex;
           align-items: center;
-          padding: 0.75rem 1rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          margin-bottom: 0.75rem;
+          padding: 1rem 1.25rem;
+          border: 2px solid #e2e8f0;
+          border-radius: 1rem;
+          margin-bottom: 1rem;
           cursor: pointer;
-          transition: all 0.2s ease-in-out;
-          color: #374151;
+          transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+          color: #475569;
+          background: #ffffff;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        @media (min-width: 640px) {
+          .question-option {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+          }
         }
         .dark .question-option {
-          border-color: #4b5563;
-          color: #d1d5db;
+          border-color: #475569;
+          color: #cbd5e1;
+          background: #1e293b;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        @media (min-width: 640px) {
+          .dark .question-option {
+            background: rgba(30, 41, 59, 0.7);
+          }
         }
         .question-option:hover {
-          background-color: #f3f4f6;
-          border-color: #9ca3af;
+          background: #f8fafc;
+          border-color: #94a3b8;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        @media (min-width: 640px) {
+          .question-option:hover {
+            background: rgba(255, 255, 255, 0.9);
+          }
         }
         .dark .question-option:hover {
-          background-color: #374151;
-          border-color: #6b7280;
+          background: #334155;
+          border-color: #64748b;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        @media (min-width: 640px) {
+          .dark .question-option:hover {
+            background: rgba(30, 41, 59, 0.9);
+          }
         }
         .question-option.selected {
           background-color: #dbeafe;
           border-color: #3b82f6;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
         }
         .dark .question-option.selected {
           background-color: #1e3a8a;
           border-color: #3b82f6;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
         .question-option.selected:hover {
           background-color: #bfdbfe;
           border-color: #2563eb;
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.2);
         }
         .dark .question-option.selected:hover {
           background-color: #1e40af;
           border-color: #2563eb;
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
         }
         
         /* Correct answer styles */
@@ -1658,24 +1713,43 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 1.75rem;
-          height: 1.75rem;
+          width: 2rem;
+          height: 2rem;
           border-radius: 50%;
-          border: 1px solid #9ca3af;
-          margin-right: 0.75rem;
-          font-weight: 500;
-          transition: all 0.2s ease-in-out;
-          color: #374151;
+          border: 2px solid #cbd5e1;
+          margin-right: 1rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+          color: #64748b;
+          background: #ffffff;
+        }
+        @media (min-width: 640px) {
+          .option-letter {
+            background: rgba(255, 255, 255, 0.8);
+          }
         }
         .dark .option-letter {
-          border-color: #6b7280;
-          color: #d1d5db;
+          border-color: #475569;
+          color: #94a3b8;
+          background: #1e293b;
+        }
+        @media (min-width: 640px) {
+          .dark .option-letter {
+            background: rgba(30, 41, 59, 0.8);
+          }
         }
         .question-option.selected .option-letter {
-          background-color: #3b82f6;
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
           color: white;
           border-color: #3b82f6;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
+        /* Quiz content font - Poppins for passage, question, choices, and explanation */
+        .quiz-content-text {
+          font-family: 'Poppins', sans-serif !important;
+        }
+        
         /* Question box base styles - no hover effects */
         .question-box {
           border: 2px solid #e5e7eb;
@@ -1883,7 +1957,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       `}</style>
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex-shrink-0 relative transition-colors duration-300">
+      <header className="bg-white dark:bg-slate-800 sm:bg-white/80 sm:dark:bg-slate-800/80 sm:backdrop-blur-xl border-b border-slate-200 dark:border-slate-700 sm:border-slate-200/50 sm:dark:border-slate-700/50 p-4 sm:p-6 flex-shrink-0 relative transition-all duration-500 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
           {/* Left side - Quiz info */}
           <div className="flex items-center sm:flex-1">
@@ -1898,12 +1972,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           {/* Center - Timer (on mobile, shows at top-right, on desktop in center) */}
           <div className="absolute top-3 left-1/2 transform -translate-x-1/2 sm:relative sm:top-auto sm:left-auto sm:transform-none sm:flex-1 sm:flex sm:justify-center text-center">
             <div>
-              <div className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
+              <div className={`text-xl sm:text-3xl font-bold text-slate-800 dark:text-slate-200 sm:bg-gradient-to-r sm:from-slate-800 sm:to-slate-900 sm:dark:from-slate-200 sm:dark:to-slate-100 sm:bg-clip-text sm:text-transparent transition-all duration-500 ${isStopwatchHidden ? 'opacity-0' : 'opacity-100'}`}>
                 {formatTime(elapsedTime)}
               </div>
               <button
                 onClick={() => setIsStopwatchHidden(!isStopwatchHidden)}
-                className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300"
+                className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-300 shadow-sm"
               >
                 {isStopwatchHidden ? 'Show' : 'Hide'}
               </button>
@@ -1984,7 +2058,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 flex-shrink-0">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
               <div className="flex items-center">
-                <span className="bg-black dark:bg-gray-700 text-white text-xs sm:text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
+                <span className="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 text-white text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg mr-3 transition-all duration-300 shadow-sm">
                   {currentQuestionIndex + 1}
                 </span>
                 <button 
@@ -2028,7 +2102,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           </div>
 
           {/* Passage Section - Middle on mobile */}
-          <div className="flex-1 p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col">
+          <div className="flex-1 p-4 sm:p-6 bg-white dark:bg-slate-800 sm:bg-white/70 sm:dark:bg-slate-800/70 sm:backdrop-blur-lg border-b border-slate-200 dark:border-slate-700 sm:border-slate-200/30 sm:dark:border-slate-700/30 transition-all duration-500 flex flex-col">
             <div className="flex justify-between items-center mb-3 sm:mb-4 flex-shrink-0">
               <p className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">Passage</p>
             </div>
@@ -2042,12 +2116,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
                 </p>
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {currentQuestion.questionText}
                 </p>
               )}
@@ -2055,17 +2129,17 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           </div>
 
           {/* Question and Choices Section - Bottom on mobile */}
-          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col">
+          <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 sm:bg-white/70 sm:dark:bg-slate-800/70 sm:backdrop-blur-lg transition-all duration-500 flex flex-col">
             {/* Question Text */}
             <div className="flex-shrink-0 mb-3 sm:mb-4">
-              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
+              <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
                 {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
               </p>
             </div>
             
             {/* Answer Options */}
             <div className="flex-1">
-              <div className="space-y-2 sm:space-y-3" style={{ overflow: 'visible' }}>
+              <div className="space-y-2 sm:space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
@@ -2105,7 +2179,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
                       </div>
                       
                       {eliminationMode && (
@@ -2127,20 +2201,20 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               
               {/* Explanation Section */}
               {checkedQuestions.has(currentQuestion.id) && (currentQuestion.explanation || currentQuestion.explanationImage) && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-indigo-900 sm:from-blue-50/80 sm:to-blue-100/80 sm:dark:from-blue-900/30 sm:dark:to-indigo-900/30 border border-blue-200 dark:border-blue-700 sm:border-blue-200/50 sm:dark:border-blue-700/50 rounded-2xl shadow-sm">
                   <div className="flex items-start">
-                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
+                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-3 mt-0.5 text-xl">lightbulb</span>
                     <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
+                      <h4 className="quiz-content-text text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Explanation</h4>
                       {currentQuestion.explanationImage && (
                         <img 
                           src={currentQuestion.explanationImage} 
                           alt="Explanation" 
-                          className="max-h-48 w-auto rounded shadow-sm border border-blue-200 dark:border-blue-600 mb-2" 
+                          className="max-h-48 w-auto rounded-xl shadow-sm border border-blue-200 dark:border-blue-600 sm:border-blue-200/50 sm:dark:border-blue-600/50 mb-3" 
                         />
                       )}
                       {currentQuestion.explanation && (
-                        <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        <p className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
                           {currentQuestion.explanation}
                         </p>
                       )}
@@ -2155,7 +2229,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         {/* Desktop Layout */}
         <div className="hidden md:flex flex-row overflow-hidden min-h-0 h-full">
           {/* Passage Section - Left side on desktop */}
-          <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300 flex flex-col h-full">
+          <div className="w-1/2 p-6 overflow-y-auto bg-white dark:bg-slate-800 sm:bg-white/70 sm:dark:bg-slate-800/70 sm:backdrop-blur-lg border-r border-slate-200 dark:border-slate-700 sm:border-slate-200/30 sm:dark:border-slate-700/30 transition-all duration-500 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Passage</p>
               <button className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300">
@@ -2173,12 +2247,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
                 </p>
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {currentQuestion.questionText}
                 </p>
               )}
@@ -2186,11 +2260,11 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           </div>
 
           {/* Question Section - Right side on desktop */}
-          <div className="w-1/2 p-4 overflow-y-auto bg-white dark:bg-gray-800 transition-colors duration-300 flex flex-col h-full">
+          <div className="w-1/2 p-6 overflow-y-auto bg-white dark:bg-slate-800 sm:bg-white/70 sm:dark:bg-slate-800/70 sm:backdrop-blur-lg transition-all duration-500 flex flex-col h-full">
             {/* Question Info - Top section */}
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <div className="flex items-center">
-                <span className="bg-black dark:bg-gray-700 text-white text-sm font-semibold px-2 py-1 rounded-sm mr-2 transition-colors duration-300">
+                <span className="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 text-white text-sm font-semibold px-3 py-1.5 rounded-lg mr-3 transition-all duration-300 shadow-sm">
                   {currentQuestionIndex + 1}
                 </span>
                 <button 
@@ -2234,14 +2308,14 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             
             {/* Question Text */}
             <div className="flex-shrink-0 mb-4">
-              <p className="text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
+              <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
                 {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
               </p>
             </div>
             
             {/* Answer Options */}
             <div className="flex-1 overflow-y-auto">
-              <div className="space-y-3" style={{ overflow: 'visible' }}>
+              <div className="space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
@@ -2281,7 +2355,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.75rem', height: '1.75rem', marginRight: '0.75rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
                       </div>
                       
                       {eliminationMode && (
@@ -2303,20 +2377,20 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
               
               {/* Explanation Section */}
               {checkedQuestions.has(currentQuestion.id) && (currentQuestion.explanation || currentQuestion.explanationImage) && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-indigo-900 sm:from-blue-50/80 sm:to-blue-100/80 sm:dark:from-blue-900/30 sm:dark:to-indigo-900/30 border border-blue-200 dark:border-blue-700 sm:border-blue-200/50 sm:dark:border-blue-700/50 rounded-2xl shadow-sm">
                   <div className="flex items-start">
-                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-2 mt-0.5">lightbulb</span>
+                    <span className="material-icons text-blue-600 dark:text-blue-400 mr-3 mt-0.5 text-xl">lightbulb</span>
                     <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Explanation</h4>
+                      <h4 className="quiz-content-text text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Explanation</h4>
                       {currentQuestion.explanationImage && (
                         <img 
                           src={currentQuestion.explanationImage} 
                           alt="Explanation" 
-                          className="max-h-48 w-auto rounded shadow-sm border border-blue-200 dark:border-blue-600 mb-2" 
+                          className="max-h-48 w-auto rounded-xl shadow-sm border border-blue-200 dark:border-blue-600 sm:border-blue-200/50 sm:dark:border-blue-600/50 mb-3" 
                         />
                       )}
                       {currentQuestion.explanation && (
-                        <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        <p className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
                           {currentQuestion.explanation}
                         </p>
                       )}
@@ -2330,13 +2404,13 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
       </div>
 
       {/* Bottom Bar */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center flex-shrink-0 transition-colors duration-300 relative gap-3 sm:gap-0">
+      <div className="bg-white dark:bg-slate-800 sm:bg-white/80 sm:dark:bg-slate-800/80 sm:backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 sm:border-slate-200/50 sm:dark:border-slate-700/50 p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center flex-shrink-0 transition-all duration-500 relative gap-3 sm:gap-0 shadow-sm">
         <div className="hidden sm:block text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 text-center sm:text-left sm:flex-1">Welcome, {getUserDisplayName()}</div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-0 sm:space-x-2 relative sm:flex-1 sm:justify-center">
           <button 
             onClick={() => setShowQuestionNavigation(!showQuestionNavigation)}
-            className="bg-black dark:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors duration-300 w-full sm:w-auto"
+            className="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 text-white px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-medium hover:from-slate-900 hover:to-slate-950 dark:hover:from-slate-600 dark:hover:to-slate-700 transition-all duration-300 w-full sm:w-auto shadow-sm hover:shadow-md"
           >
             Question {currentQuestionIndex + 1} of {quizData.questions.length}
             <span className="material-icons text-sm align-middle">arrow_drop_down</span>
@@ -2421,7 +2495,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           <button
             onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
             disabled={currentQuestionIndex === 0}
-            className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300 flex-1 sm:flex-initial"
+            className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex-1 sm:flex-initial shadow-sm hover:shadow-md"
           >
             Back
           </button>
@@ -2433,7 +2507,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 setCurrentQuestionIndex(currentQuestionIndex + 1);
               }
             }}
-            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors duration-300 flex-1 sm:flex-initial"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex-1 sm:flex-initial shadow-sm hover:shadow-md transform hover:scale-105"
           >
             Next
           </button>

@@ -39,6 +39,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         setSession(initialSession ?? null)
         setUser(initialSession?.user ?? null)
+
+        // If the user just confirmed email, patch missing display name from localStorage once
+        if (initialSession?.user) {
+          const metadata = initialSession.user.user_metadata || {}
+          const hasDisplayName = Boolean(metadata.name || metadata.display_name || metadata.full_name)
+          const pendingName = localStorage.getItem('satlog:pendingDisplayName')
+          if (!hasDisplayName && pendingName) {
+            await supabase.auth.updateUser({
+              data: {
+                name: pendingName,
+                display_name: pendingName,
+                full_name: pendingName
+              }
+            })
+            // Refresh session user in context
+            const { data: refreshed } = await supabase.auth.getSession()
+            setSession(refreshed.session ?? null)
+            setUser(refreshed.session?.user ?? null)
+            localStorage.removeItem('satlog:pendingDisplayName')
+          }
+        }
       } catch (error) {
         // If anything goes wrong, ensure we start from a clean state
         await supabase.auth.signOut()

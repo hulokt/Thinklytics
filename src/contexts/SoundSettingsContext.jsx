@@ -52,3 +52,4 @@ export const SoundSettingsProvider = ({ children }) => {
     </SoundSettingsContext.Provider>
   );
 };
+

@@ -55,7 +55,9 @@ const AnalyticsPage = ({ questions }) => {
     totalStudyTime: 0,
     sectionStats: {},
     domainStats: {},
+    wrongOnlyDomainStats: {},
     questionTypeStats: {},
+    wrongOnlyQuestionTypeStats: {},
     strugglingDomains: [],
     strugglingTypes: [],
     recentQuizzes: [],
@@ -72,7 +74,22 @@ const AnalyticsPage = ({ questions }) => {
   // Ensure all data is properly formatted as arrays (store *all* data)
   const allCompletedQuizzesArray = Array.isArray(completedQuizzes) ? completedQuizzes : [];
   const allInProgressQuizzesArray = Array.isArray(inProgressQuizzes) ? inProgressQuizzes : [];
-  const questionsArray = Array.isArray(questions) ? questions : [];
+  // Filter out invalid questions: Math section cannot have domain/type "Words in Context"
+  const questionsArray = useMemo(() => {
+    const rawQuestions = Array.isArray(questions) ? questions : [];
+    const normalize = (value) => (value ?? '').toString().trim().toLowerCase();
+    const isWordsInContext = (value) => normalize(value) === 'words in context';
+    return rawQuestions.filter((q) => {
+      const section = normalize(q.section);
+      const domain = normalize(q.domain);
+      const type = normalize(q.questionType);
+      // Exclude if Math and incorrectly tagged as Words in Context by domain or type
+      if (section === 'math' && (isWordsInContext(domain) || isWordsInContext(type))) {
+        return false;
+      }
+      return true;
+    });
+  }, [questions]);
   const questionAnswersObj = questionAnswers && typeof questionAnswers === 'object' ? questionAnswers : {};
 
   // Helper: derive questions within current range (custom days vs all-time)
@@ -132,20 +149,23 @@ const AnalyticsPage = ({ questions }) => {
     const totalQuizzes = completedQuizzesArray.length + inProgressQuizzesArray.length;
     const totalQuestions = questionsRangeArray.length;
     
-    // Calculate answered questions based on completed quizzes only
-    const answeredQuestions = Object.keys(questionAnswersObjFiltered).filter(questionId => {
-      const answers = questionAnswersObjFiltered[questionId];
-      if (!answers || !Array.isArray(answers)) return false;
-      
-      // Check if any answer is from a completed quiz
-      return answers.some(answer => {
-        return completedQuizzesArray.some(quiz => 
-          quiz.id === answer.quizId && 
-          ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) || 
-           quiz.status === 'completed')
-        );
-      });
-    }).length;
+    // Calculate answered questions based on completed quizzes only (restricted to filtered questions in range)
+    const filteredQuestionIdSet = new Set(questionsRangeArray.map(q => q.id));
+    const answeredQuestions = Object.keys(questionAnswersObjFiltered)
+      .filter(questionId => {
+        if (!filteredQuestionIdSet.has(questionId)) return false;
+        const answers = questionAnswersObjFiltered[questionId];
+        if (!answers || !Array.isArray(answers)) return false;
+        // Check if any answer is from a completed quiz
+        return answers.some(answer => {
+          return completedQuizzesArray.some(quiz =>
+            quiz.id === answer.quizId &&
+            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
+             quiz.status === 'completed')
+          );
+        });
+      })
+      .length;
     
     // Calculate average score (only for completed quizzes)
     const averageScore = completedQuizzesArray.length > 0 
@@ -191,7 +211,7 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
-    // Domain statistics - include all questions in wrong log, not just answered ones
+    // Domain statistics - include all questions in current dataset, not just answered ones
     const domainStats = {};
     questionsRangeArray.forEach(question => {
       const domain = question.domain || 'Unknown';
@@ -230,7 +250,7 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
-    // Question type statistics - include all questions in wrong log, not just answered ones
+    // Question type statistics - include all questions in current dataset, not just answered ones
     const questionTypeStats = {};
     
     questionsRangeArray.forEach(question => {
@@ -342,6 +362,78 @@ const AnalyticsPage = ({ questions }) => {
       }
     });
 
+    // Wrong-only statistics (wrong log questions + catalog questions that were answered incorrectly in completed quizzes)
+    const wrongOnlyDomainStats = {};
+    const wrongOnlyQuestionTypeStats = {};
+    questionsRangeArray.forEach(question => {
+      const origin = (question.origin || '').toString().trim().toLowerCase();
+      const isCatalog = origin === 'catalog';
+      let includeInWrongOnly = false;
+      if (!isCatalog) {
+        includeInWrongOnly = true; // user wrong log
+      } else if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
+        const completedAnswers = answers.filter(answer => {
+          return completedQuizzesArray.some(quiz =>
+            quiz.id === answer.quizId &&
+            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
+             quiz.status === 'completed')
+          );
+        });
+        includeInWrongOnly = completedAnswers.some(a => a.isCorrect === false);
+      }
+
+      if (!includeInWrongOnly) return;
+
+      const domain = question.domain || 'Unknown';
+      if (!wrongOnlyDomainStats[domain]) {
+        wrongOnlyDomainStats[domain] = { total: 0, attempted: 0, correct: 0, wrong: 0 };
+      }
+      wrongOnlyDomainStats[domain].total++;
+
+      if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
+        const completedAnswers = answers.filter(answer => {
+          return completedQuizzesArray.some(quiz =>
+            quiz.id === answer.quizId &&
+            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
+             quiz.status === 'completed')
+          );
+        });
+        if (completedAnswers.length > 0) {
+          wrongOnlyDomainStats[domain].attempted++;
+          const correctAnswers = completedAnswers.filter(a => a.isCorrect === true).length;
+          const incorrectAnswers = completedAnswers.filter(a => a.isCorrect === false).length;
+          if (correctAnswers > 0) wrongOnlyDomainStats[domain].correct++;
+          if (incorrectAnswers > 0) wrongOnlyDomainStats[domain].wrong++;
+        }
+      }
+
+      const type = question.questionType || 'Unknown';
+      if (!wrongOnlyQuestionTypeStats[type]) {
+        wrongOnlyQuestionTypeStats[type] = { total: 0, attempted: 0, correct: 0, wrong: 0 };
+      }
+      wrongOnlyQuestionTypeStats[type].total++;
+
+      if (questionAnswersObjFiltered[question.id]) {
+        const answers = questionAnswersObjFiltered[question.id];
+        const completedAnswers = answers.filter(answer => {
+          return completedQuizzesArray.some(quiz =>
+            quiz.id === answer.quizId &&
+            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
+             quiz.status === 'completed')
+          );
+        });
+        if (completedAnswers.length > 0) {
+          wrongOnlyQuestionTypeStats[type].attempted++;
+          const correctAnswers = completedAnswers.filter(a => a.isCorrect === true).length;
+          const incorrectAnswers = completedAnswers.filter(a => a.isCorrect === false).length;
+          if (correctAnswers > 0) wrongOnlyQuestionTypeStats[type].correct++;
+          if (incorrectAnswers > 0) wrongOnlyQuestionTypeStats[type].wrong++;
+        }
+      }
+    });
+
     // Analytics generated
 
     // Debug struggling domains calculation
@@ -360,7 +452,9 @@ const AnalyticsPage = ({ questions }) => {
       totalStudyTime,
       sectionStats,
       domainStats,
+      wrongOnlyDomainStats,
       questionTypeStats,
+      wrongOnlyQuestionTypeStats,
       strugglingDomains,
       strugglingTypes,
       recentQuizzes,
@@ -994,13 +1088,14 @@ const AnalyticsPage = ({ questions }) => {
   // Split stats by section
   const mathDomainSet = new Set(Object.values(MATH_DOMAINS));
   const rwDomainSet = new Set(Object.values(READING_WRITING_DOMAINS));
-  const domainStatsMath = Object.fromEntries(Object.entries(analytics.domainStats).filter(([d]) => mathDomainSet.has(d)));
-  const domainStatsRW = Object.fromEntries(Object.entries(analytics.domainStats).filter(([d]) => rwDomainSet.has(d)));
+  // Use WRONG-ONLY stats for distributions per requirement
+  const domainStatsMath = Object.fromEntries(Object.entries(analytics.wrongOnlyDomainStats || {}).filter(([d]) => mathDomainSet.has(d)));
+  const domainStatsRW = Object.fromEntries(Object.entries(analytics.wrongOnlyDomainStats || {}).filter(([d]) => rwDomainSet.has(d)));
 
   const mathTypeSet = new Set(getQuestionTypeOptions(SAT_SECTIONS.MATH));
   const rwTypeSet = new Set(getQuestionTypeOptions(SAT_SECTIONS.READING_WRITING));
-  const questionTypeStatsMath = Object.fromEntries(Object.entries(analytics.questionTypeStats).filter(([t]) => mathTypeSet.has(t)));
-  const questionTypeStatsRW = Object.fromEntries(Object.entries(analytics.questionTypeStats).filter(([t]) => rwTypeSet.has(t)));
+  const questionTypeStatsMath = Object.fromEntries(Object.entries(analytics.wrongOnlyQuestionTypeStats || {}).filter(([t]) => mathTypeSet.has(t)));
+  const questionTypeStatsRW = Object.fromEntries(Object.entries(analytics.wrongOnlyQuestionTypeStats || {}).filter(([t]) => rwTypeSet.has(t)));
 
   const domainOccurrenceDataMath = createOccurrenceData(domainStatsMath);
   const domainOccurrenceDataRW = createOccurrenceData(domainStatsRW);

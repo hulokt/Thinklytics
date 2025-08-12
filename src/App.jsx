@@ -997,9 +997,8 @@ function AppContent() {
                   
                   // For analytics, include:
                   // 1. User's wrong log questions
-                  // 2. Catalog questions that have been marked as wrong (answered incorrectly in quizzes)
-                  const catalogQuestionsMarkedWrong = catalogList.filter(catalogQuestion => {
-                    // Check if this catalog question has been answered incorrectly in any quiz
+                  // 2. Catalog questions that have been attempted in any way (incorrect, correct, or mixed)
+                  const catalogQuestionsAttempted = catalogList.filter(catalogQuestion => {
                     if (!questionAnswers || !questionAnswers[catalogQuestion.id]) {
                       return false;
                     }
@@ -1007,12 +1006,12 @@ function AppContent() {
                     if (!Array.isArray(answers) || answers.length === 0) {
                       return false;
                     }
-                    // Check if any answer is incorrect
-                    return answers.some(answer => answer.isCorrect === false);
+                    // Include if there is at least one recorded correctness (true or false)
+                    return answers.some(answer => answer && (answer.isCorrect === true || answer.isCorrect === false));
                   });
                   
-                  // Combine user questions with catalog questions marked as wrong
-                  const combined = [...wrongLog, ...catalogQuestionsMarkedWrong];
+                  // Combine user questions with catalog questions that are attempted
+                  const combined = [...wrongLog, ...catalogQuestionsAttempted];
                   return (
                     <AnalyticsPage questions={combined} />
                   );

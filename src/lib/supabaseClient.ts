@@ -140,3 +140,13 @@ export const DATA_TYPES = {
 } as const
 
 export type DataType = typeof DATA_TYPES[keyof typeof DATA_TYPES] 
+
+// Backups table types
+export interface BackupRow {
+  id: string
+  user_id: string
+  data_type: DataType | string
+  snapshot: any
+  created_at: string
+  updated_at: string
+}

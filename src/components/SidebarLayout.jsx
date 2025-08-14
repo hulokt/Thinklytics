@@ -340,12 +340,12 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   );
 };
 
-// Main content area - Modified for mobile scrolling
+// Main content area - allow scrolling at all breakpoints
 const Dashboard = ({ children }) => {
   return (
-    <div className="flex flex-1 h-screen min-h-screen overflow-hidden sm:h-screen sm:min-h-screen sm:overflow-hidden">
-      <div className="flex h-auto min-h-screen w-full flex-1 flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-y-auto sm:h-screen sm:min-h-screen sm:overflow-hidden">
-        <div className="flex-1 h-auto min-h-0 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 overflow-y-auto sm:h-full sm:overflow-hidden">
+    <div className="flex flex-1 h-screen min-h-screen overflow-hidden sm:h-screen sm:min-h-screen sm:overflow-auto">
+      <div className="flex h-auto min-h-screen w-full flex-1 flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-y-auto sm:h-screen sm:min-h-screen sm:overflow-auto">
+        <div className="flex-1 h-auto min-h-0 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 overflow-y-auto sm:h-full sm:overflow-auto">
           {children}
         </div>
       </div>

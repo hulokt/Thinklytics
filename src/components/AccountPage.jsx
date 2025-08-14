@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager } from './QuizManager';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
+import { supabase, DATA_TYPES } from '../lib/supabaseClient';
+import { useIsAdmin } from '../hooks/useCatalogGlobal';
 import { 
   User, 
   Mail, 
@@ -65,6 +67,484 @@ const AccountPage = ({ onBack }) => {
     accuracyRate: 0,
     improvementRate: 0
   });
+
+  // Backups state
+  const { isAdmin } = useIsAdmin();
+  const [backups, setBackups] = useState({
+    [DATA_TYPES.ALL_QUIZZES]: { json: '', updatedAt: null },
+    user_questions: { json: '', updatedAt: null },
+    [DATA_TYPES.CALENDAR_EVENTS]: { json: '', updatedAt: null },
+    [DATA_TYPES.QUESTION_ANSWERS]: { json: '', updatedAt: null },
+    [DATA_TYPES.CATALOG_QUESTIONS]: { json: '', updatedAt: null },
+    catalog_questions_table: { json: '', updatedAt: null },
+  });
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [backupsError, setBackupsError] = useState(null);
+  const backupTimerRef = useRef(null);
+  const countdownTimerRef = useRef(null);
+  const [nowTs, setNowTs] = useState(Date.now());
+  const [copied, setCopied] = useState({});
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const [copyToastText, setCopyToastText] = useState('');
+  const [syncing, setSyncing] = useState({});
+  const [backupLoadingStates, setBackupLoadingStates] = useState({});
+
+  const backupTypes = useMemo(() => {
+    const base = [
+      DATA_TYPES.ALL_QUIZZES,
+      'user_questions',
+      DATA_TYPES.CALENDAR_EVENTS,
+      DATA_TYPES.QUESTION_ANSWERS,
+      DATA_TYPES.CATALOG_QUESTIONS, // all users get their per-user catalog backup
+    ];
+    if (isAdmin) base.push('catalog_questions_table');
+    return base;
+  }, [isAdmin]);
+
+  const loadBackups = async (force = false, background = false) => {
+    if (!user?.id) return;
+    if (backupsLoading && !background) return;
+    setBackupsError(null);
+    if (!background) setBackupsLoading(true);
+    setBackupLoadingStates({});
+
+    try {
+      const userId = user.id;
+      const now = Date.now();
+      const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+      
+      // Check localStorage first
+      const localStorageKey = `backups_${userId}`;
+      const cachedBackups = localStorage.getItem(localStorageKey);
+      let cachedData = {};
+      let hasCachedData = false;
+      
+      if (cachedBackups && !force) {
+        try {
+          cachedData = JSON.parse(cachedBackups);
+          hasCachedData = true;
+        } catch (e) {
+          // Invalid cache, ignore
+        }
+      }
+
+      const updated = { ...backups };
+      for (const type of backupTypes) {
+        setBackupLoadingStates(prev => ({ ...prev, [type]: true }));
+        
+        // Check if we have valid cached data for this type
+        const cachedEntry = cachedData[type];
+        const lastUpdated = cachedEntry?.updatedAt ? new Date(cachedEntry.updatedAt).getTime() : 0;
+        const isStale = now - lastUpdated >= TWELVE_HOURS;
+        
+        // Use cached data if available and not stale
+        if (hasCachedData && cachedEntry && !isStale && !force) {
+          updated[type] = cachedEntry;
+          setBackupLoadingStates(prev => ({ ...prev, [type]: false }));
+          continue;
+        }
+        
+        // Read from backups table; upsert if missing or stale beyond 12 hours (or force)
+        const { data: backupRow, error: readErr } = await supabase
+          .from('backups')
+          .select('id, snapshot, updated_at')
+          .eq('user_id', userId)
+          .eq('data_type', type)
+          .maybeSingle();
+
+        if (readErr) {
+          setBackupsError(readErr.message || 'Failed to load backups');
+          continue;
+        }
+
+        const dbLastUpdated = backupRow?.updated_at ? new Date(backupRow.updated_at).getTime() : 0;
+        const dbIsStale = now - dbLastUpdated >= TWELVE_HOURS;
+
+        if (!backupRow || dbIsStale || force) {
+          // Pull fresh source from the right place
+          let payload;
+          let sourceUpdatedAt = null;
+          if (type === 'user_questions') {
+            const { data: tableRows, error: tblErr } = await supabase
+              .from('user_questions')
+              .select('*')
+              .eq('user_id', userId)
+              .order('createdat', { ascending: false });
+            if (tblErr) {
+              setBackupsError(tblErr.message || 'Failed to refresh backup');
+            }
+            payload = tableRows || [];
+            sourceUpdatedAt = new Date().toISOString();
+          } else if (type === 'catalog_questions_table') {
+            // Admin-only global catalog table snapshot
+            const { data: tableRows, error: tblErr } = await supabase
+              .from('catalog_questions')
+              .select('*')
+              .order('lastupdated', { ascending: false });
+            if (tblErr) {
+              setBackupsError(tblErr.message || 'Failed to refresh backup');
+            }
+            payload = tableRows || [];
+            sourceUpdatedAt = new Date().toISOString();
+          } else {
+            const { data: sourceRow, error: srcErr } = await supabase
+              .from('user_data')
+              .select('data, updated_at')
+              .eq('user_id', userId)
+              .eq('data_type', type)
+              .maybeSingle();
+            if (srcErr) {
+              setBackupsError(srcErr.message || 'Failed to refresh backup');
+            }
+            payload = sourceRow?.data ?? (type === DATA_TYPES.QUESTION_ANSWERS ? {} : []);
+            sourceUpdatedAt = sourceRow?.updated_at || new Date().toISOString();
+          }
+
+          const { data: upsertRes, error: upsertErr } = await supabase
+            .from('backups')
+            .upsert({
+              user_id: userId,
+              data_type: type,
+              snapshot: payload,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id,data_type' })
+            .select('snapshot, updated_at')
+            .maybeSingle();
+
+          const effective = upsertErr ? backupRow : upsertRes;
+          const pretty = JSON.stringify(effective?.snapshot ?? payload, null, 2);
+          updated[type] = {
+            json: pretty,
+            updatedAt: effective?.updated_at || sourceUpdatedAt || new Date().toISOString(),
+          };
+        } else {
+          const pretty = JSON.stringify(backupRow.snapshot ?? (type === DATA_TYPES.QUESTION_ANSWERS ? {} : []), null, 2);
+          updated[type] = {
+            json: pretty,
+            updatedAt: backupRow.updated_at,
+          };
+        }
+        setBackupLoadingStates(prev => ({ ...prev, [type]: false }));
+      }
+
+      setBackups(updated);
+      
+      // Build a compact cache payload to avoid localStorage quota issues
+      const cacheObject = {};
+      for (const type of backupTypes) {
+        const entry = updated[type];
+        if (!entry) continue;
+        // Avoid caching huge global table bodies; keep timestamps only
+        if (type === 'catalog_questions_table') {
+          cacheObject[type] = { updatedAt: entry.updatedAt };
+          continue;
+        }
+        let jsonToStore = entry.json;
+        try {
+          if (jsonToStore) {
+            const parsed = JSON.parse(jsonToStore);
+            jsonToStore = JSON.stringify(parsed); // minified
+          }
+          const approxSize = (jsonToStore?.length || 0);
+          if (approxSize > 4000000) { // ~4MB guard per type
+            cacheObject[type] = { updatedAt: entry.updatedAt }; // timestamps only
+          } else {
+            cacheObject[type] = { json: jsonToStore || '', updatedAt: entry.updatedAt };
+          }
+        } catch {
+          cacheObject[type] = { updatedAt: entry.updatedAt };
+        }
+      }
+      // Try to persist cache; on quota issues, fall back to timestamps-only
+      try {
+        localStorage.setItem(localStorageKey, JSON.stringify(cacheObject));
+      } catch (e) {
+        try { localStorage.removeItem(localStorageKey); } catch {}
+        const timestampsOnly = {};
+        for (const type of backupTypes) {
+          const entry = updated[type];
+          if (!entry) continue;
+          timestampsOnly[type] = { updatedAt: entry.updatedAt };
+        }
+        try { localStorage.setItem(localStorageKey, JSON.stringify(timestampsOnly)); } catch {}
+      }
+      
+    } finally {
+      if (!background) setBackupsLoading(false);
+    }
+  };
+
+  // Load backups when tab is opened: hydrate from localStorage without showing global loading.
+  useEffect(() => {
+    if (activeTab !== 'backups') return;
+    if (!user?.id) return;
+    const localStorageKey = `backups_${user.id}`;
+    const cachedStr = localStorage.getItem(localStorageKey);
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    if (cachedStr) {
+      try {
+        const cached = JSON.parse(cachedStr);
+        if (cached && typeof cached === 'object') {
+          const hydrated = { ...backups };
+          backupTypes.forEach((type) => {
+            const c = cached[type];
+            if (!c) return;
+            let pretty = c.json;
+            if (pretty && typeof pretty === 'string') {
+              try { const parsed = JSON.parse(pretty); pretty = JSON.stringify(parsed, null, 2); } catch {}
+            } else {
+              pretty = hydrated[type]?.json || '';
+            }
+            hydrated[type] = { json: pretty, updatedAt: c.updatedAt || null };
+          });
+          setBackups(hydrated);
+          // Determine staleness and refresh in background only if needed
+          const isAnyStale = backupTypes.some((type) => {
+            const updatedAt = (cached?.[type]?.updatedAt) || (hydrated?.[type]?.updatedAt);
+            if (!updatedAt) return true;
+            const age = now - new Date(updatedAt).getTime();
+            return age >= TWELVE_HOURS;
+          });
+          if (isAnyStale) {
+            loadBackups(false, true);
+          }
+          return;
+        }
+      } catch {}
+    }
+    // No cache or invalid cache: do an initial foreground load
+    loadBackups(false, false);
+  }, [activeTab, user?.id, backupTypes.join('|')]);
+
+  // Auto-refresh at the exact next window (12h after last update)
+  useEffect(() => {
+    if (activeTab !== 'backups') return;
+    if (backupTimerRef.current) {
+      clearTimeout(backupTimerRef.current);
+    }
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    // Compute earliest next refresh across types (only for initialized entries)
+    const nextTimes = backupTypes
+      .map((type) => backups[type]?.updatedAt ? new Date(backups[type].updatedAt).getTime() + TWELVE_HOURS : null)
+      .filter((t) => Number.isFinite(t));
+    if (nextTimes.length === 0) return;
+    const nextInMs = Math.max(0, Math.min(...nextTimes) - Date.now());
+    backupTimerRef.current = setTimeout(() => {
+      loadBackups(false, true);
+    }, nextInMs || 1000);
+    return () => {
+      if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
+    };
+  }, [activeTab, backups, backupTypes.join('|')]);
+
+  // Live countdown tick
+  useEffect(() => {
+    if (activeTab !== 'backups') return;
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    countdownTimerRef.current = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current); };
+  }, [activeTab]);
+
+  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+  const formatDuration = (ms) => {
+    if (ms <= 0) return '0s';
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const parts = [];
+    if (h) parts.push(`${h}h`);
+    if (m || h) parts.push(`${m}m`);
+    parts.push(`${s}s`);
+    return parts.join(' ');
+  };
+
+  const getTimeToNextUpdateMs = (updatedAt) => {
+    if (!updatedAt) return 0;
+    const nextAt = new Date(updatedAt).getTime() + TWELVE_HOURS_MS;
+    return Math.max(0, nextAt - nowTs);
+  };
+
+  const anyTypeStale = useMemo(() => {
+    return backupTypes.some((type) => getTimeToNextUpdateMs(backups[type]?.updatedAt) === 0);
+  }, [backupTypes, backups, nowTs]);
+
+  const globalNextMs = useMemo(() => {
+    const times = backupTypes.map((type) => getTimeToNextUpdateMs(backups[type]?.updatedAt));
+    if (times.length === 0) return 0;
+    return Math.min(...times);
+  }, [backupTypes, backups, nowTs]);
+
+  const handleCopy = async (type, text) => {
+    try {
+      await navigator.clipboard.writeText(text || '');
+      setCopied(prev => ({ ...prev, [type]: true }));
+      setCopyToastText('Copied to clipboard');
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 1500);
+      setTimeout(() => setCopied(prev => ({ ...prev, [type]: false })), 1200);
+    } catch {}
+  };
+
+  const syncFromBackup = async (type) => {
+    try {
+      const entry = backups[type];
+      if (!entry || !entry.json) return;
+      const confirmMsg = `This will overwrite your current data for "${type}" with the backed up snapshot. Continue?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      setSyncing(prev => ({ ...prev, [type]: true }));
+
+      let snapshot;
+      try {
+        snapshot = JSON.parse(entry.json);
+      } catch (e) {
+        setCopyToastText('Backup JSON is invalid');
+        setShowCopyToast(true);
+        setTimeout(() => setShowCopyToast(false), 2000);
+        return;
+      }
+
+      if (type === 'user_questions') {
+        // Replace only this user's user_questions
+        const userId = user?.id;
+        if (!userId) return;
+        const rows = Array.isArray(snapshot) ? snapshot : [];
+        const nowIso = new Date().toISOString();
+        const normalizedRows = rows.map((row, idx) => ({
+          id: row?.id || `${Date.now()}-${idx}`,
+          user_id: userId,
+          origin: row?.origin ?? 'user',
+          section: row?.section ?? null,
+          domain: row?.domain ?? null,
+          questiontype: row?.questiontype ?? row?.questionType ?? null,
+          passagetext: row?.passagetext ?? row?.passageText ?? null,
+          passageimage: row?.passageimage ?? row?.passageImage ?? null,
+          questiontext: row?.questiontext ?? row?.questionText ?? null,
+          answerchoices: row?.answerchoices ?? row?.answerChoices ?? null,
+          correctanswer: row?.correctanswer ?? row?.correctAnswer ?? null,
+          explanation: row?.explanation ?? null,
+          explanationimage: row?.explanationimage ?? row?.explanationImage ?? null,
+          difficulty: row?.difficulty ?? null,
+          hidden: row?.hidden ?? false,
+          createdat: row?.createdat ?? row?.createdAt ?? nowIso,
+          lastupdated: row?.lastupdated ?? row?.lastUpdated ?? nowIso,
+        }));
+
+        // Delete all current rows for this user, then insert snapshot
+        const { error: delErr } = await supabase
+          .from('user_questions')
+          .delete()
+          .eq('user_id', userId);
+        if (delErr) {
+          setCopyToastText('Sync failed');
+          setShowCopyToast(true);
+          setTimeout(() => setShowCopyToast(false), 2000);
+          return;
+        }
+        if (normalizedRows.length > 0) {
+          const { error: insErr } = await supabase
+            .from('user_questions')
+            .insert(normalizedRows);
+          if (insErr) {
+            setCopyToastText('Sync failed');
+            setShowCopyToast(true);
+            setTimeout(() => setShowCopyToast(false), 2000);
+            return;
+          }
+        }
+      } else if (type === 'catalog_questions_table') {
+        // Admin-only: replace entire catalog_questions table
+        if (!isAdmin) {
+          setCopyToastText('Admin only action');
+          setShowCopyToast(true);
+          setTimeout(() => setShowCopyToast(false), 1500);
+          return;
+        }
+        const rows = Array.isArray(snapshot) ? snapshot : [];
+        const nowIso = new Date().toISOString();
+        const normalizedRows = rows.map((row, idx) => ({
+          id: row?.id || `${Date.now()}-${idx}`,
+          origin: row?.origin ?? 'catalog',
+          section: row?.section ?? null,
+          domain: row?.domain ?? null,
+          questiontype: row?.questiontype ?? row?.questionType ?? null,
+          passagetext: row?.passagetext ?? row?.passageText ?? null,
+          passageimage: row?.passageimage ?? row?.passageImage ?? null,
+          questiontext: row?.questiontext ?? row?.questionText ?? null,
+          answerchoices: row?.answerchoices ?? row?.answerChoices ?? null,
+          correctanswer: row?.correctanswer ?? row?.correctAnswer ?? null,
+          explanation: row?.explanation ?? null,
+          explanationimage: row?.explanationimage ?? row?.explanationImage ?? null,
+          difficulty: row?.difficulty ?? null,
+          hidden: row?.hidden ?? false,
+          createdat: row?.createdat ?? row?.createdAt ?? nowIso,
+          lastupdated: row?.lastupdated ?? row?.lastUpdated ?? nowIso,
+        }));
+
+        const { error: delAll } = await supabase
+          .from('catalog_questions')
+          .delete()
+          .neq('id', ''); // delete all rows
+        if (delAll) {
+          setCopyToastText('Sync failed');
+          setShowCopyToast(true);
+          setTimeout(() => setShowCopyToast(false), 2000);
+          return;
+        }
+        if (normalizedRows.length > 0) {
+          const { error: insAll } = await supabase
+            .from('catalog_questions')
+            .insert(normalizedRows);
+          if (insAll) {
+            setCopyToastText('Sync failed');
+            setShowCopyToast(true);
+            setTimeout(() => setShowCopyToast(false), 2000);
+            return;
+          }
+        }
+      } else {
+        // Other data types stored in user_data JSONB per user
+        const { error } = await supabase
+          .from('user_data')
+          .upsert([
+            {
+              user_id: user?.id,
+              data_type: type,
+              data: snapshot,
+            }
+          ], { onConflict: 'user_id,data_type' });
+        if (error) {
+          setCopyToastText('Sync failed');
+          setShowCopyToast(true);
+          setTimeout(() => setShowCopyToast(false), 2000);
+          return;
+        }
+      }
+
+      setCopyToastText('Synced from backup');
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 1500);
+    } finally {
+      setSyncing(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  const downloadJson = (filename, text) => {
+    try {
+      const blob = new Blob([text || ''], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {}
+  };
 
   useEffect(() => {
     if (user) {
@@ -386,6 +866,7 @@ const AccountPage = ({ onBack }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'backups', label: 'Backups', icon: FileText },
     { id: 'data', label: 'Data & Privacy', icon: Database },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
@@ -474,6 +955,14 @@ const AccountPage = ({ onBack }) => {
 
         {/* Tab Content */}
         <div className="p-8">
+          {/* Copy Toast */}
+          {showCopyToast && (
+            <div className="fixed top-4 right-4 z-50">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 px-4 text-sm text-gray-800 dark:text-gray-100 transform transition-all duration-300">
+                {copyToastText}
+              </div>
+            </div>
+          )}
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Key Metrics */}
@@ -735,6 +1224,94 @@ const AccountPage = ({ onBack }) => {
             </div>
           )}
 
+          {activeTab === 'backups' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Backups</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Automatic snapshots every 12 hours for quick copy/restore.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {anyTypeStale ? 'Some backups are ready to update now.' : `Updating backups in ${formatDuration(globalNextMs)}.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (!user?.id) return;
+                      try { localStorage.removeItem(`backups_${user.id}`); } catch {}
+                      loadBackups(false, false);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl text-sm"
+                    disabled={backupsLoading}
+                  >
+                    {backupsLoading ? 'Refreshing…' : (anyTypeStale ? 'Update now' : 'Refresh now')}
+                  </button>
+                </div>
+              </div>
+              {backupsError && (
+                <div className="text-sm text-red-600 dark:text-red-400">{backupsError}</div>
+              )}
+              <div className="space-y-4">
+                {backupTypes.map((type) => {
+                  const entry = backups[type] || { json: '', updatedAt: null };
+                  const filename = `${type}_${new Date(entry.updatedAt || Date.now()).toISOString().slice(0,10)}.json`;
+                  const isLoading = backupsLoading || backupLoadingStates[type];
+                  return (
+                    <div key={type} className={`bg-gray-50 dark:bg-gray-700 rounded-2xl p-5 border border-gray-200 dark:border-gray-600 relative ${isLoading ? 'animate-pulse' : ''}`}>
+                      {isLoading && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-2xl pointer-events-none"></div>
+                      )}
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{type}</h4>
+                          {isLoading ? (
+                            <div className="space-y-1">
+                              <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse w-2/3"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Last backed up on {entry.updatedAt ? new Date(entry.updatedAt).toLocaleString() : '—'}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{getTimeToNextUpdateMs(entry.updatedAt) === 0 ? 'Ready to update now' : `Updating in ${formatDuration(getTimeToNextUpdateMs(entry.updatedAt))}`}</p>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 relative">
+                          <button
+                            onClick={() => handleCopy(type, entry.json)}
+                            className={`py-1.5 px-3 rounded-lg text-xs transition-all duration-150 active:scale-95 ${copied[type] ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:shadow-sm'}`}
+                            disabled={isLoading}
+                          >{copied[type] ? 'Copied' : 'Copy'}</button>
+                          <button
+                            onClick={() => downloadJson(filename, entry.json)}
+                            className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${isLoading ? 'bg-gray-400 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                            disabled={isLoading}
+                          >Download</button>
+                          <button
+                            onClick={() => syncFromBackup(type)}
+                            disabled={syncing[type] || (type === 'catalog_questions_table' && !isAdmin) || isLoading}
+                            className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${syncing[type] ? 'bg-amber-400 text-white' : ((type === 'catalog_questions_table' && !isAdmin) ? 'bg-gray-400 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white')}`}
+                          >{syncing[type] ? 'Syncing…' : 'Sync from backup'}</button>
+                          {copied[type] && (
+                            <span className="absolute -bottom-7 right-0 bg-green-600 text-white text-[10px] px-2 py-1 rounded-md shadow-md animate-bounce-once">
+                              Copied!
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <pre className={`text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-xl p-3 overflow-auto max-h-64 border border-gray-200 dark:border-gray-600 transition-shadow duration-150 hover:shadow-inner relative ${isLoading ? 'animate-pulse' : ''}`}>
+                        {isLoading && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-xl pointer-events-none"></div>
+                        )}
+{entry.json || ''}
+                      </pre>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'data' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -922,6 +1499,15 @@ const AccountPage = ({ onBack }) => {
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
+      `}</style>
     </div>
   );
 };

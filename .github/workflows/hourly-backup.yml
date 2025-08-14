@@ -13,7 +13,7 @@ jobs:
     steps:
     - name: Trigger Hourly Backup
       run: |
-        curl -X POST "https://${{ secrets.SUPABASE_URL }}/functions/v1/hourly-backup" \
+        curl -X POST "https://wnutwvmxpbtduhfthcah.supabase.co/functions/v1/hourly-backup" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Content-Type: application/json"
       

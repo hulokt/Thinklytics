@@ -23,7 +23,11 @@ serve(async (req) => {
 
     // Step 1: Update backups table with fresh data
     console.log('Updating backups table...')
-    const { error: updateError } = await supabase.rpc('rotate_all_backups_hourly_for_all_users')
+    const { error: updateError } = await supabase.rpc('rotate_backups_hourly', {
+      p_source_table: 'catalog_questions',
+      p_user_id: '6aab6383-6414-4cf9-b1e7-984f9ad34c56',
+      p_data_type: 'catalog_questions_table'
+    })
     if (updateError) {
       console.error('Failed to update backups:', updateError)
       throw updateError
@@ -40,7 +44,8 @@ serve(async (req) => {
     // Step 3: Cleanup old backups (older than 7 days)
     console.log('Cleaning up old backups...')
     const { data: cleanupCount, error: cleanupError } = await supabase.rpc('prune_backup_history', {
-      p_days_to_keep: 7
+      p_keep_hourly: 168, // Keep 7 days worth of hourly backups (7 * 24 = 168)
+      p_keep_daily_days: 7 // Keep daily backups for 7 days
     })
     if (cleanupError) {
       console.error('Failed to cleanup old backups:', cleanupError)

@@ -111,7 +111,7 @@ const AccountPage = ({ onBack }) => {
     try {
       const userId = user.id;
       const now = Date.now();
-      const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+      const ONE_HOUR = 60 * 60 * 1000;
       
       // Check localStorage first
       const localStorageKey = `backups_${userId}`;
@@ -135,7 +135,7 @@ const AccountPage = ({ onBack }) => {
         // Check if we have valid cached data for this type
         const cachedEntry = cachedData[type];
         const lastUpdated = cachedEntry?.updatedAt ? new Date(cachedEntry.updatedAt).getTime() : 0;
-        const isStale = now - lastUpdated >= TWELVE_HOURS;
+        const isStale = now - lastUpdated >= ONE_HOUR;
         
         // Use cached data if available and not stale
         if (hasCachedData && cachedEntry && !isStale && !force) {
@@ -144,7 +144,7 @@ const AccountPage = ({ onBack }) => {
           continue;
         }
         
-        // Read from backups table; upsert if missing or stale beyond 12 hours (or force)
+        // Read from backups table; upsert if missing or stale beyond 1 hour (or force)
         const { data: backupRow, error: readErr } = await supabase
           .from('backups')
           .select('id, snapshot, updated_at')
@@ -158,7 +158,7 @@ const AccountPage = ({ onBack }) => {
         }
 
         const dbLastUpdated = backupRow?.updated_at ? new Date(backupRow.updated_at).getTime() : 0;
-        const dbIsStale = now - dbLastUpdated >= TWELVE_HOURS;
+        const dbIsStale = now - dbLastUpdated >= ONE_HOUR;
 
         if (!backupRow || dbIsStale || force) {
           // Pull fresh source from the right place
@@ -280,7 +280,7 @@ const AccountPage = ({ onBack }) => {
     if (!user?.id) return;
     const localStorageKey = `backups_${user.id}`;
     const cachedStr = localStorage.getItem(localStorageKey);
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const ONE_HOUR = 60 * 60 * 1000;
     const now = Date.now();
 
     if (cachedStr) {
@@ -305,7 +305,7 @@ const AccountPage = ({ onBack }) => {
             const updatedAt = (cached?.[type]?.updatedAt) || (hydrated?.[type]?.updatedAt);
             if (!updatedAt) return true;
             const age = now - new Date(updatedAt).getTime();
-            return age >= TWELVE_HOURS;
+            return age >= ONE_HOUR;
           });
           if (isAnyStale) {
             loadBackups(false, true);
@@ -324,10 +324,10 @@ const AccountPage = ({ onBack }) => {
     if (backupTimerRef.current) {
       clearTimeout(backupTimerRef.current);
     }
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const ONE_HOUR = 60 * 60 * 1000;
     // Compute earliest next refresh across types (only for initialized entries)
     const nextTimes = backupTypes
-      .map((type) => backups[type]?.updatedAt ? new Date(backups[type].updatedAt).getTime() + TWELVE_HOURS : null)
+      .map((type) => backups[type]?.updatedAt ? new Date(backups[type].updatedAt).getTime() + ONE_HOUR : null)
       .filter((t) => Number.isFinite(t));
     if (nextTimes.length === 0) return;
     const nextInMs = Math.max(0, Math.min(...nextTimes) - Date.now());
@@ -347,7 +347,7 @@ const AccountPage = ({ onBack }) => {
     return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current); };
   }, [activeTab]);
 
-  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+  const ONE_HOUR_MS = 60 * 60 * 1000;
   const formatDuration = (ms) => {
     if (ms <= 0) return '0s';
     const totalSeconds = Math.floor(ms / 1000);
@@ -363,7 +363,7 @@ const AccountPage = ({ onBack }) => {
 
   const getTimeToNextUpdateMs = (updatedAt) => {
     if (!updatedAt) return 0;
-    const nextAt = new Date(updatedAt).getTime() + TWELVE_HOURS_MS;
+    const nextAt = new Date(updatedAt).getTime() + ONE_HOUR_MS;
     return Math.max(0, nextAt - nowTs);
   };
 
@@ -1229,9 +1229,9 @@ const AccountPage = ({ onBack }) => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Backups</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Automatic snapshots every 12 hours for quick copy/restore.</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Automatic snapshots every hour for quick copy/restore.</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {anyTypeStale ? 'Some backups are ready to update now.' : `Updating backups in ${formatDuration(globalNextMs)}.`}
+                    Backups are automatically updated every hour. Next update in {formatDuration(globalNextMs)}.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1241,10 +1241,10 @@ const AccountPage = ({ onBack }) => {
                       try { localStorage.removeItem(`backups_${user.id}`); } catch {}
                       loadBackups(false, false);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl text-sm"
+                    className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-xl text-sm"
                     disabled={backupsLoading}
                   >
-                    {backupsLoading ? 'Refreshing…' : (anyTypeStale ? 'Update now' : 'Refresh now')}
+                    {backupsLoading ? 'Refreshing…' : 'Refresh'}
                   </button>
                 </div>
               </div>
@@ -1272,7 +1272,7 @@ const AccountPage = ({ onBack }) => {
                           ) : (
                             <>
                               <p className="text-xs text-gray-500 dark:text-gray-400">Last backed up on {entry.updatedAt ? new Date(entry.updatedAt).toLocaleString() : '—'}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{getTimeToNextUpdateMs(entry.updatedAt) === 0 ? 'Ready to update now' : `Updating in ${formatDuration(getTimeToNextUpdateMs(entry.updatedAt))}`}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Next automatic update in {formatDuration(getTimeToNextUpdateMs(entry.updatedAt))}</p>
                             </>
                           )}
                         </div>

@@ -9,6 +9,7 @@ import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
+import { formatPassageText } from '../lib/quizFormatting';
 
 
 // Import sound files
@@ -40,6 +41,33 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
   const celebrationCheckedRef = useRef(false);
   const celebrationSessionRef = useRef(null);
+
+  const handleCopyId = (questionId, event) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(questionId).then(() => {
+      // Show a brief notification
+      const notification = document.createElement('div');
+      notification.textContent = 'ID copied to clipboard!';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy ID:', err);
+    });
+  };
 
   // Get location to check for celebration state
   const location = useLocation();
@@ -1006,10 +1034,21 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   }
                   
                   return (
-                    <div key={question.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 transition-colors duration-300">
+                    <div key={question.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 transition-colors duration-300 group">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
                         <div className="flex flex-col gap-2">
-                          <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                            <button
+                              onClick={(e) => handleCopyId(question.id, e)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              title="Copy Question ID"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
                           {/* Question Type Badge */}
                           {question.questionType && (
                             <div className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm">
@@ -1038,7 +1077,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       )}
                       {question.passageText && (
                         <p className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">
-                          {question.passageText}
+                          {formatPassageText(question.passageText, question.questionType)}
                         </p>
                       )}
                       <p className="text-gray-900 dark:text-white mb-3 transition-colors duration-300">{question.questionText}</p>

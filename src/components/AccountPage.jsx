@@ -4,7 +4,7 @@ import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager } from './QuizManager';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
 import { supabase, DATA_TYPES } from '../lib/supabaseClient';
-import { useIsAdmin } from '../hooks/useCatalogGlobal';
+
 import { 
   User, 
   Mail, 
@@ -69,7 +69,7 @@ const AccountPage = ({ onBack }) => {
   });
 
   // Backups state
-  const { isAdmin } = useIsAdmin();
+  const isAdmin = user?.user_metadata?.role === 'admin' || user?.user_metadata?.isAdmin === true;
   const [backups, setBackups] = useState({
     [DATA_TYPES.ALL_QUIZZES]: { json: '', updatedAt: null },
     user_questions: { json: '', updatedAt: null },

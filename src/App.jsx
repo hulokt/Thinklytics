@@ -22,7 +22,7 @@ import { SoundSettingsProvider } from './contexts/SoundSettingsContext';
 import UndoToast from './components/ui/UndoToast';
 import { useCalendarEvents, useQuestionAnswers } from './hooks/useUserData';
 import { useUserQuestions } from './hooks/useUserQuestions';
-import { useGlobalCatalogQuestions, useIsAdmin } from './hooks/useCatalogGlobal';
+import { useGlobalCatalogQuestions } from './hooks/useCatalogGlobal';
 import { useQuizManager, QUIZ_STATUS } from './components/QuizManager';
 import { supabase } from './lib/supabaseClient';
 // Footer pages
@@ -47,6 +47,7 @@ import StatusPage from './pages/StatusPage';
 import FeaturesPage from './pages/FeaturesPage';
 import PricingPage from './pages/PricingPage';
 import AdminPage from './components/AdminPage';
+import BackupPage from './components/BackupPage';
 
 // Simple Coming Soon placeholder
 const ComingSoonPage = ({ title }) => (
@@ -271,7 +272,7 @@ function AppContent() {
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isResumingQuiz, setIsResumingQuiz] = useState(false);
   const [resumingQuizData, setResumingQuizData] = useState(null);
-  const { isAdmin: hasAdminRole, loading: adminCheckLoading } = useIsAdmin();
+
   
   // Prevent page reload when switching tabs
   useEffect(() => {
@@ -883,6 +884,7 @@ function AppContent() {
                   onDeleteQuestion={handleDeleteQuestion}
                   onBulkDeleteQuestions={handleBulkDeleteQuestions}
                   onDeleteAllQuestions={handleDeleteAllQuestions}
+                  enableCopyId={true}
                 />
               )}
             </SidebarLayout>
@@ -1089,18 +1091,30 @@ function AppContent() {
         <Route path="/pricing" element={<PricingPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/admin" element={
           <ProtectedRoute>
-            <AdminOnlyRoute>
-              <SidebarLayout 
-                currentPage="admin" 
-                onPageChange={handlePageChange} 
-                onLogout={handleLogout}
-                onAccountClick={() => navigateWithScroll('/account')}
-                onProfileClick={() => navigateWithScroll('/profile')}
-                onHomeClick={handleLogoClick}
-              >
-                <AdminPage />
-              </SidebarLayout>
-            </AdminOnlyRoute>
+            <SidebarLayout 
+              currentPage="admin" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <AdminPage />
+            </SidebarLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/backups" element={
+          <ProtectedRoute>
+            <SidebarLayout 
+              currentPage="backups" 
+              onPageChange={handlePageChange} 
+              onLogout={handleLogout}
+              onAccountClick={() => navigateWithScroll('/account')}
+              onProfileClick={() => navigateWithScroll('/profile')}
+              onHomeClick={handleLogoClick}
+            >
+              <BackupPage />
+            </SidebarLayout>
           </ProtectedRoute>
         } />
         {/* Placeholder for remaining /coming-soon/:slug */}
@@ -1116,16 +1130,6 @@ function AppContent() {
   );
 }
 
-function AdminOnlyRoute({ children }) {
-  const { isAdmin, loading } = useIsAdmin();
-  if (loading) {
-    // Hide while checking admin status (no loading UI)
-    return null;
-  }
-  if (!isAdmin) {
-    return <Navigate to="/404" replace />;
-  }
-  return children;
-}
+
 
 export default App; 

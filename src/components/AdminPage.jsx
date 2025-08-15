@@ -95,11 +95,12 @@ const AdminPage = () => {
       setBackupsLoading(true);
       setBackupsError('');
       try {
-        // Load backup history
+        // Load backup history (limit to recent to avoid large payloads/timeouts)
         const { data, error } = await supabase
           .from('backup_history')
           .select('id, user_id, data_type, backup_time, row_count, checksum, source_table')
-          .order('backup_time', { ascending: false });
+          .order('backup_time', { ascending: false })
+          .limit(500);
         if (error) throw error;
         if (mounted) setBackups(Array.isArray(data) ? data : []);
 
@@ -118,13 +119,14 @@ const AdminPage = () => {
   const runBackupNow = async () => {
     try {
       setBackupsLoading(true);
-      // Rotate all backups for all users; this copies current backups into history and refreshes backups from live
-      const { error } = await supabase.rpc('rotate_all_backups_hourly_for_all_users');
+      // Use batched rotation to avoid timeouts
+      const { error } = await supabase.rpc('rotate_backups_batch', { p_batch_size: 5, p_offset: 0 });
       if (error) throw error;
       const { data: refreshed } = await supabase
         .from('backup_history')
         .select('id, user_id, data_type, backup_time, row_count, checksum')
-        .order('backup_time', { ascending: false });
+        .order('backup_time', { ascending: false })
+        .limit(500);
       setBackups(Array.isArray(refreshed) ? refreshed : []);
       alert('Rotation completed');
     } catch (e) {
@@ -168,6 +170,20 @@ const AdminPage = () => {
       alert('Prune completed');
     } catch (e) {
       alert(`Prune failed: ${e?.message || e}`);
+    } finally {
+      setBackupsLoading(false);
+    }
+  };
+
+  const rebuildBackupsAllUsers = async () => {
+    if (!confirm('This will replace the entire backups table with fresh snapshots for admin users only. Continue?')) return;
+    try {
+      setBackupsLoading(true);
+      const { data, error } = await supabase.rpc('rebuild_backups_simple');
+      if (error) throw error;
+      alert(data || 'Backups table rebuilt successfully for admin users');
+    } catch (e) {
+      alert(`Rebuild failed: ${e?.message || e}`);
     } finally {
       setBackupsLoading(false);
     }
@@ -594,6 +610,39 @@ const AdminPage = () => {
                   )}
                 </button>
               </div>
+
+              {/* Rebuild Current Backups (Admin Only) */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">Rebuild Current Backups</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Replace entire backups table (admin only)</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  Creates fresh snapshots for all users and replaces the entire <code>backups</code> table. Only admins can run this.
+                </p>
+                <button 
+                  onClick={rebuildBackupsAllUsers}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg text-sm font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
+                  disabled={backupsLoading}
+                >
+                  {backupsLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Rebuilding...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Rebuild Current Backups
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Backup Statistics */}
@@ -676,7 +725,8 @@ const AdminPage = () => {
                            const { data, error } = await supabase
                              .from('backup_history')
                              .select('id, user_id, data_type, backup_time, row_count, checksum, source_table')
-                             .order('backup_time', { ascending: false });
+                             .order('backup_time', { ascending: false })
+                             .limit(500);
                            if (error) throw error;
                            setBackups(Array.isArray(data) ? data : []);
                          } catch (e) {
@@ -714,7 +764,8 @@ const AdminPage = () => {
                            const { data: refreshed } = await supabase
                              .from('backup_history')
                              .select('id, user_id, data_type, backup_time, row_count, checksum, source_table')
-                             .order('backup_time', { ascending: false });
+                             .order('backup_time', { ascending: false })
+                             .limit(500);
                            setBackups(Array.isArray(refreshed) ? refreshed : []);
                            alert('First backup created successfully');
                          } catch(e) {
@@ -868,7 +919,8 @@ const AdminPage = () => {
                                const { data: refreshed } = await supabase
                                  .from('backup_history')
                                  .select('id, user_id, data_type, backup_time, row_count, checksum, source_table')
-                                 .order('backup_time', { ascending: false });
+                                 .order('backup_time', { ascending: false })
+                                 .limit(500);
                                setBackups(Array.isArray(refreshed) ? refreshed : []);
                                alert('Backup deleted successfully');
                              } catch(e) {

@@ -14,7 +14,7 @@ jobs:
     - name: Trigger Hourly Backup
       run: |
         curl -X POST "https://wnutwvmxpbtduhfthcah.supabase.co/functions/v1/hourly-backup" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
           -H "Content-Type: application/json"
       
     - name: Check Response

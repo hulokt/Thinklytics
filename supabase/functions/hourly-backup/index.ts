@@ -21,27 +21,26 @@ serve(async (req) => {
 
     console.log('Starting hourly backup process...')
 
-    // Step 1: Update backups table with fresh data
-    console.log('Updating backups table...')
-    const { error: updateError } = await supabase.rpc('rotate_backups_hourly', {
-      p_source_table: 'catalog_questions',
-      p_user_id: '6aab6383-6414-4cf9-b1e7-984f9ad34c56',
-      p_data_type: 'catalog_questions_table'
-    })
-    if (updateError) {
-      console.error('Failed to update backups:', updateError)
-      throw updateError
-    }
-
-    // Step 2: Create a restorable snapshot in backup_history
+    // Step 1: Create a snapshot of the current backups table
     console.log('Creating restorable backup snapshot...')
-    const { data: snapshotId, error: snapshotError } = await supabase.rpc('snapshot_entire_backups_table_simple')
+    const { error: snapshotError } = await supabase.rpc('snapshot_entire_backups_table_simple')
     if (snapshotError) {
       console.error('Failed to create snapshot:', snapshotError)
       throw snapshotError
     }
 
-    // Step 3: Cleanup old backups (older than 7 days)
+    // Step 2: Update the backups table updated_at to reset the timer
+    console.log('Updating backups table timestamp...')
+    const { error: updateError } = await supabase
+      .from('backups')
+      .update({ updated_at: new Date().toISOString() })
+    if (updateError) {
+      console.error('Failed to update backups timestamp:', updateError)
+      // Don't throw, this is not critical
+      console.log('Continuing despite timestamp update failure...')
+    }
+
+    // Step 3: Cleanup old backups (like the "Cleanup Old Backups" button)
     console.log('Cleaning up old backups...')
     const { data: cleanupCount, error: cleanupError } = await supabase.rpc('prune_backup_history', {
       p_keep_hourly: 168, // Keep 7 days worth of hourly backups (7 * 24 = 168)
@@ -52,15 +51,15 @@ serve(async (req) => {
       throw cleanupError
     }
 
+
+
     console.log(`Hourly backup completed successfully!`)
-    console.log(`- Snapshot created: ${snapshotId}`)
     console.log(`- Cleaned up: ${cleanupCount} old backups`)
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Hourly backup completed successfully',
-        snapshot_id: snapshotId,
         cleanup_count: cleanupCount
       }),
       {

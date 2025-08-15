@@ -9,7 +9,7 @@ import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
-import { formatPassageText } from '../lib/quizFormatting';
+import { formatPassageText } from '../lib/quizFormatting.jsx';
 
 
 // Import sound files

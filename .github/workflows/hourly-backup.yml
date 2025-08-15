@@ -11,12 +11,33 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Trigger Hourly Backup
+    - name: Install PostgreSQL client
+      run: sudo apt-get update && sudo apt-get install -y postgresql-client
+    
+    - name: Create restorable backup snapshot
+      env:
+        SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       run: |
-        curl -X POST "https://wnutwvmxpbtduhfthcah.supabase.co/functions/v1/hourly-backup" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-          -H "Content-Type: application/json"
-      
-    - name: Check Response
+        echo "Creating restorable backup snapshot..."
+        psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SET LOCAL statement_timeout = '0'; SELECT public.snapshot_entire_backups_table_simple();"
+    
+    - name: Update backups timestamp
+      env:
+        SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       run: |
-        echo "Backup triggered successfully"
+        echo "Updating backups timestamp..."
+        psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "UPDATE public.backups SET updated_at = NOW();"
+    
+    - name: Cleanup old backups
+      env:
+        SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      run: |
+        echo "Cleaning up old backups..."
+        psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT public.prune_backup_history(168, 7);"
+    
+    - name: Success
+      run: |
+        echo "Hourly backup completed successfully!"
+        echo "- Created restorable snapshot"
+        echo "- Updated timer"
+        echo "- Cleaned up old backups"

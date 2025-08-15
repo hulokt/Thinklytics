@@ -16,36 +16,24 @@ jobs:
     
     - name: Create restorable backup snapshot
       env:
-        PGHOST: db.wnutwvmxpbtduhfthcah.supabase.co
-        PGPORT: 5432
-        PGDATABASE: postgres
-        PGUSER: postgres
-        PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       run: |
         echo "Creating restorable backup snapshot..."
-        psql -v ON_ERROR_STOP=1 -c "SELECT public.snapshot_entire_backups_table_simple();"
+        psql -4 "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SET statement_timeout = 0; SELECT public.snapshot_entire_backups_table_simple();"
     
     - name: Update backups timestamp
       env:
-        PGHOST: db.wnutwvmxpbtduhfthcah.supabase.co
-        PGPORT: 5432
-        PGDATABASE: postgres
-        PGUSER: postgres
-        PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       run: |
         echo "Updating backups timestamp..."
-        psql -v ON_ERROR_STOP=1 -c "UPDATE public.backups SET updated_at = NOW();"
+        psql -4 "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE public.backups SET updated_at = NOW();"
     
     - name: Cleanup old backups
       env:
-        PGHOST: db.wnutwvmxpbtduhfthcah.supabase.co
-        PGPORT: 5432
-        PGDATABASE: postgres
-        PGUSER: postgres
-        PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       run: |
         echo "Cleaning up old backups..."
-        psql -v ON_ERROR_STOP=1 -c "SELECT public.prune_backup_history(168, 7);"
+        psql -4 "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT public.prune_backup_history(168, 7);"
     
     - name: Success
       run: |

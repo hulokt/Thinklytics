@@ -21,62 +21,39 @@ serve(async (req) => {
 
     console.log('Starting hourly backup process...')
 
-    // Step 1: Just update the backups table timestamp to reset the timer
-    console.log('Updating backups table timestamp...')
-    const { error: updateError } = await supabase
-      .from('backups')
-      .update({ updated_at: new Date().toISOString() })
-    if (updateError) {
-      console.error('Failed to update backups timestamp:', updateError)
-      // Don't throw, this is not critical
-      console.log('Continuing despite timestamp update failure...')
+    // Step 1: Create a REAL restorable snapshot of the backups table
+    console.log('Creating restorable backup snapshot via RPC...')
+    const { error: snapshotError } = await supabase.rpc('snapshot_entire_backups_table_simple')
+    if (snapshotError) {
+      console.error('Failed to create snapshot:', snapshotError)
+      throw snapshotError
     }
 
-    // Step 2: Create a simple backup entry (without the heavy snapshot)
-    console.log('Creating backup history entry...')
-    const { data: backupData, error: backupError } = await supabase
-      .from('backup_history')
-      .insert({
-        source_table: 'backups',
-        data: { 
-          backup_time: new Date().toISOString(),
-          message: 'Hourly backup completed',
-          timestamp: new Date().toISOString()
-        },
-        row_count: 0,
-        checksum: 'hourly-backup-' + Date.now()
-      })
-      .select()
-      .single()
-    
-    if (backupError) {
-      console.error('Failed to create backup entry:', backupError)
-      // Don't throw, this is not critical
-      console.log('Continuing despite backup entry failure...')
+    // Step 2: Bump backups.updated_at to reset timers
+    console.log('Bumping backups timestamps via RPC...')
+    const { error: bumpError } = await supabase.rpc('bump_backups_timestamp')
+    if (bumpError) {
+      console.error('Failed to bump backups timestamps:', bumpError)
+      // Non-fatal
     }
 
-    // Step 3: Cleanup old backups (like the "Cleanup Old Backups" button)
-    console.log('Cleaning up old backups...')
+    // Step 3: Cleanup old backups (7 days retention)
+    console.log('Cleaning up old backups via RPC...')
     const { data: cleanupCount, error: cleanupError } = await supabase.rpc('prune_backup_history', {
-      p_keep_hourly: 168, // Keep 7 days worth of hourly backups (7 * 24 = 168)
-      p_keep_daily_days: 7 // Keep daily backups for 7 days
+      p_keep_hourly: 168, // 7 days * 24 hours
+      p_keep_daily_days: 7
     })
     if (cleanupError) {
       console.error('Failed to cleanup old backups:', cleanupError)
-      // Don't throw, this is not critical
-      console.log('Continuing despite cleanup failure...')
+      // Non-fatal
     }
 
-
-
     console.log(`Hourly backup completed successfully!`)
-    console.log(`- Cleaned up: ${cleanupCount} old backups`)
-
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Hourly backup completed successfully',
-        cleanup_count: cleanupCount
+        cleanup_count: cleanupCount ?? 0
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -90,7 +67,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: (error as any)?.message ?? 'unknown'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

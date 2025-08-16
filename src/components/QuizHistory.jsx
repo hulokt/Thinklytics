@@ -10,6 +10,7 @@ import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
 import { formatPassageText } from '../lib/quizFormatting.jsx';
+import { getQuestionTypeOptionsByDomain, SAT_SECTIONS } from '../data';
 
 
 
@@ -40,6 +41,25 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [saveAudio, setSaveAudio] = useState(null);
   const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    status: 'all', // all, flagged, incorrect, correct
+    domain: 'all',
+    questionType: 'all',
+    score: 'all', // all, high (80+), medium (60-79), low (0-59)
+    dateRange: 'all' // all, today, week, month
+  });
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Quiz edit filter state
+  const [quizFilters, setQuizFilters] = useState({
+    status: 'all', // all, correct, incorrect, flagged
+    domain: 'all',
+    questionType: 'all',
+    difficulty: 'all'
+  });
+  const [showQuizFilters, setShowQuizFilters] = useState(false);
 
   const celebrationCheckedRef = useRef(false);
   const celebrationSessionRef = useRef(null);
@@ -1338,11 +1358,182 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
               </div>
 
+              {/* Modern Filter Section for Quiz Questions */}
+              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-6 mb-6 shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Filter Questions</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Focus on specific question types or performance</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowQuizFilters(!showQuizFilters)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                    </svg>
+                    {showQuizFilters ? 'Hide Filters' : 'Show Filters'}
+                  </button>
+                </div>
 
+                {showQuizFilters && (
+                  <div className="space-y-6">
+                    {/* Filter Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Status Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Question Status</label>
+                        <select
+                          value={quizFilters.status}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Questions</option>
+                          <option value="correct">Correct Answers</option>
+                          <option value="incorrect">Incorrect Answers</option>
+                          <option value="flagged">Flagged Questions</option>
+                        </select>
+                      </div>
+
+                      {/* Domain Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Domain</label>
+                        <select
+                          value={quizFilters.domain}
+                          onChange={(e) => setQuizFilters(prev => ({ 
+                            ...prev, 
+                            domain: e.target.value,
+                            questionType: 'all' // Reset question type when domain changes
+                          }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Domains</option>
+                          {(() => {
+                            const uniqueDomains = [...new Set(updatedQuestions.map(q => q.domain).filter(Boolean))];
+                            return uniqueDomains.map(domain => (
+                              <option key={domain} value={domain}>{domain}</option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+
+                      {/* Question Type Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Question Type</label>
+                        <select
+                          value={quizFilters.questionType}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, questionType: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Types</option>
+                          {(() => {
+                            // If a specific domain is selected, show only types for that domain
+                            if (quizFilters.domain !== 'all') {
+                              // Determine section based on domain
+                              const isMathDomain = ['Algebra', 'Advanced Math', 'Problem Solving and Data Analysis', 'Geometry and Trigonometry'].includes(quizFilters.domain);
+                              const section = isMathDomain ? SAT_SECTIONS.MATH : SAT_SECTIONS.READING_WRITING;
+                              
+                              // Get domain-specific question types
+                              const domainTypes = getQuestionTypeOptionsByDomain(section, quizFilters.domain);
+                              
+                              // Filter to only show types that exist in the current quiz
+                              const availableTypes = domainTypes.filter(type => 
+                                updatedQuestions.some(q => q.questionType === type)
+                              );
+                              
+                              return availableTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ));
+                            } else {
+                              // If no domain is selected, show all types that exist in the quiz
+                              const uniqueTypes = [...new Set(updatedQuestions.map(q => q.questionType).filter(Boolean))];
+                              return uniqueTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ));
+                            }
+                          })()}
+                        </select>
+                      </div>
+
+                      {/* Difficulty Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Difficulty</label>
+                        <select
+                          value={quizFilters.difficulty}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, difficulty: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Difficulties</option>
+                          {(() => {
+                            const uniqueDifficulties = [...new Set(updatedQuestions.map(q => q.difficulty).filter(Boolean))];
+                            return uniqueDifficulties.map(difficulty => (
+                              <option key={difficulty} value={difficulty}>{difficulty}</option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Filter Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Showing {(() => {
+                            const filteredQuestions = updatedQuestions.filter(q => {
+                              if (quizFilters.status !== 'all') {
+                                if (quizFilters.status === 'correct' && !q.isCorrect) return false;
+                                if (quizFilters.status === 'incorrect' && q.isCorrect) return false;
+                                if (quizFilters.status === 'flagged' && !editingQuiz.flaggedQuestions?.includes(q.id)) return false;
+                              }
+                              if (quizFilters.domain !== 'all' && q.domain !== quizFilters.domain) return false;
+                              if (quizFilters.questionType !== 'all' && q.questionType !== quizFilters.questionType) return false;
+                              if (quizFilters.difficulty !== 'all' && q.difficulty !== quizFilters.difficulty) return false;
+                              return true;
+                            });
+                            return filteredQuestions.length;
+                          })()} of {updatedQuestions.length} questions
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setQuizFilters({
+                          status: 'all',
+                          domain: 'all',
+                          questionType: 'all',
+                          difficulty: 'all'
+                        })}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300"
+                      >
+                        Clear All Filters
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Questions - EXACT copy from view page but with clickable options */}
               <div className="space-y-4">
-                {editingQuiz.questions.map((question, index) => {
+                {(() => {
+                  // Apply filters to questions
+                  const filteredQuestions = updatedQuestions.filter(q => {
+                    if (quizFilters.status !== 'all') {
+                      if (quizFilters.status === 'correct' && !q.isCorrect) return false;
+                      if (quizFilters.status === 'incorrect' && q.isCorrect) return false;
+                      if (quizFilters.status === 'flagged' && !editingQuiz.flaggedQuestions?.includes(q.id)) return false;
+                    }
+                    if (quizFilters.domain !== 'all' && q.domain !== quizFilters.domain) return false;
+                    if (quizFilters.questionType !== 'all' && q.questionType !== quizFilters.questionType) return false;
+                    if (quizFilters.difficulty !== 'all' && q.difficulty !== quizFilters.difficulty) return false;
+                    return true;
+                  });
+
+                  return filteredQuestions.map((question, index) => {
                   // Get current answer, converting from text to letter format if needed
                   let currentAnswer = editingAnswers[question.id];
                   
@@ -1499,7 +1690,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       )}
                     </div>
                   );
-                })}
+                });
+              })()}
               </div>
             </div>
           </div>
@@ -1707,6 +1899,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
             </div>
           ) : (
             <div className="space-y-4 sm:space-y-6">
+
+
               {/* In Progress Quizzes Section */}
               {inProgressQuizzesGrouped.length > 0 && (
                 <div>
@@ -1834,7 +2028,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                                       onClick={() => handleEditQuiz(quiz)}
                                       className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex-1 sm:flex-none"
                                     >
-                                      Edit
+                                      View
                                     </button>
                                     <button
                                       onClick={() => handleDeleteQuiz(quiz)}

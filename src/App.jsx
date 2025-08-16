@@ -999,7 +999,8 @@ function AppContent() {
                   
                   // For analytics, include:
                   // 1. User's wrong log questions
-                  // 2. Catalog questions that have been attempted in any way (incorrect, correct, or mixed)
+                  // 2. ALL catalog questions that have been attempted in any way (incorrect, correct, or mixed)
+                  // The AnalyticsPage component will handle specific filtering for wrong-only sections
                   const catalogQuestionsAttempted = catalogList.filter(catalogQuestion => {
                     if (!questionAnswers || !questionAnswers[catalogQuestion.id]) {
                       return false;

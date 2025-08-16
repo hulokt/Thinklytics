@@ -622,6 +622,15 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   const cancelResetNumbers = () => setShowResetConfirm(false);
 
+  // Helper function to clean answer choices that start with letter prefixes
+  const cleanAnswerChoice = (choice) => {
+    if (!choice || typeof choice !== 'string') return choice;
+    
+    // Remove common letter prefixes like "A)", "b)", "c)", "d)" from the beginning of choices
+    const cleaned = choice.replace(/^[A-Da-d]\)\s*/, '');
+    return cleaned;
+  };
+
   // Helper function to get the correct answer letter for a question
   const getCorrectAnswerLetter = (question) => {
     if (!question.answerChoices && !question.options) {
@@ -1085,6 +1094,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       <div className="space-y-2 mb-3">
                         {['A', 'B', 'C', 'D'].map((choice, optionIndex) => {
                           const answerText = question.answerChoices ? question.answerChoices[choice] : (question.options && question.options[optionIndex]);
+                          const cleanedAnswerText = cleanAnswerChoice(answerText);
                           const correctLetter = getCorrectAnswerLetter(question);
                           const isCorrectAnswer = choice === correctLetter;
                           const isUserAnswer = choice === currentAnswer;
@@ -1123,7 +1133,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                                     onChange={() => handleAnswerChange(question.id, choice)}
                                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                   />
-                                  <span><strong>{choice}:</strong> {answerText}</span>
+                                  <span><strong>{choice}:</strong> {cleanedAnswerText}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {isUserAnswer && (

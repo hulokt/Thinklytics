@@ -10,8 +10,8 @@ import { useSoundSettings } from '../contexts/SoundSettingsContext';
 import { formatPassageText } from '../lib/quizFormatting.jsx';
 
 // Import sound files
-import selectChoiceSound from '../assets/selectedChoiceSound.wav';
-import correctChoiceSound from '../assets/correctChoiceSound.wav';
+import onclickV2 from '../assets/onclickV2.mp3';
+import correctChoicev2 from '../assets/correctChoicev2.wav';
 import wrongChoiceSound from '../assets/wrongChoiceSound.wav';
 
 const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = null }) => {
@@ -131,8 +131,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   // Initialize audio elements
   useEffect(() => {
-    selectAudioRef.current = new Audio(selectChoiceSound);
-    correctAudioRef.current = new Audio(correctChoiceSound);
+    selectAudioRef.current = new Audio(onclickV2);
+    correctAudioRef.current = new Audio(correctChoicev2);
     wrongAudioRef.current = new Audio(wrongChoiceSound);
     
     // Set volume for all sounds
@@ -344,6 +344,15 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper function to clean answer choices that start with letter prefixes
+  const cleanAnswerChoice = (choice) => {
+    if (!choice || typeof choice !== 'string') return choice;
+    
+    // Remove common letter prefixes like "A)", "b)", "c)", "d)" from the beginning of choices
+    const cleaned = choice.replace(/^[A-Da-d]\)\s*/, '');
+    return cleaned;
+  };
+
   // Helper function to normalize question format
   const normalizeQuestion = (question) => {
     // Handle legacy questions that only have questionText (no separate passage)
@@ -354,7 +363,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           ...question,
           passageText: question.questionText,
           questionText: 'Which choice completes the text with the most logical and precise word or phrase?',
-          options: question.options || Object.values(question.answerChoices || {}),
+          options: (question.options || Object.values(question.answerChoices || {})).map(cleanAnswerChoice),
           correctAnswer: question.answerChoices ? question.answerChoices[question.correctAnswer] : question.correctAnswer
         };
       }
@@ -364,10 +373,19 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     if (question.answerChoices && !question.options) {
       return {
         ...question,
-        options: Object.values(question.answerChoices),
+        options: Object.values(question.answerChoices).map(cleanAnswerChoice),
         correctAnswer: question.answerChoices[question.correctAnswer] || question.correctAnswer
       };
     }
+    
+    // Clean existing options if they exist
+    if (question.options) {
+      return {
+        ...question,
+        options: question.options.map(cleanAnswerChoice)
+      };
+    }
+    
     return question;
   };
 
@@ -490,11 +508,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const handleAnswerSelect = (answer) => {
     if (!currentQuestion) return;
     
-    // Prevent changing answer if question has been checked
-    if (checkedQuestions.has(currentQuestion.id)) {
-      return;
-    }
-
     // Play select choice sound
     playSound(selectAudioRef);
 
@@ -528,9 +541,33 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     
     // Check if answer is correct and play appropriate sound
     const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
-    const isCorrect = userAnswer === currentQuestion.correctAnswer || 
-                     (currentQuestion.answerChoices && 
-                      currentQuestion.answerChoices[userAnswer] === currentQuestion.correctAnswer);
+    
+    // Determine if the user's answer is correct
+    let isCorrect = false;
+    
+    // Check if userAnswer matches the correct answer directly
+    if (userAnswer === currentQuestion.correctAnswer) {
+      isCorrect = true;
+    }
+    // Check if userAnswer is a letter and matches the correct letter
+    else if (['A', 'B', 'C', 'D'].includes(userAnswer) && userAnswer === correctAnswerLetter) {
+      isCorrect = true;
+    }
+    // Check if userAnswer is the text of the correct choice
+    else if (currentQuestion.answerChoices && currentQuestion.answerChoices[userAnswer] === currentQuestion.correctAnswer) {
+      isCorrect = true;
+    }
+    // Check if userAnswer matches the text of the correct choice
+    else if (currentQuestion.answerChoices && currentQuestion.answerChoices[correctAnswerLetter] === userAnswer) {
+      isCorrect = true;
+    }
+    // Additional check for options array
+    else if (currentQuestion.options) {
+      const correctIndex = ['A', 'B', 'C', 'D'].indexOf(correctAnswerLetter);
+      if (correctIndex !== -1 && currentQuestion.options[correctIndex] === userAnswer) {
+        isCorrect = true;
+      }
+    }
     
     if (isCorrect) {
       playSound(correctAudioRef);
@@ -1201,8 +1238,24 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         /* Mobile-only height adjustment */
         @media (max-width: 767px) {
           .quiz-page-container {
+            max-height: 100vh !important;
+            height: 100vh !important;
+          }
+        }
+        
+        /* Safari-specific height fixes */
+        @supports (-webkit-touch-callout: none) {
+          .quiz-page-container {
             max-height: 90vh !important;
             height: 90vh !important;
+          }
+          
+          /* Additional Safari mobile fixes */
+          @media (max-width: 767px) {
+            .quiz-page-container {
+              max-height: 90vh !important;
+              height: 90vh !important;
+            }
           }
         }
         
@@ -1871,12 +1924,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
                 </p>
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {currentQuestion.questionText}
                 </p>
               )}
@@ -1896,6 +1949,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <div className="flex-1">
               <div className="space-y-2 sm:space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const cleanedOption = cleanAnswerChoice(option);
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
@@ -1934,7 +1988,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="quiz-content-text text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{cleanedOption}</span>
                       </div>
                       
                       {eliminationMode && (
@@ -2072,6 +2126,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <div className="flex-1 overflow-y-auto">
               <div className="space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const cleanedOption = cleanAnswerChoice(option);
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
@@ -2110,7 +2165,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.75rem', height: '1.75rem', marginRight: '0.75rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="quiz-content-text text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-base" style={{ flex: 1, minWidth: 0 }}>{cleanedOption}</span>
                       </div>
                       
                       {eliminationMode && (

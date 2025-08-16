@@ -8,6 +8,10 @@ const QuestionListItem = ({ children, index, onMouseEnter, onClick }) => {
       data-index={index}
       onMouseEnter={onMouseEnter}
       onClick={onClick}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
       className="mb-3 cursor-pointer transition-colors duration-75 ease-out"
     >
       {children}
@@ -155,7 +159,13 @@ const AnimatedQuestionList = ({
         key={`${question.id}-${index}`}
         index={index}
         onMouseEnter={() => setSelectedIndex(index)}
-        onClick={() => onQuestionToggle && onQuestionToggle(question.id)}
+        onClick={(e) => {
+          // Don't trigger if clicking on the checkbox
+          if (e.target.type === 'checkbox') {
+            return;
+          }
+          onQuestionToggle && onQuestionToggle(question.id);
+        }}
       >
         <div className={`
           p-2 rounded-md border transition-colors duration-75 ease-out cursor-pointer group will-change-transform
@@ -170,7 +180,11 @@ const AnimatedQuestionList = ({
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={() => onQuestionToggle && onQuestionToggle(question.id)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onQuestionToggle && onQuestionToggle(question.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
                 className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
               {/* Question Number */}

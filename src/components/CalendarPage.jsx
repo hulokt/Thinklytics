@@ -1153,7 +1153,7 @@ const CalendarPage = ({ onStartQuiz }) => {
                 </div>
               </div>
               
-              <div className="flex-1 flex items-center justify-center min-h-0">
+              <div className="flex-1 flex items-center justify-center min-h-0 overflow-y-auto">
                 <Calendar
                   key={calendarKey}
                   onChange={handleDayClick}
@@ -1204,7 +1204,7 @@ const CalendarPage = ({ onStartQuiz }) => {
                         }, 1000);
                       }}
                       placeholder="Write your notes for today..."
-                      className="w-full h-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm resize-none overflow-hidden transition-colors duration-300"
+                      className="w-full h-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm resize-none overflow-y-auto transition-colors duration-300"
                     />
                   </div>
                 </div>
@@ -1463,7 +1463,7 @@ const CalendarPage = ({ onStartQuiz }) => {
       <style>{`
         @media (min-width: 1018px) {
           .calendar-main-content {
-            overflow-y: hidden !important;
+            overflow-y: auto !important;
           }
         }
       `}</style>

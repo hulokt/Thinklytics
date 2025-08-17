@@ -370,7 +370,13 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const handleSelectAll = () => {
-    setSelectedQuestions(filteredQuestions.map(q => q.id));
+    // Add unselected questions to the existing selection, preserving order
+    const currentlySelectedIds = new Set(selectedQuestions);
+    const newSelectedIds = filteredQuestions
+      .filter(q => !currentlySelectedIds.has(q.id))
+      .map(q => q.id);
+    
+    setSelectedQuestions(prev => [...prev, ...newSelectedIds]);
   };
 
   const handleDeselectAll = () => {
@@ -378,7 +384,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const handleStartQuiz = () => {
-    const selectedQuestionData = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selectedQuestionData = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     onStartQuiz(selectedQuestionData);
   };
 
@@ -393,7 +402,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
   const handleSaveToCalendar = async () => {
     try {
-      const selectedQuestionData = questions.filter(q => selectedQuestions.includes(q.id));
+      // Preserve the order in which questions were selected
+      const selectedQuestionData = selectedQuestions.map(questionId => 
+        questions.find(q => q.id === questionId)
+      ).filter(Boolean); // Remove any undefined entries
       
       if (selectedQuestionData.length === 0) {
         return;
@@ -609,7 +621,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   // Modern Export as PDF function for selected questions
   // Copy selected questions as CSV to clipboard
   const copySelectedQuestionsAsCSV = async () => {
-    const selected = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selected = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     
     // Filter out hidden questions from export
     const exportableQuestions = selected.filter(q => !q.hidden);
@@ -728,7 +743,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const exportSelectedQuestionsAsPDF = async () => {
-    const selected = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selected = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     
     // Filter out hidden questions from export
     const exportableQuestions = selected.filter(q => !q.hidden);

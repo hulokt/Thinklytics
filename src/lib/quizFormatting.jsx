@@ -30,6 +30,9 @@ export const formatPassageText = (text, questionType) => {
   
   // Replace multiple underscores with a single long underscore
   formattedText = formattedText.replace(/_{3,}/g, '<u>_____</u>');
+  
+  // Replace backslash-underscore patterns with regular underscores
+  formattedText = formattedText.replace(/\\_/g, '_');
 
   // Rhetorical Synthesis formatting
   if (questionType === 'Rhetorical Synthesis') {

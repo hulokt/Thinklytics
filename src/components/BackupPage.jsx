@@ -587,7 +587,7 @@ const BackupPage = () => {
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-4">
                         <span className="text-slate-500 dark:text-slate-400">
-                          <span className="font-semibold">ID:</span> {backup.id.slice(0, 8)}...
+                          <span className="font-semibold">ID:</span> {backup.id}
                         </span>
                         <span className="text-slate-500 dark:text-slate-400">
                           <span className="font-semibold">Age:</span> {(() => {

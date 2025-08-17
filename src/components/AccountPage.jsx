@@ -80,6 +80,7 @@ const AccountPage = ({ onBack }) => {
   });
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [backupsError, setBackupsError] = useState(null);
+  const [backupsTableLoading, setBackupsTableLoading] = useState(false);
   const backupTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const [nowTs, setNowTs] = useState(Date.now());
@@ -87,7 +88,6 @@ const AccountPage = ({ onBack }) => {
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [copyToastText, setCopyToastText] = useState('');
   const [syncing, setSyncing] = useState({});
-  const [backupLoadingStates, setBackupLoadingStates] = useState({});
 
   const backupTypes = useMemo(() => {
     const base = [
@@ -103,10 +103,9 @@ const AccountPage = ({ onBack }) => {
 
   const loadBackups = async (force = false, background = false) => {
     if (!user?.id) return;
-    if (backupsLoading && !background) return;
     setBackupsError(null);
     if (!background) setBackupsLoading(true);
-    setBackupLoadingStates({});
+    setBackupsTableLoading(true);
 
     try {
       const userId = user.id;
@@ -130,19 +129,14 @@ const AccountPage = ({ onBack }) => {
 
       const updated = { ...backups };
       for (const type of backupTypes) {
-        setBackupLoadingStates(prev => ({ ...prev, [type]: true }));
         
-        // Check if we have valid cached data for this type
+        // Check if we have valid cached data for this type (for display purposes only)
         const cachedEntry = cachedData[type];
         const lastUpdated = cachedEntry?.updatedAt ? new Date(cachedEntry.updatedAt).getTime() : 0;
         const isStale = now - lastUpdated >= ONE_HOUR;
         
-        // Use cached data if available and not stale
-        if (hasCachedData && cachedEntry && !isStale && !force) {
-          updated[type] = cachedEntry;
-          setBackupLoadingStates(prev => ({ ...prev, [type]: false }));
-          continue;
-        }
+        // Always read from backups table to get the most current data
+        // Only use cache as fallback if database read fails
         
         // Read from backups table; upsert if missing or stale beyond 1 hour (or force)
         const { data: backupRow, error: readErr } = await supabase
@@ -154,13 +148,19 @@ const AccountPage = ({ onBack }) => {
 
         if (readErr) {
           setBackupsError(readErr.message || 'Failed to load backups');
+          // Fall back to cached data if available
+          if (hasCachedData && cachedEntry) {
+            updated[type] = cachedEntry;
+          }
           continue;
         }
 
         const dbLastUpdated = backupRow?.updated_at ? new Date(backupRow.updated_at).getTime() : 0;
         const dbIsStale = now - dbLastUpdated >= ONE_HOUR;
 
-        if (!backupRow || dbIsStale || force) {
+        // Only write to backups table if force=true (manual refresh)
+        // For regular refresh button, just read existing data, never write
+        if (force) {
           // Pull fresh source from the right place
           let payload;
           let sourceUpdatedAt = null;
@@ -217,48 +217,42 @@ const AccountPage = ({ onBack }) => {
             json: pretty,
             updatedAt: effective?.updated_at || sourceUpdatedAt || new Date().toISOString(),
           };
-        } else {
+        } else if (backupRow) {
+          // Backup exists - just read the existing data (even if stale)
           const pretty = JSON.stringify(backupRow.snapshot ?? (type === DATA_TYPES.QUESTION_ANSWERS ? {} : []), null, 2);
           updated[type] = {
             json: pretty,
             updatedAt: backupRow.updated_at,
           };
+        } else {
+          // Backup doesn't exist - show empty data instead of creating new backup
+          updated[type] = {
+            json: type === DATA_TYPES.QUESTION_ANSWERS ? '{}' : '[]',
+            updatedAt: null,
+          };
         }
-        setBackupLoadingStates(prev => ({ ...prev, [type]: false }));
       }
 
       setBackups(updated);
       
-      // Build a compact cache payload to avoid localStorage quota issues
+      // Always store the latest data in localStorage for immediate access
       const cacheObject = {};
       for (const type of backupTypes) {
         const entry = updated[type];
         if (!entry) continue;
-        // Avoid caching huge global table bodies; keep timestamps only
-        if (type === 'catalog_questions_table') {
-          cacheObject[type] = { updatedAt: entry.updatedAt };
-          continue;
-        }
-        let jsonToStore = entry.json;
-        try {
-          if (jsonToStore) {
-            const parsed = JSON.parse(jsonToStore);
-            jsonToStore = JSON.stringify(parsed); // minified
-          }
-          const approxSize = (jsonToStore?.length || 0);
-          if (approxSize > 4000000) { // ~4MB guard per type
-            cacheObject[type] = { updatedAt: entry.updatedAt }; // timestamps only
-          } else {
-            cacheObject[type] = { json: jsonToStore || '', updatedAt: entry.updatedAt };
-          }
-        } catch {
-          cacheObject[type] = { updatedAt: entry.updatedAt };
-        }
+        
+        // Store complete data for immediate display
+        cacheObject[type] = { 
+          json: entry.json || '', 
+          updatedAt: entry.updatedAt 
+        };
       }
-      // Try to persist cache; on quota issues, fall back to timestamps-only
+      
+      // Store in localStorage - this will be the source of truth for next tab open
       try {
         localStorage.setItem(localStorageKey, JSON.stringify(cacheObject));
       } catch (e) {
+        // If localStorage fails, try storing just timestamps
         try { localStorage.removeItem(localStorageKey); } catch {}
         const timestampsOnly = {};
         for (const type of backupTypes) {
@@ -271,18 +265,18 @@ const AccountPage = ({ onBack }) => {
       
     } finally {
       if (!background) setBackupsLoading(false);
+      setBackupsTableLoading(false);
     }
   };
 
-  // Load backups when tab is opened: hydrate from localStorage without showing global loading.
+  // Load backups when tab is opened: only show cached data, no database calls
   useEffect(() => {
     if (activeTab !== 'backups') return;
     if (!user?.id) return;
     const localStorageKey = `backups_${user.id}`;
     const cachedStr = localStorage.getItem(localStorageKey);
-    const ONE_HOUR = 60 * 60 * 1000;
-    const now = Date.now();
 
+    // Only show cached data, no database calls
     if (cachedStr) {
       try {
         const cached = JSON.parse(cachedStr);
@@ -300,22 +294,16 @@ const AccountPage = ({ onBack }) => {
             hydrated[type] = { json: pretty, updatedAt: c.updatedAt || null };
           });
           setBackups(hydrated);
-          // Determine staleness and refresh in background only if needed
-          const isAnyStale = backupTypes.some((type) => {
-            const updatedAt = (cached?.[type]?.updatedAt) || (hydrated?.[type]?.updatedAt);
-            if (!updatedAt) return true;
-            const age = now - new Date(updatedAt).getTime();
-            return age >= ONE_HOUR;
-          });
-          if (isAnyStale) {
-            loadBackups(false, true);
-          }
-          return;
         }
       } catch {}
+    } else {
+      // No cached data - show empty state
+      const emptyBackups = {};
+      backupTypes.forEach((type) => {
+        emptyBackups[type] = { json: '', updatedAt: null };
+      });
+      setBackups(emptyBackups);
     }
-    // No cache or invalid cache: do an initial foreground load
-    loadBackups(false, false);
   }, [activeTab, user?.id, backupTypes.join('|')]);
 
   // Auto-refresh at the exact next window (12h after last update)
@@ -872,7 +860,8 @@ const AccountPage = ({ onBack }) => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="h-full overflow-auto">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Modern Header */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
@@ -1241,10 +1230,10 @@ const AccountPage = ({ onBack }) => {
                       try { localStorage.removeItem(`backups_${user.id}`); } catch {}
                       loadBackups(false, false);
                     }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-xl text-sm"
+                    className={`bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-xl text-sm transition-all duration-200 ${backupsLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                     disabled={backupsLoading}
                   >
-                    {backupsLoading ? 'Refreshing…' : 'Refresh'}
+                    {backupsLoading ? 'Refreshing...' : 'Refresh'}
                   </button>
                 </div>
               </div>
@@ -1255,43 +1244,32 @@ const AccountPage = ({ onBack }) => {
                 {backupTypes.map((type) => {
                   const entry = backups[type] || { json: '', updatedAt: null };
                   const filename = `${type}_${new Date(entry.updatedAt || Date.now()).toISOString().slice(0,10)}.json`;
-                  const isLoading = backupsLoading || backupLoadingStates[type];
                   return (
-                    <div key={type} className={`bg-gray-50 dark:bg-gray-700 rounded-2xl p-5 border border-gray-200 dark:border-gray-600 relative ${isLoading ? 'animate-pulse' : ''}`}>
-                      {isLoading && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-2xl pointer-events-none"></div>
-                      )}
+                    <div key={type} className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-5 border border-gray-200 dark:border-gray-600 relative">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{type}</h4>
-                          {isLoading ? (
-                            <div className="space-y-1">
-                              <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
-                              <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse w-2/3"></div>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Last backed up on {entry.updatedAt ? new Date(entry.updatedAt).toLocaleString() : '—'}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Next automatic update in {formatDuration(getTimeToNextUpdateMs(entry.updatedAt))}</p>
-                            </>
-                          )}
+                          <>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Last backed up on {entry.updatedAt ? new Date(entry.updatedAt).toLocaleString() : '—'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Next automatic update in {formatDuration(getTimeToNextUpdateMs(entry.updatedAt))}</p>
+                          </>
                         </div>
                         <div className="flex items-center gap-2 relative">
-                          <button
-                            onClick={() => handleCopy(type, entry.json)}
-                            className={`py-1.5 px-3 rounded-lg text-xs transition-all duration-150 active:scale-95 ${copied[type] ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:shadow-sm'}`}
-                            disabled={isLoading}
-                          >{copied[type] ? 'Copied' : 'Copy'}</button>
-                          <button
-                            onClick={() => downloadJson(filename, entry.json)}
-                            className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${isLoading ? 'bg-gray-400 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                            disabled={isLoading}
-                          >Download</button>
-                          <button
-                            onClick={() => syncFromBackup(type)}
-                            disabled={syncing[type] || (type === 'catalog_questions_table' && !isAdmin) || isLoading}
-                            className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${syncing[type] ? 'bg-amber-400 text-white' : ((type === 'catalog_questions_table' && !isAdmin) ? 'bg-gray-400 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white')}`}
-                          >{syncing[type] ? 'Syncing…' : 'Sync from backup'}</button>
+                                                      <button
+                              onClick={() => handleCopy(type, entry.json)}
+                              disabled={!entry.json || entry.json.length === 0}
+                              className={`py-1.5 px-3 rounded-lg text-xs transition-all duration-150 active:scale-95 ${!entry.json || entry.json.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${copied[type] ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:shadow-sm'}`}
+                            >{copied[type] ? 'Copied' : 'Copy'}</button>
+                            <button
+                              onClick={() => downloadJson(filename, entry.json)}
+                              disabled={!entry.json || entry.json.length === 0}
+                              className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${!entry.json || entry.json.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} bg-green-600 hover:bg-green-700 text-white`}
+                            >Download</button>
+                            <button
+                              onClick={() => syncFromBackup(type)}
+                              disabled={syncing[type] || (type === 'catalog_questions_table' && !isAdmin) || !entry.json || entry.json.length === 0}
+                              className={`py-1.5 px-3 rounded-lg text-xs transition-colors duration-150 ${!entry.json || entry.json.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${syncing[type] ? 'bg-amber-400 text-white' : ((type === 'catalog_questions_table' && !isAdmin) ? 'bg-gray-400 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white')}`}
+                            >{syncing[type] ? 'Syncing…' : 'Sync from backup'}</button>
                           {copied[type] && (
                             <span className="absolute -bottom-7 right-0 bg-green-600 text-white text-[10px] px-2 py-1 rounded-md shadow-md animate-bounce-once">
                               Copied!
@@ -1299,12 +1277,33 @@ const AccountPage = ({ onBack }) => {
                           )}
                         </div>
                       </div>
-                      <pre className={`text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-xl p-3 overflow-auto max-h-64 border border-gray-200 dark:border-gray-600 transition-shadow duration-150 hover:shadow-inner relative ${isLoading ? 'animate-pulse' : ''}`}>
-                        {isLoading && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-xl pointer-events-none"></div>
+                      {/* Hidden JSON data - only used for copy/download/sync operations */}
+                      <div className="hidden">
+                        <pre>{entry.json || ''}</pre>
+                      </div>
+                      
+                      {/* Summary info instead of full JSON */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-600 relative">
+                        {backupsTableLoading && (!entry.json || entry.json.length === 0) && (
+                          <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 rounded-xl flex items-center justify-center z-10">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">Loading...</span>
+                            </div>
+                          </div>
                         )}
-{entry.json || ''}
-                      </pre>
+                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                          <span>
+                            <span className="font-semibold">Data Size:</span> {entry.json ? `${Math.round(entry.json.length / 1024)} KB` : '0 KB'}
+                          </span>
+                          <span>
+                            <span className="font-semibold">Type:</span> {type}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                          Use the buttons above to copy, download, or sync this backup data.
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1499,15 +1498,8 @@ const AccountPage = ({ onBack }) => {
           )}
         </div>
       </div>
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s infinite;
-        }
-      `}</style>
+
+      </div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean
   signUp: (email: string, password: string, options?: { data?: any }) => Promise<{ user: User | null; error: AuthError | null }>
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: AuthError | null }>
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
 }
@@ -92,11 +93,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, options?: { data?: any }) => {
     try {
+      // Compute a stable redirect target. Force the custom domain if we're on github.io
       // Using Vite's injected BASE_URL to respect subfolder deployments (e.g., "/SatLog/")
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-      const redirectUrl = `${window.location.origin}${basePath}/auth/callback`
+      const preferredOrigin = 'https://thinklytics.org'
+      const currentOrigin = window.location.origin
+      const originToUse = window.location.hostname.endsWith('github.io') ? preferredOrigin : currentOrigin
+      const redirectUrl = `${originToUse}${basePath}/auth/callback`
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -153,6 +158,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Don't set loading to false here - let the auth state change handler do it
   }
 
+  const signInWithGoogle = async () => {
+    try {
+      // Using Vite's injected BASE_URL to respect subfolder deployments
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+      const preferredOrigin = 'https://thinklytics.org'
+      const currentOrigin = window.location.origin
+      const originToUse = window.location.hostname.endsWith('github.io') ? preferredOrigin : currentOrigin
+      const redirectUrl = `${originToUse}${basePath}/auth/callback`
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      })
+      
+      if (error) {
+        return { error }
+      }
+      
+      return { error: null }
+    } catch (error) {
+      return { error: error as AuthError }
+    }
+  }
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -186,6 +223,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     resetPassword
   }

@@ -1,4 +1,5 @@
-"private": true,
+{
+  "private": true,
   "version": "0.0.0",
   "type": "module",
   "homepage": "https://thinklytics.org",
@@ -6,8 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build && cp public/CNAME dist/CNAME",
-    "deploy": "gh-pages -d dist -b gh-pages",
+    "predeploy": "npm run build && npx copyfiles public/CNAME dist/",
+    "deploy": "gh-pages -d dist -b gh-pages"
+  },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.50.0",
@@ -35,6 +37,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",

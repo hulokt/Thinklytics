@@ -1,10 +1,93 @@
 import jsPDF from 'jspdf';
 import logoImage from "/logo.png";
 
+// HTML to text converter - converts HTML to formatted plain text for PDF
+const htmlToText = (html) => {
+  if (!html) return '';
+  
+  // Create a temporary DOM element to parse HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  
+  // Helper function to process nodes recursively
+  const processNode = (node) => {
+    let text = '';
+    
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      
+      // Handle different HTML tags
+      switch (tagName) {
+        case 'br':
+          return '\n';
+        case 'p':
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text + '\n';
+        case 'ul':
+        case 'ol':
+          const items = Array.from(node.querySelectorAll('li'));
+          const listText = items.map((li, idx) => {
+            const bullet = tagName === 'ol' ? `${idx + 1}. ` : '- '; // Use - instead of •
+            const itemText = Array.from(li.childNodes).map(child => processNode(child)).join('').trim();
+            return bullet + itemText;
+          }).join('\n');
+          return '\n' + listText + '\n'; // Add newline before and after list
+        case 'li':
+          // Skip - handled by ul/ol
+          return '';
+        case 'strong':
+        case 'b':
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text; // Keep text, PDF will handle bold separately
+        case 'em':
+        case 'i':
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text; // Keep text, PDF will handle italic separately
+        case 'u':
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text; // Keep text, PDF will handle underline separately
+        case 'div':
+        case 'span':
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text;
+        default:
+          // For other tags, just process children
+          text = Array.from(node.childNodes).map(child => processNode(child)).join('');
+          return text;
+      }
+    }
+    
+    return text;
+  };
+  
+  // Process all child nodes
+  const plainText = Array.from(tempDiv.childNodes).map(child => processNode(child)).join('');
+  
+  // Clean up extra whitespace and newlines
+  return plainText
+    .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
+    .replace(/[ \t]+/g, ' ') // Normalize spaces and tabs (but not newlines)
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .replace(/ \n/g, '\n') // Remove trailing spaces before newlines
+    .replace(/\n /g, '\n') // Remove leading spaces after newlines
+    .trim();
+};
+
 // Text sanitization helper to fix encoding issues and convert symbols to text
 const sanitizeText = (text) => {
   if (!text) return '';
-  return String(text)
+  
+  // First convert HTML to text if it contains HTML tags
+  let processedText = text;
+  if (/<[^>]*>/g.test(text)) {
+    processedText = htmlToText(text);
+  }
+  
+  return String(processedText)
     // Mathematical symbols to text conversions
     .replace(/π/g, 'pi')
     .replace(/∏/g, 'PI') // Capital pi (product)
@@ -71,7 +154,8 @@ const sanitizeText = (text) => {
     .replace(/…/g, '...')
     // After symbol conversion, remove any remaining non-ASCII characters
     .replace(/[^\x00-\x7F]/g, '')
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    // Remove control characters EXCEPT newline (\n = 0x0A) and tab (\t = 0x09)
+    .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '')
     .trim();
 };
 
@@ -318,12 +402,32 @@ export const exportQuestionsAsPDF = async (exportableQuestions, filename = 'Thin
 
       pdf.setFont(FONTS.body, 'normal');
       pdf.setFontSize(10); // reasonable passage font
-      const passageLines = pdf.splitTextToSize(sanitizedPassageText, textWidth);
+      // Split by newlines first to preserve manual line breaks (like lists)
+      const passageParagraphs = sanitizedPassageText.split('\n');
+      const passageLines = [];
+      passageParagraphs.forEach(para => {
+        if (para.trim()) {
+          const wrapped = pdf.splitTextToSize(para, textWidth);
+          passageLines.push(...wrapped);
+        } else {
+          passageLines.push(''); // Empty line for spacing
+        }
+      });
       const passageH = passageLines.length * toMm(10) * 1.2;
 
       pdf.setFont(FONTS.body, 'normal');
       pdf.setFontSize(10); // reasonable question font
-      const questionLines = pdf.splitTextToSize(sanitizedQuestionText, textWidth);
+      // Split by newlines first to preserve manual line breaks
+      const questionParagraphs = sanitizedQuestionText.split('\n');
+      const questionLines = [];
+      questionParagraphs.forEach(para => {
+        if (para.trim()) {
+          const wrapped = pdf.splitTextToSize(para, textWidth);
+          questionLines.push(...wrapped);
+        } else {
+          questionLines.push(''); // Empty line for spacing
+        }
+      });
       const questionH = questionLines.length * toMm(10) * 1.2;
 
       pdf.setFont(FONTS.body, 'normal');
@@ -332,8 +436,17 @@ export const exportQuestionsAsPDF = async (exportableQuestions, filename = 'Thin
       let answersH = 0;
       for (const ch of choices) {
         const sanitizedChoice = sanitizeText(question.answerChoices[ch] || '');
-        const lines = pdf.splitTextToSize(`${ch}) ${sanitizedChoice}`, textWidth);
-        answersH += lines.length * toMm(9) * 1.15 + 2;
+        // Split by newlines to preserve manual line breaks in answer choices
+        const choiceParagraphs = sanitizedChoice.split('\n');
+        const choiceLines = [];
+        choiceParagraphs.forEach((para, idx) => {
+          const prefix = idx === 0 ? `${ch}) ` : '   '; // Indent continuation lines
+          if (para.trim()) {
+            const wrapped = pdf.splitTextToSize(prefix + para, textWidth);
+            choiceLines.push(...wrapped);
+          }
+        });
+        answersH += choiceLines.length * toMm(9) * 1.15 + 2;
       }
 
       // Image height calculation
@@ -404,9 +517,18 @@ export const exportQuestionsAsPDF = async (exportableQuestions, filename = 'Thin
       const choices = ['A','B','C','D'];
       for (const ch of choices) {
         const sanitizedChoice = sanitizeText(question.answerChoices[ch] || '');
-        const lines = pdf.splitTextToSize(`${ch}) ${sanitizedChoice}`, colWidth);
-        pdf.text(lines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.15 });
-        cursorY += lines.length * lineHeight + 2;
+        // Split by newlines to preserve manual line breaks in answer choices
+        const choiceParagraphs = sanitizedChoice.split('\n');
+        const choiceLines = [];
+        choiceParagraphs.forEach((para, idx) => {
+          const prefix = idx === 0 ? `${ch}) ` : '   '; // Indent continuation lines
+          if (para.trim()) {
+            const wrapped = pdf.splitTextToSize(prefix + para, colWidth);
+            choiceLines.push(...wrapped);
+          }
+        });
+        pdf.text(choiceLines, textX, cursorY, { maxWidth: colWidth, lineHeightFactor: 1.15 });
+        cursorY += choiceLines.length * lineHeight + 2;
       }
     };
 

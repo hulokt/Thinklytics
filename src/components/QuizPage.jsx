@@ -7,7 +7,6 @@ import { awardPoints, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
-import { formatPassageText } from '../lib/quizFormatting.jsx';
 
 // Import sound files
 import onclickV2 from '../assets/onclickV2.mp3';
@@ -1558,6 +1557,35 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           font-family: 'Poppins', sans-serif !important;
         }
         
+        /* HTML content styling for passages, questions, and explanations */
+        .quiz-content-text ul {
+          list-style-type: disc;
+          margin-left: 1.5rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .quiz-content-text ol {
+          list-style-type: decimal;
+          margin-left: 1.5rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .quiz-content-text li {
+          margin-bottom: 0.25rem;
+        }
+        .quiz-content-text p {
+          margin-bottom: 0.5rem;
+        }
+        .quiz-content-text strong {
+          font-weight: 600;
+        }
+        .quiz-content-text em {
+          font-style: italic;
+        }
+        .quiz-content-text u {
+          text-decoration: underline;
+        }
+        
         /* Question box base styles - no hover effects */
         .question-box {
           border: 2px solid #e5e7eb;
@@ -1924,14 +1952,16 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                  {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
-                </p>
+                <div 
+                  className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.passageText }}
+                />
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                  {currentQuestion.questionText}
-                </p>
+                <div 
+                  className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                />
               )}
             </div>
           </div>
@@ -1940,9 +1970,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 sm:bg-white/70 sm:dark:bg-slate-800/70 sm:backdrop-blur-lg transition-all duration-500 flex flex-col">
             {/* Question Text */}
             <div className="flex-shrink-0 mb-3 sm:mb-4">
-              <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
-              </p>
+              <div 
+                className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300"
+                dangerouslySetInnerHTML={{ __html: currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?' }}
+              />
             </div>
             
             {/* Answer Options */}
@@ -2023,9 +2054,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         />
                       )}
                       {currentQuestion.explanation && (
-                        <p className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                          {currentQuestion.explanation}
-                        </p>
+                        <div 
+                          className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: currentQuestion.explanation }}
+                        />
                       )}
                     </div>
                   </div>
@@ -2056,14 +2088,16 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                  {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
-                </p>
+                <div 
+                  className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.passageText }}
+                />
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
-                  {currentQuestion.questionText}
-                </p>
+                <div 
+                  className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                />
               )}
             </div>
           </div>
@@ -2117,9 +2151,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             
             {/* Question Text */}
             <div className="flex-shrink-0 mb-4">
-              <p className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                {currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?'}
-              </p>
+              <div 
+                className="quiz-content-text text-base text-gray-700 dark:text-gray-300 transition-colors duration-300"
+                dangerouslySetInnerHTML={{ __html: currentQuestion.passageText ? currentQuestion.questionText : 'Which choice completes the text with the most logical and precise word or phrase?' }}
+              />
             </div>
             
             {/* Answer Options */}
@@ -2200,9 +2235,10 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         />
                       )}
                       {currentQuestion.explanation && (
-                        <p className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                          {currentQuestion.explanation}
-                        </p>
+                        <div 
+                          className="quiz-content-text text-sm text-blue-700 dark:text-blue-400 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: currentQuestion.explanation }}
+                        />
                       )}
                     </div>
                   </div>

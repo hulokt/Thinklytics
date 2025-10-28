@@ -4,6 +4,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { useQuestionAnswers } from '../hooks/useUserData';
 import { useQuizManager } from './QuizManager';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useUserQuestions } from '../hooks/useUserQuestions';
+import { useGlobalCatalogQuestions } from '../hooks/useCatalogGlobal';
 import CountUp from './ui/CountUp';
 import InfoTooltip from './ui/tooltip';
 import { SAT_SECTIONS, MATH_DOMAINS, READING_WRITING_DOMAINS, getQuestionTypeOptions } from '../data';
@@ -22,7 +24,7 @@ ChartJS.register(
   Filler
 );
 
-const AnalyticsPage = ({ questions }) => {
+const AnalyticsPage = ({ questions: questionsProp }) => {
   const { isDarkMode } = useDarkMode();
   // Add CSS to hide number input spinners
   React.useEffect(() => {
@@ -66,6 +68,32 @@ const AnalyticsPage = ({ questions }) => {
 
   const { completedQuizzes, inProgressQuizzes } = useQuizManager();
   const { data: questionAnswers } = useQuestionAnswers();
+  
+  // Import hooks to get fresh data directly
+  const { data: userQuestions } = useUserQuestions();
+  const { data: catalogQuestions } = useGlobalCatalogQuestions();
+  
+  // Compute questions list fresh every render, combining user questions with attempted catalog questions
+  const questions = useMemo(() => {
+    const wrongLog = Array.isArray(userQuestions) ? userQuestions : [];
+    const catalogList = Array.isArray(catalogQuestions) ? catalogQuestions : [];
+    
+    // Filter catalog questions to only those that have been attempted
+    const catalogQuestionsAttempted = catalogList.filter(catalogQuestion => {
+      if (!questionAnswers || !questionAnswers[catalogQuestion.id]) {
+        return false;
+      }
+      const answers = questionAnswers[catalogQuestion.id];
+      if (!Array.isArray(answers) || answers.length === 0) {
+        return false;
+      }
+      // Include if there is at least one recorded correctness (true or false)
+      return answers.some(answer => answer && (answer.isCorrect === true || answer.isCorrect === false));
+    });
+    
+    // Combine user questions with catalog questions that are attempted
+    return [...wrongLog, ...catalogQuestionsAttempted];
+  }, [userQuestions, catalogQuestions, questionAnswers]);
 
   // Time-range selector state ("all" | "custom")
   const [timeRange, setTimeRange] = useState('all');
@@ -483,7 +511,13 @@ const AnalyticsPage = ({ questions }) => {
     questionsInRange.length,
     Object.keys(questionAnswersObj).length,
     timeRange,
-    customDays
+    customDays,
+    // Add a more sensitive trigger: sum of all answer counts across all questions
+    // This will change when new answers are added to existing questions
+    Object.values(questionAnswersObj).reduce((sum, answers) => sum + (Array.isArray(answers) ? answers.length : 0), 0),
+    // Also trigger on quiz updates (not just count changes)
+    allCompletedQuizzesArray.map(q => `${q.id}-${q.score}-${q.endTime}`).join(','),
+    generateAnalytics
   ]);
 
   // PDF Report Generation

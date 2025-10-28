@@ -9,7 +9,6 @@ import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
-import { formatPassageText } from '../lib/quizFormatting.jsx';
 import { getQuestionTypeOptionsByDomain, SAT_SECTIONS } from '../data';
 
 
@@ -1602,11 +1601,15 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                         />
                       )}
                       {question.passageText && (
-                        <p className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">
-                          {formatPassageText(question.passageText, question.questionType)}
-                        </p>
+                        <div 
+                          className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300"
+                          dangerouslySetInnerHTML={{ __html: question.passageText }}
+                        />
                       )}
-                      <p className="text-gray-900 dark:text-white mb-3 transition-colors duration-300">{question.questionText}</p>
+                      <div 
+                        className="text-gray-900 dark:text-white mb-3 transition-colors duration-300"
+                        dangerouslySetInnerHTML={{ __html: question.questionText }}
+                      />
                       
                       <div className="space-y-2 mb-3">
                         {['A', 'B', 'C', 'D'].map((choice, optionIndex) => {
@@ -1681,9 +1684,10 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                                </div>
                              )}
                             {question.explanation && (
-                              <p className="mt-2">
-                                {question.explanation}
-                              </p>
+                              <div 
+                                className="mt-2"
+                                dangerouslySetInnerHTML={{ __html: question.explanation }}
+                              />
                             )}
                           </div>
                         </div>
@@ -1702,6 +1706,43 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   return (
     <div className="relative h-full overflow-hidden flex flex-col transition-colors duration-300">
+      <style>{`
+        /* HTML content styling for passages, questions, and explanations in quiz history */
+        .text-gray-700 ul, .text-gray-900 ul, .text-blue-800 ul,
+        .dark\\:text-gray-300 ul, .dark\\:text-white ul, .dark\\:text-blue-300 ul {
+          list-style-type: disc;
+          margin-left: 1.5rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .text-gray-700 ol, .text-gray-900 ol, .text-blue-800 ol,
+        .dark\\:text-gray-300 ol, .dark\\:text-white ol, .dark\\:text-blue-300 ol {
+          list-style-type: decimal;
+          margin-left: 1.5rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .text-gray-700 li, .text-gray-900 li, .text-blue-800 li,
+        .dark\\:text-gray-300 li, .dark\\:text-white li, .dark\\:text-blue-300 li {
+          margin-bottom: 0.25rem;
+        }
+        .text-gray-700 p, .text-gray-900 p, .text-blue-800 p,
+        .dark\\:text-gray-300 p, .dark\\:text-white p, .dark\\:text-blue-300 p {
+          margin-bottom: 0.5rem;
+        }
+        .text-gray-700 strong, .text-gray-900 strong, .text-blue-800 strong,
+        .dark\\:text-gray-300 strong, .dark\\:text-white strong, .dark\\:text-blue-300 strong {
+          font-weight: 600;
+        }
+        .text-gray-700 em, .text-gray-900 em, .text-blue-800 em,
+        .dark\\:text-gray-300 em, .dark\\:text-white em, .dark\\:text-blue-300 em {
+          font-style: italic;
+        }
+        .text-gray-700 u, .text-gray-900 u, .text-blue-800 u,
+        .dark\\:text-gray-300 u, .dark\\:text-white u, .dark\\:text-blue-300 u {
+          text-decoration: underline;
+        }
+      `}</style>
       {/* Enhanced Background with Geometric Shapes */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Base gradient */}

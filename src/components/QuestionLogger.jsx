@@ -20,6 +20,7 @@ import { formatRelativeTime } from '../lib/utils';
 import { exportQuestionsAsPDF } from '../utils/pdfExport';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
+import RichNotesEditor from './ui/RichNotesEditor';
 
 // Import sound files
 import addedOrEditedNewQuestionSound from '../assets/addedOrEditedNewQuestion.wav';
@@ -2673,22 +2674,19 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                   </div>
                 )}
                 
-                {/* Text input - always show, even with image */}
-                <textarea
-                  value={formData.passageText}
-                  onChange={(e) => handleInputChange('passageText', e.target.value)}
-                  onPaste={handlePassagePaste}
-                  placeholder={formData.passageImage 
-                    ? "Add text to accompany the image above... (or paste another image)" 
-                    : "Enter the reading passage or problem context... (or paste an image)"
-                  }
-                  rows={formData.passageImage ? 2 : 3}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 resize-vertical text-base sm:text-sm transition-colors duration-300 ${
-                    validationErrors.passageText 
-                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' 
-                      : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-                  }`}
-                />
+                {/* Rich notes editor for styled passage text */}
+                <div className={`border rounded-lg ${validationErrors.passageText 
+                    ? 'border-red-500' 
+                    : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700`}>
+                  <RichNotesEditor
+                    value={formData.passageText}
+                    onChange={(html) => handleInputChange('passageText', html)}
+                    placeholder={formData.passageImage 
+                      ? 'Add text to accompany the image above... (or paste another image)'
+                      : 'Enter the reading passage or paste a picture...'}
+                    className="min-h-[160px]"
+                  />
+                </div>
                 
                 {/* Help text */}
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

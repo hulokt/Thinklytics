@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Sidebar, SidebarBody, SidebarProvider } from "./ui/sidebar";
+import { Sidebar, SidebarBody, SidebarProvider, useSidebar } from "./ui/sidebar";
 import { 
-  FileX as IconFileX,
-  BookOpen as IconBookOpen,
-  History as IconHistory, 
-  TrendingUp as IconTrendingUp,
+  Library,
+  ClipboardList,
+  BarChart3,
+  CalendarDays,
+  PencilLine,
   User as IconUser,
   LogOut as IconLogout,
   Star as IconStar,
   Shield,
-  Database
+  Database,
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -18,7 +21,6 @@ import { useAuth } from '../contexts/AuthContext';
 import DarkModeToggle from './ui/DarkModeToggle';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { Sun, Moon } from 'lucide-react';
-import { Calendar as CalendarIcon } from 'lucide-react';
 
 import logoImage from "/logo.png";
 
@@ -106,35 +108,35 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
       label: "Question Bank",
       href: "/selector",
       icon: (
-        <IconBookOpen className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <Library className="h-5 w-5 shrink-0 transition-colors duration-300" />
       ),
     },
     {
       label: "Quiz History",
       href: "/history",
       icon: (
-        <IconHistory className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <ClipboardList className="h-5 w-5 shrink-0 transition-colors duration-300" />
       ),
     },
     {
       label: "Analytics",
       href: "/analytics",
       icon: (
-        <IconTrendingUp className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <BarChart3 className="h-5 w-5 shrink-0 transition-colors duration-300" />
       ),
     },
     {
       label: "Calendar",
       href: "/calendar",
       icon: (
-        <CalendarIcon className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <CalendarDays className="h-5 w-5 shrink-0 transition-colors duration-300" />
       ),
     },
     {
       label: "Log Mistakes",
       href: "/questions",
       icon: (
-        <IconFileX className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
+        <PencilLine className="h-5 w-5 shrink-0 transition-colors duration-300" />
       ),
     },
     // Admin-only links
@@ -322,6 +324,7 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
 
 export const Logo = ({ onHomeClick, closeSidebar }) => {
   const navigate = useNavigate();
+  const { open } = useSidebar?.() || { open: true };
   
   const handleClick = () => {
     if (onHomeClick) onHomeClick();
@@ -331,15 +334,33 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center space-x-3 py-3 px-2 w-full text-left hover:bg-[#22adff]/10 rounded-lg transition-colors duration-300"
+      className={cn(
+        "relative z-20 flex items-center gap-3 py-3 px-3 w-full text-left rounded-xl",
+        "transition-all duration-200 group",
+        "hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10",
+        "border border-transparent hover:border-blue-500/20"
+      )}
     >
-      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover brightness-0 invert" />
+      <div className="relative">
+        <img
+          src={logoImage}
+          alt="Thinklytics Logo"
+          className={cn(
+            "rounded-lg object-cover brightness-0 invert transition-transform duration-200 peer",
+            open ? "w-10 h-10" : "w-8 h-8",
+            "hover:scale-110"
+          )}
+        />
+        <div className="absolute inset-0 bg-blue-500/20 rounded-lg blur-xl opacity-0 peer-hover:opacity-100 transition-opacity duration-200" />
+      </div>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex flex-col"
       >
-        <span className="ml-2 text-xl font-bold text-white">Thinklytics</span>
+        <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-200 group-hover:to-purple-200 transition-all duration-200">
+          Thinklytics
+        </span>
       </motion.div>
     </button>
   );
@@ -347,6 +368,7 @@ export const Logo = ({ onHomeClick, closeSidebar }) => {
 
 export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   const navigate = useNavigate();
+  const { open } = useSidebar?.() || { open: true };
   
   const handleClick = () => {
     if (onHomeClick) onHomeClick();
@@ -356,9 +378,25 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
   return (
     <button
       onClick={handleClick}
-      className="relative z-20 flex items-center justify-center py-3 px-2 w-full hover:bg-[#22adff]/10 rounded-lg transition-colors duration-300"
+      className={cn(
+        "relative z-20 flex items-center justify-center py-3 px-3 w-full rounded-xl group",
+        "transition-all duration-200",
+        "hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10",
+        "border border-transparent hover:border-blue-500/20"
+      )}
     >
-      <img src={logoImage} alt="Thinklytics Logo" className="w-10 h-10 rounded-lg object-cover brightness-0 invert" />
+      <div className="relative">
+        <img
+          src={logoImage}
+          alt="Thinklytics Logo"
+          className={cn(
+            "rounded-lg object-cover brightness-0 invert transition-transform duration-200 peer",
+            open ? "w-10 h-10" : "w-8 h-8",
+            "hover:scale-125"
+          )}
+        />
+        <div className="absolute inset-0 bg-blue-500/30 rounded-lg blur-xl opacity-0 peer-hover:opacity-100 transition-opacity duration-200" />
+      </div>
     </button>
   );
 };

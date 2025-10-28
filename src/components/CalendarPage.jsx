@@ -7,6 +7,9 @@ import { Modal } from './ui/animated-modal';
 import { CheckCircle, Clock, BarChart2, Plus, Play, Calendar as CalendarIcon, Target, BookOpen, Trash2, ChevronRight, CalendarDays, Activity } from 'lucide-react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useUndo } from '../contexts/UndoContext';
+import RichNotesEditor from './ui/RichNotesEditor';
+import ModernQuizCard from './ui/ModernQuizCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom calendar styles
 const calendarStyles = `
@@ -20,6 +23,28 @@ const calendarStyles = `
     font-family: 'Inter', system-ui, sans-serif;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     overflow: hidden;
+  }
+
+  @media (max-width: 640px) {
+    .react-calendar {
+      min-height: 400px;
+      border-radius: 12px;
+    }
+    
+    .react-calendar__tile {
+      min-height: 50px;
+      padding: 12px 8px;
+      font-size: 14px;
+    }
+    
+    .react-calendar__navigation {
+      padding: 12px;
+    }
+    
+    .react-calendar__month-view__weekdays {
+      padding: 8px 0;
+      font-size: 12px;
+    }
   }
 
   .dark .react-calendar {
@@ -92,18 +117,19 @@ const calendarStyles = `
     background: none;
     border: none;
     padding: 16px 12px;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     font-weight: 500;
     color: #374151;
     font-size: 16px;
-    min-height: 60px;
+    min-height: 70px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    border: 2px solid transparent;
   }
 
   .dark .react-calendar__tile {
@@ -111,12 +137,16 @@ const calendarStyles = `
   }
 
   .react-calendar__tile:hover {
-    background: #f1f5f9;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    transform: translateY(-2px) scale(1.05);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   .dark .react-calendar__tile:hover {
-    background: #374151;
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border-color: #4b5563;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .react-calendar__tile:disabled {
@@ -153,15 +183,19 @@ const calendarStyles = `
   }
 
   .react-calendar__tile--active {
-    background: linear-gradient(135deg, rgba(34, 173, 255, 0.2), rgba(58, 182, 255, 0.3)) !important;
+    background: linear-gradient(135deg, rgba(34, 173, 255, 0.15), rgba(58, 182, 255, 0.25)) !important;
     color: #22adff !important;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(34, 173, 255, 0.2);
+    font-weight: 700;
+    border-color: #22adff !important;
+    box-shadow: 0 8px 16px rgba(34, 173, 255, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    transform: scale(1.08);
   }
 
   .dark .react-calendar__tile--active {
-    background: linear-gradient(135deg, rgba(34, 173, 255, 0.3), rgba(58, 182, 255, 0.4)) !important;
+    background: linear-gradient(135deg, rgba(34, 173, 255, 0.25), rgba(58, 182, 255, 0.35)) !important;
     color: #3ab6ff !important;
+    border-color: #3ab6ff !important;
+    box-shadow: 0 8px 16px rgba(34, 173, 255, 0.35);
   }
 
   .react-calendar__tile--hasEvents {
@@ -196,16 +230,28 @@ const calendarStyles = `
   }
 
   .activity-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
   }
 
   .activity-dot:hover {
-    transform: scale(1.2);
+    transform: scale(1.4);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+    animation: none;
   }
 
   .activity-dot.completed {
@@ -345,6 +391,58 @@ const CalendarPage = ({ onStartQuiz }) => {
     const currentNotes = getNotesForDate(dateStr);
     setNotes(currentNotes);
   }, [selectedDate, calendarEvents]);
+
+  // Keyboard shortcuts for power users
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Ignore shortcuts while typing in inputs, textareas, or contenteditable (notes editor)
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Cmd/Ctrl + K to open modal (like Notion/Linear)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsModalOpen(true);
+      }
+
+      // Arrow keys to navigate dates
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() - 1);
+        setSelectedDate(newDate);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() + 1);
+        setSelectedDate(newDate);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() - 7);
+        setSelectedDate(newDate);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() + 7);
+        setSelectedDate(newDate);
+      }
+
+      // 'T' to jump to today
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        setSelectedDate(new Date());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedDate]);
 
   // Combine calendar events with quiz manager data
   const getAllEventsForDate = (dateStr) => {
@@ -1110,22 +1208,24 @@ const CalendarPage = ({ onStartQuiz }) => {
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm">
-            <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span>In Progress</span>
-            </div>
-            <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Planned</span>
-            </div>
-            <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Custom</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm">
+              <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Completed</span>
+              </div>
+              <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <span>In Progress</span>
+              </div>
+              <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>Planned</span>
+              </div>
+              <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span>Custom</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1192,19 +1292,18 @@ const CalendarPage = ({ onStartQuiz }) => {
                     </h3>
                   </div>
                   
-                  <div className="h-[8rem] sm:h-[12rem]">
-                    <textarea
+                  <div className="h-[8rem] sm:h-[16rem] border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                    <RichNotesEditor
                       value={notes}
-                      onChange={(e) => {
-                        setNotes(e.target.value);
+                      onChange={(newValue) => {
+                        setNotes(newValue);
                         // Auto-save after a short delay
                         clearTimeout(window.notesSaveTimeout);
                         window.notesSaveTimeout = setTimeout(() => {
-                          saveNotesForDate(toLocalDateString(selectedDate), e.target.value);
+                          saveNotesForDate(toLocalDateString(selectedDate), newValue);
                         }, 1000);
                       }}
-                      placeholder="Write your notes for today..."
-                      className="w-full h-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-base sm:text-sm resize-none overflow-y-auto transition-colors duration-300"
+                      placeholder="Start typing..."
                     />
                   </div>
                 </div>
@@ -1231,162 +1330,62 @@ const CalendarPage = ({ onStartQuiz }) => {
                   <div className="flex-1 overflow-y-auto min-h-0 pr-2">
                     <div className="space-y-3 sm:space-y-4">
                       {selectedDateEvents.length === 0 ? (
-                        <div className="text-center py-6 sm:py-8">
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                            <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
-                          </div>
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            No activities scheduled
+                        <motion.div 
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-center py-8 sm:py-12"
+                        >
+                          <motion.div 
+                            animate={{ 
+                              scale: [1, 1.05, 1],
+                              rotate: [0, 5, -5, 0]
+                            }}
+                            transition={{ 
+                              duration: 4,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                            className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg"
+                          >
+                            <CalendarIcon className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500" />
+                          </motion.div>
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+                            No activities yet
                           </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Select a different date or add new activities
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                            Start planning your study sessions
                           </p>
-                          <div className="mt-4 text-xs text-gray-400 space-y-1">
-                            <div>Debug: {toLocalDateString(selectedDate)}</div>
-                            <div>Total Events: {calendarEvents?.length || 0}</div>
-                            <div>Completed Quizzes: {completedQuizzes?.length || 0}</div>
-                            <div>In Progress Quizzes: {inProgressQuizzes?.length || 0}</div>
-                            <div>Selected Date Events: {selectedDateEvents.length}</div>
-                          </div>
-                        </div>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setIsModalOpen(true)}
+                            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 mx-auto"
+                          >
+                            <Plus className="w-5 h-5" />
+                            <span>Schedule a Quiz</span>
+                          </motion.button>
+                        </motion.div>
                       ) : (
                         <>
                           {/* Quizzes Section */}
                           {groupedEvents.quizzes.length > 0 && (
-                            <div className="space-y-3">
-                              <div className="space-y-3">
-                                {groupedEvents.quizzes.map((event, idx) => (
-                                  <div
-                                    key={`${event.id}-${event.status}-${idx}`}
-                                    className="group relative bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-600/50 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-600 transition-all duration-200"
-                                  >
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                        {getEventIcon(event)}
-                                        <div className="flex-1 min-w-0">
-                                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                            {event.title}
-                                          </h4>
-                                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getEventStatusColor(event)}`}>
-                                              {getEventStatusText(event)}
-                                            </span>
-                                            {event.metadata && event.metadata.questions && (
-                                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                {event.metadata.questions.length} questions
-                                              </span>
-                                            )}
-                                            {!event.metadata && event.questions && (
-                                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                {event.questions.length} questions
-                                              </span>
-                                            )}
-                                            {event.score !== undefined && (
-                                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                                {event.score}% score
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="flex items-center space-x-2">
-                                        {(event.status === 'planned' || event.type === 'planned') && (
-                                          <button
-                                            onClick={() => handleStartQuiz(event)}
-                                            disabled={(() => {
-                                              // Check if today is the planned date - disable if not today
-                                              const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
-                                              if (plannedDate) {
-                                                const today = getTodayString();
-                                                let plannedDateStr;
-                                                
-                                                // Handle different date formats
-                                                if (plannedDate.includes('T')) {
-                                                  // ISO string format - convert to local date
-                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                } else if (plannedDate.includes('-') && plannedDate.length === 10) {
-                                                  // YYYY-MM-DD format
-                                                  plannedDateStr = plannedDate;
-                                                } else {
-                                                  // Try to parse as date
-                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                }
-                                                
-                                                return today !== plannedDateStr;
-                                              }
-                                              return false; // Enable if no planned date found
-                                            })()}
-                                            className={`p-2 rounded-lg transition-colors duration-200 ${
-                                              (() => {
-                                                const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
-                                                if (plannedDate) {
-                                                  const today = getTodayString();
-                                                  let plannedDateStr;
-                                                  
-                                                  if (plannedDate.includes('T')) {
-                                                    plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                  } else if (plannedDate.includes('-') && plannedDate.length === 10) {
-                                                    plannedDateStr = plannedDate;
-                                                  } else {
-                                                    plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                  }
-                                                  
-                                                  if (today !== plannedDateStr) {
-                                                    return 'bg-gray-400 cursor-not-allowed text-white';
-                                                  }
-                                                }
-                                                return 'bg-blue-500 hover:bg-blue-600 text-white';
-                                              })()
-                                            }`}
-                                            title={(() => {
-                                              // Check if today is the planned date
-                                              const plannedDate = event.plannedDate || event.metadata?.plannedDate || event.date;
-                                              if (plannedDate) {
-                                                const today = getTodayString();
-                                                let plannedDateStr;
-                                                
-                                                if (plannedDate.includes('T')) {
-                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                } else if (plannedDate.includes('-') && plannedDate.length === 10) {
-                                                  plannedDateStr = plannedDate;
-                                                } else {
-                                                  plannedDateStr = toLocalDateString(new Date(plannedDate));
-                                                }
-                                                
-                                                if (today !== plannedDateStr) {
-                                                  return `This quiz is planned for ${new Date(plannedDateStr).toLocaleDateString()}. You can only start it on that date.`;
-                                                }
-                                              }
-                                              return 'Start this quiz';
-                                            })()}
-                                          >
-                                            <Play className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        
-                                        {(event.status === 'in-progress' || event.type === 'in-progress') && (
-                                          <button
-                                            onClick={() => handleStartQuiz(event)}
-                                            className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors duration-200"
-                                            title="Resume this quiz"
-                                          >
-                                            <Play className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        
-                                        <button
-                                          onClick={() => handleDeleteEvent(event)}
-                                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
-                                          title="Delete this quiz"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="space-y-3 sm:space-y-4">
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="grid grid-cols-1 gap-3 sm:gap-4"
+                              >
+                                <AnimatePresence mode="popLayout">
+                                  {groupedEvents.quizzes.map((event, idx) => (
+                                    <ModernQuizCard
+                                      key={`${event.id}-${event.status}-${idx}`}
+                                      event={event}
+                                      onStart={handleStartQuiz}
+                                      onDelete={handleDeleteEvent}
+                                    />
+                                  ))}
+                                </AnimatePresence>
+                              </motion.div>
                             </div>
                           )}
 
@@ -1440,7 +1439,7 @@ const CalendarPage = ({ onStartQuiz }) => {
 
       {/* Toast Notification */}
       {showToast && (
-        <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+        <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
           toastType === 'success' 
             ? 'bg-green-500 text-white' 
             : 'bg-red-500 text-white'

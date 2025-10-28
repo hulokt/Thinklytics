@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, ArrowLeft, Eye, EyeOff, Mail, User, Lock, CheckCircle, Mail as MailIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -24,34 +24,6 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
   const [emailSent, setEmailSent] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
-
-  // Memoize particle elements to keep hooks order stable across renders
-  const particles = useMemo(() =>
-    [...Array(15)].map((_, i) => {
-      const left = Math.random() * 100;
-      const top = Math.random() * 100;
-      const delay = Math.random() * 3;
-      const duration = 2 + Math.random() * 2;
-      const size = Math.random() * 3 + 1;
-
-      return (
-        <div
-          key={`particle-${i}`}
-          className={`absolute rounded-full animate-ping ${
-            isDarkMode ? 'bg-blue-500/40' : 'bg-blue-500/30'
-          }`}
-          style={{
-            left: `${left}%`,
-            top: `${top}%`,
-            width: `${size}px`,
-            height: `${size}px`,
-            animationDelay: `${delay}s`,
-            animationDuration: `${duration}s`
-          }}
-        ></div>
-      );
-    }),
-  [isDarkMode]);
 
   const validate = () => {
     const errs = {};
@@ -298,8 +270,8 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
       {/* Navbar */}
       <Navbar />
 
-      {/* Enhanced Background with Geometric Shapes */}
-      <div className="absolute inset-0 pointer-events-none">
+      {/* Enhanced Background with Purposeful Geometric Shapes */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {/* Base gradient */}
         <div className={`absolute inset-0 ${
           isDarkMode 
@@ -307,130 +279,85 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
             : 'bg-gradient-to-br from-blue-100/60 via-indigo-100/40 to-purple-100/60'
         }`}></div>
         
-        {/* Main Floating Orbs */}
-        <div className={`absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse ${
+        {/* Main Ambient Orbs - Symmetrical */}
+        <div className={`absolute top-20 left-20 w-[500px] h-[500px] rounded-full blur-3xl animate-pulse ${
           isDarkMode 
-            ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20' 
-            : 'bg-gradient-to-r from-blue-500/15 to-cyan-500/15'
+            ? 'bg-gradient-to-br from-blue-500/15 to-cyan-500/10' 
+            : 'bg-gradient-to-br from-blue-400/12 to-cyan-400/8'
         }`}></div>
-        <div className={`absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl animate-pulse delay-1000 ${
+        <div className={`absolute bottom-20 right-20 w-[500px] h-[500px] rounded-full blur-3xl animate-pulse delay-1000 ${
           isDarkMode 
-            ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20' 
-            : 'bg-gradient-to-r from-indigo-500/15 to-purple-500/15'
+            ? 'bg-gradient-to-br from-indigo-500/15 to-purple-500/10' 
+            : 'bg-gradient-to-br from-indigo-400/12 to-purple-400/8'
         }`}></div>
-        
-        {/* Additional Floating Elements */}
-        <div className={`absolute top-1/3 right-1/3 w-64 h-64 rounded-full blur-3xl animate-pulse delay-500 ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/15' 
-            : 'bg-gradient-to-r from-purple-500/12 to-pink-500/12'
-        }`}></div>
-        <div className={`absolute bottom-1/3 left-1/4 w-48 h-48 rounded-full blur-3xl animate-pulse delay-1500 ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-cyan-500/15 to-blue-500/15' 
-            : 'bg-gradient-to-r from-cyan-500/12 to-blue-500/12'
-        }`}></div>
-        
-        {/* Geometric Shapes */}
-        <div className={`absolute top-20 left-10 w-32 h-32 border-2 rounded-2xl rotate-12 animate-float ${
-          isDarkMode 
-            ? 'border-blue-400/30 bg-transparent' 
-            : 'border-blue-400/25 bg-white/10'
-        } backdrop-blur-sm`}></div>
-        <div className={`absolute top-40 right-20 w-24 h-24 rounded-full animate-float-delayed ${
-          isDarkMode 
-            ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20' 
-            : 'bg-gradient-to-br from-blue-500/15 to-indigo-500/15'
-        }`}></div>
-        <div className={`absolute bottom-32 left-20 w-20 h-20 border-2 rounded-lg rotate-45 animate-float-slow ${
-          isDarkMode 
-            ? 'border-purple-400/30 bg-transparent' 
-            : 'border-purple-400/25 bg-white/10'
-        } backdrop-blur-sm`}></div>
-        
-        {/* Modern Abstract Shapes */}
-        <div className={`absolute top-1/3 left-16 w-24 h-32 rounded-tl-3xl rounded-br-3xl animate-float delay-800 ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-blue-400/20 to-cyan-400/20' 
-            : 'bg-gradient-to-r from-blue-400/15 to-cyan-400/15'
-        }`}></div>
-        <div className={`absolute bottom-1/3 right-16 w-32 h-24 rounded-tr-3xl rounded-bl-3xl animate-float-delayed ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-purple-400/20 to-indigo-400/20' 
-            : 'bg-gradient-to-r from-purple-400/15 to-indigo-400/15'
-        }`}></div>
-        
-        {/* Star-like Shapes */}
-        <div className={`absolute top-1/3 right-1/6 w-8 h-8 transform rotate-45 animate-float delay-900 ${
-          isDarkMode 
-            ? 'bg-amber-400/25' 
-            : 'bg-amber-400/20'
-        }`} style={{clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'}}></div>
-        <div className={`absolute bottom-2/5 left-1/8 w-6 h-6 transform -rotate-15 animate-float-slow delay-1100 ${
-          isDarkMode 
-            ? 'bg-lime-400/25' 
-            : 'bg-lime-400/20'
-        }`} style={{clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'}}></div>
-        
-        {/* Triangle Accents */}
-        <div className={`absolute top-1/4 right-1/4 w-8 h-8 transform rotate-45 animate-float delay-1000 ${
-          isDarkMode 
-            ? 'bg-cyan-400/20' 
-            : 'bg-cyan-400/15'
-        }`} style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-        <div className={`absolute bottom-1/4 left-1/3 w-12 h-12 transform -rotate-30 animate-float-delayed ${
-          isDarkMode 
-            ? 'bg-rose-400/20' 
-            : 'bg-rose-400/15'
-        }`} style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-        
-        {/* Shining Light Effects */}
-        <div className={`absolute top-1/5 right-1/4 w-2 h-2 rounded-full animate-ping delay-500 ${
-          isDarkMode ? 'bg-white/60' : 'bg-blue-300/70'
-        }`}></div>
-        <div className={`absolute bottom-1/5 left-1/4 w-1 h-1 rounded-full animate-ping delay-1200 ${
-          isDarkMode ? 'bg-yellow-300/80' : 'bg-yellow-300/70'
-        }`}></div>
-        <div className={`absolute top-2/5 left-3/4 w-1.5 h-1.5 rounded-full animate-ping delay-800 ${
-          isDarkMode ? 'bg-cyan-300/70' : 'bg-cyan-300/60'
-        }`}></div>
-        <div className={`absolute bottom-2/5 right-3/4 w-2.5 h-2.5 rounded-full animate-ping delay-1800 ${
-          isDarkMode ? 'bg-pink-300/60' : 'bg-pink-300/50'
-        }`}></div>
-        
-        {/* Particle Effect */}
-        <div className="absolute inset-0">
-          {particles}
-        </div>
         
         {/* Subtle Grid Pattern */}
-        <div className={`absolute inset-0 opacity-[0.03] dark:opacity-[0.05]`}>
+        <div className={`absolute inset-0 ${isDarkMode ? 'opacity-[0.04]' : 'opacity-[0.06]'}`}>
           <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, #3b82f6 1px, transparent 1px), 
-                             radial-gradient(circle at 75% 75%, #6366f1 1px, transparent 1px)`,
-            backgroundSize: '60px 60px',
-            backgroundPosition: '0 0, 30px 30px'
+            backgroundImage: `linear-gradient(to right, ${isDarkMode ? '#3b82f6' : '#60a5fa'} 1px, transparent 1px), 
+                             linear-gradient(to bottom, ${isDarkMode ? '#3b82f6' : '#60a5fa'} 1px, transparent 1px)`,
+            backgroundSize: '80px 80px'
           }}></div>
         </div>
         
-        {/* Floating Lines */}
-        <div className={`absolute top-1/4 left-0 w-32 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent transform rotate-45 animate-pulse delay-1000`}></div>
-        <div className={`absolute bottom-1/3 right-0 w-40 h-px bg-gradient-to-r from-transparent via-purple-400/30 to-transparent transform -rotate-45 animate-pulse delay-2000`}></div>
-        <div className={`absolute top-2/3 left-0 w-24 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent transform rotate-12 animate-pulse delay-500`}></div>
+        {/* Corner Frame Elements - Purposeful Design */}
+        <div className={`absolute top-0 left-0 w-32 h-32 border-l-2 border-t-2 rounded-tl-3xl ${
+          isDarkMode ? 'border-blue-400/30' : 'border-blue-500/25'
+        }`}></div>
+        <div className={`absolute top-0 right-0 w-32 h-32 border-r-2 border-t-2 rounded-tr-3xl ${
+          isDarkMode ? 'border-indigo-400/30' : 'border-indigo-500/25'
+        }`}></div>
+        <div className={`absolute bottom-0 left-0 w-32 h-32 border-l-2 border-b-2 rounded-bl-3xl ${
+          isDarkMode ? 'border-cyan-400/30' : 'border-cyan-500/25'
+        }`}></div>
+        <div className={`absolute bottom-0 right-0 w-32 h-32 border-r-2 border-b-2 rounded-br-3xl ${
+          isDarkMode ? 'border-purple-400/30' : 'border-purple-500/25'
+        }`}></div>
         
-        {/* Corner Accents */}
-        <div className={`absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 rounded-tl-3xl ${
-          isDarkMode ? 'border-blue-400/20' : 'border-blue-400/15'
+        {/* Floating Accent Shapes - Left Side Pattern */}
+        <div className={`absolute top-1/4 left-16 w-20 h-20 border-2 rounded-2xl rotate-12 animate-float ${
+          isDarkMode 
+            ? 'border-blue-400/40 bg-blue-500/5' 
+            : 'border-blue-400/30 bg-blue-500/5'
+        } backdrop-blur-sm`}></div>
+        <div className={`absolute top-1/2 left-24 w-16 h-16 rounded-full animate-float-delayed ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-cyan-500/20 to-blue-500/10' 
+            : 'bg-gradient-to-br from-cyan-400/15 to-blue-400/8'
+        } backdrop-blur-sm`}></div>
+        <div className={`absolute top-3/4 left-12 w-12 h-12 border-2 rounded-lg rotate-45 animate-float-slow ${
+          isDarkMode 
+            ? 'border-indigo-400/40 bg-indigo-500/5' 
+            : 'border-indigo-400/30 bg-indigo-500/5'
+        } backdrop-blur-sm`}></div>
+        
+        {/* Floating Accent Shapes - Right Side Pattern */}
+        <div className={`absolute top-1/3 right-20 w-24 h-24 border-2 rounded-2xl -rotate-12 animate-float delay-500 ${
+          isDarkMode 
+            ? 'border-purple-400/40 bg-purple-500/5' 
+            : 'border-purple-400/30 bg-purple-500/5'
+        } backdrop-blur-sm`}></div>
+        <div className={`absolute top-2/3 right-16 w-14 h-14 rounded-full animate-float-delayed ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-indigo-500/20 to-purple-500/10' 
+            : 'bg-gradient-to-br from-indigo-400/15 to-purple-400/8'
+        } backdrop-blur-sm`}></div>
+        
+        {/* Centered Decorative Elements */}
+        <div className={`absolute top-32 left-1/2 -translate-x-1/2 w-1 h-24 ${
+          isDarkMode ? 'bg-gradient-to-b from-blue-400/30 via-blue-400/10 to-transparent' : 'bg-gradient-to-b from-blue-500/25 via-blue-500/8 to-transparent'
         }`}></div>
-        <div className={`absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 rounded-tr-3xl ${
-          isDarkMode ? 'border-purple-400/20' : 'border-purple-400/15'
+        <div className={`absolute bottom-32 left-1/2 -translate-x-1/2 w-1 h-24 ${
+          isDarkMode ? 'bg-gradient-to-t from-purple-400/30 via-purple-400/10 to-transparent' : 'bg-gradient-to-t from-purple-500/25 via-purple-500/8 to-transparent'
         }`}></div>
-        <div className={`absolute bottom-0 left-0 w-20 h-20 border-l-2 border-b-2 rounded-bl-3xl ${
-          isDarkMode ? 'border-cyan-400/20' : 'border-cyan-400/15'
-        }`}></div>
-        <div className={`absolute bottom-0 right-0 w-20 h-20 border-r-2 border-b-2 rounded-br-3xl ${
-          isDarkMode ? 'border-indigo-400/20' : 'border-indigo-400/15'
-        }`}></div>
+        
+        {/* Subtle Light Accents - Strategic Placement */}
+        <div className={`absolute top-1/4 right-1/3 w-2 h-2 rounded-full ${
+          isDarkMode ? 'bg-blue-400/60 shadow-lg shadow-blue-400/40' : 'bg-blue-500/50 shadow-lg shadow-blue-500/30'
+        } animate-pulse`}></div>
+        <div className={`absolute bottom-1/3 left-1/3 w-2 h-2 rounded-full ${
+          isDarkMode ? 'bg-purple-400/60 shadow-lg shadow-purple-400/40' : 'bg-purple-500/50 shadow-lg shadow-purple-500/30'
+        } animate-pulse delay-1000`}></div>
       </div>
 
       {/* Particle Animation */}
@@ -449,18 +376,18 @@ const SignupPage = ({ onSignup, onSwitchToLogin, onBack }) => {
         <h1 className={`text-center font-semibold text-2xl sm:text-3xl md:text-4xl leading-tight max-w-4xl ${
           isDarkMode ? 'text-white' : 'text-gray-900'
         }`}>
-          Create Your Account and Start Your SAT Journey
+          Start Your SAT Journey
         </h1>
 
         {/* Subheading */}
-        <p className={`max-w-xl text-center mt-4 ${
+        <p className={`max-w-xl text-center mt-3 text-sm sm:text-base ${
           isDarkMode ? 'text-gray-400' : 'text-gray-600'
         }`}>
-          Join thousands of students improving their SAT scores with AI-powered analytics and personalized practice.
+          AI-powered analytics and personalized practice to boost your score.
         </p>
 
         {/* Form Card */}
-        <div className={`mt-12 w-full max-w-md rounded-2xl shadow-2xl px-6 py-8 backdrop-blur-sm relative before:absolute before:inset-0 before:rounded-2xl before:blur-2xl before:z-0 ${
+        <div className={`mt-8 w-full max-w-md rounded-2xl shadow-2xl px-6 py-8 backdrop-blur-sm relative before:absolute before:inset-0 before:rounded-2xl before:blur-2xl before:z-0 ${
           isDarkMode 
             ? 'bg-[#111827] border border-blue-900/40 before:bg-[radial-gradient(circle,rgba(40,160,255,0.32)_0%,transparent_80%)] shadow-blue-500/30' 
             : 'bg-white/80 border border-blue-200/50 before:bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_80%)] shadow-blue-500/20'

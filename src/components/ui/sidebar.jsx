@@ -50,15 +50,47 @@ export const DesktopSidebar = ({ className, children, ...props }) => {
     <>
       <motion.div
         className={cn(
-          "h-full px-4 py-4 hidden md:flex md:flex-col bg-gray-900 border-r border-gray-700 w-[300px] flex-shrink-0 transition-colors duration-300",
+          "h-full px-4 py-4 hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 relative group",
+          "bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950",
+          "border-r border-gray-800/50",
+          "shadow-xl shadow-black/20",
           className
         )}
         animate={{
-          width: 240,
+          width: animate ? (open ? 240 : 80) : 240,
         }}
-
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1],
+        }}
         {...props}
       >
+        {/* Toggle button - positioned absolutely */}
+        <button
+          onClick={() => setOpen(!open)}
+          className={cn(
+            "absolute -right-3 top-6 z-50",
+            "w-6 h-6 rounded-full",
+            "bg-gradient-to-br from-blue-500 to-blue-600",
+            "shadow-lg shadow-blue-500/50",
+            "flex items-center justify-center",
+            "hover:shadow-xl hover:shadow-blue-500/60",
+            "hover:scale-110",
+            "transition-all duration-200",
+            "border border-gray-800"
+          )}
+        >
+          {open ? (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          ) : (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          )}
+        </button>
+        
         {children}
       </motion.div>
     </>
@@ -162,23 +194,54 @@ export const SidebarLink = ({ link, className, ...props }) => {
   return (
     <div
       className={cn(
-        "flex items-center group/sidebar py-2 cursor-pointer",
-        open ? "justify-start gap-2" : "justify-center",
+        "flex items-center group/sidebar py-3 px-3 cursor-pointer rounded-xl",
+        "relative overflow-hidden",
+        // Smooth hover transitions
+        "transition-all duration-300 ease-out",
+        "transition-colors",
+        // Background and shadow on hover
+        "hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10",
+        "hover:shadow-lg hover:shadow-blue-500/5",
+        // Border accent
+        "border border-transparent hover:border-blue-500/20",
+        open ? "justify-start gap-3" : "justify-center",
         className
       )}
       {...props}
     >
-      {link.icon}
+      {/* Icon with gradient on hover */}
+      <div className={cn(
+        "relative z-10",
+        // Smooth icon color and scale
+        "transition-all duration-300 ease-out",
+        "transition-colors",
+        "text-gray-400 group-hover/sidebar:text-blue-400",
+        "group-hover/sidebar:scale-110",
+        !open && "group-hover/sidebar:scale-125"
+      )}>
+        {link.icon}
+      </div>
 
+      {/* Label with animation */}
       <motion.span
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-gray-300 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className={cn(
+          "text-gray-300 text-sm font-medium whitespace-pre inline-block !p-0 !m-0 relative z-10",
+          // Smooth label color and position
+          "transition-all duration-300 ease-out",
+          "transition-colors",
+          "group-hover/sidebar:text-white",
+          "group-hover/sidebar:translate-x-0.5"
+        )}
       >
         {link.label}
       </motion.span>
+      
+      {/* Hover glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-purple-500/0 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 ease-out" />
     </div>
   );
 }; 

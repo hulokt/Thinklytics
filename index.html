@@ -9,6 +9,20 @@
     <link rel="manifest" href="./manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <script>
+      // Decode GitHub Pages SPA query format "?/<path>&..." back to a real path
+      (function(){
+        var l = window.location;
+        if (l.search && l.search.indexOf('/?/') === 0) {
+          var rest = l.search.slice(3); // strip "?/"
+          var parts = rest.split('&');
+          var path = parts.shift();
+          var qs = parts.length ? ('?' + parts.join('&').replace(/~and~/g,'&')) : '';
+          var newUrl = l.protocol + '//' + l.host + '/' + path + qs + l.hash;
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
     <link
       rel="stylesheet"
       as="style"

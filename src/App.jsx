@@ -30,7 +30,7 @@ import AboutPage from './pages/AboutPage';
 import CareersPage from './pages/CareersPage';
 import ContactPage from './pages/ContactPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
+import TermsPage from './components/TermsPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import BlogPage from './pages/BlogPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
@@ -1074,7 +1074,7 @@ function AppContent() {
         <Route path="/careers" element={<CareersPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/contact" element={<ContactPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage onBack={() => navigateWithScroll('/home')} />} />
-        <Route path="/terms" element={<TermsOfServicePage onBack={() => navigateWithScroll('/home')} />} />
+        <Route path="/terms" element={<TermsPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/help" element={<HelpCenterPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/blog" element={<BlogPage onBack={() => navigateWithScroll('/home')} />} />
         <Route path="/cookies" element={<CookiePolicyPage onBack={() => navigateWithScroll('/home')} />} />

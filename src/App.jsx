@@ -92,7 +92,7 @@ function ScrollToTop() {
 // Main App Component wrapped with Auth Provider and Dark Mode Provider
 function App() {
   const isProd = import.meta.env.PROD;
-  const basename = isProd ? "/SatLog" : "/";
+  const basename = "/";
   
 
   

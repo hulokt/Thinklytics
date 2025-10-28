@@ -251,3 +251,4 @@ const Section = ({ title, content, isDarkMode }) => (
 
 export default TermsPage;
 
+

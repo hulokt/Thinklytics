@@ -821,7 +821,7 @@ function AppContent() {
       <ScrollToTop />
       <Routes>
         {/* Public Routes */}
-         <Route path="/" element={<Navigate to="/selector" replace />} />
+         <Route path="/" element={<Navigate to="/home" replace />} />
         
         <Route path="/home" element={
           <PublicRoute>

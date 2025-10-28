@@ -53,9 +53,11 @@ const Homepage = ({ onGetStarted, onLogin }) => {
   );
   const activeCardRef = React.useRef(null);
   
-  // Auto-cycle through cards
+  // Auto-cycle through cards (desktop only)
   React.useEffect(() => {
     if (userInteracted) return;
+    // Only run on desktop (lg breakpoint = 1024px)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     
     const cardInterval = setInterval(() => {
       setActiveCard((prev) => (prev + 1) % 3);
@@ -71,9 +73,11 @@ const Homepage = ({ onGetStarted, onLogin }) => {
     return () => clearInterval(cardInterval);
   }, [userInteracted]);
   
-  // Gentle swinging animation for active card
+  // Gentle swinging animation for active card (desktop only)
   React.useEffect(() => {
     if (userInteracted) return;
+    // Only run on desktop
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     
     let angle = 0;
     const swingInterval = setInterval(() => {
@@ -86,9 +90,11 @@ const Homepage = ({ onGetStarted, onLogin }) => {
     return () => clearInterval(swingInterval);
   }, [userInteracted]);
   
-  // Auto-hover through stats on active card
+  // Auto-hover through stats on active card (desktop only)
   React.useEffect(() => {
     if (userInteracted) return;
+    // Only run on desktop
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     
     const statInterval = setInterval(() => {
       setAutoHoveredStat((prev) => (prev + 1) % 3);
@@ -171,14 +177,14 @@ const Homepage = ({ onGetStarted, onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen w-full homepage-bg homepage-text-primary transition-colors duration-300">
+    <div className="min-h-screen w-full overflow-x-hidden homepage-bg homepage-text-primary transition-colors duration-300">
       {/* Navigation */}
       <Navbar onGetStarted={onGetStarted} onLogin={onLogin} />
 
       {/* Hero Section - REVOLUTIONARY SPLIT DESIGN */}
-      <section className="relative w-full overflow-hidden min-h-screen flex items-center">
+      <section className="relative w-full overflow-hidden overflow-x-hidden min-h-screen flex items-center">
         {/* Animated Gradient Background */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20"></div>
           
           {/* Massive Animated Shapes */}
@@ -227,7 +233,7 @@ const Homepage = ({ onGetStarted, onLogin }) => {
               <div className="flex flex-col sm:flex-row gap-4" style={{animation: 'fadeInUp 0.6s ease-out 0.6s both'}}>
                 <button
                   onClick={onGetStarted}
-                  className={`group relative px-8 py-5 rounded-2xl bg-gradient-to-r ${cards[activeCard].gradient} ${cards[activeCard].darkGradient} text-white font-bold text-lg shadow-2xl transition-all duration-500 hover:scale-105 overflow-hidden ${!userInteracted ? 'animate-soft-pulse' : ''}`}
+                  className={`group relative px-8 py-5 rounded-2xl bg-gradient-to-r ${cards[activeCard].gradient} ${cards[activeCard].darkGradient} text-white font-bold text-lg shadow-2xl transition-all duration-500 hover:scale-105 overflow-hidden ${!userInteracted ? 'lg:animate-soft-pulse' : ''}`}
                 >
                   <div className={`absolute inset-0 bg-gradient-to-r ${cards[activeCard].gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
                   <div className="relative flex items-center justify-center gap-3">
@@ -287,10 +293,10 @@ const Homepage = ({ onGetStarted, onLogin }) => {
             </div>
 
             {/* RIGHT SIDE - Interactive 3D Card Carousel */}
-            <div className="relative" style={{animation: 'fadeInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both'}}>
-              <div className="relative w-full max-w-[600px] mx-auto h-[650px]" style={{perspective: '2000px'}}>
-                {/* Multi-Layer Background Glow - Dynamic based on active card */}
-                <div className="absolute inset-0" style={{transformStyle: 'preserve-3d'}}>
+            <div className="relative w-full lg:w-auto" style={{animation: 'fadeInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both'}}>
+              <div className="relative w-full max-w-[600px] mx-auto h-[580px] lg:h-[650px]" style={{perspective: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '2000px' : 'none'}}>
+                {/* Multi-Layer Background Glow - Dynamic based on active card (Desktop only) */}
+                <div className="hidden lg:block absolute inset-0" style={{transformStyle: 'preserve-3d'}}>
                   <div className={`absolute inset-0 bg-gradient-to-br ${cards[activeCard].gradient}/30 ${cards[activeCard].darkGradient}/20 rounded-[40%] blur-[100px] transition-all duration-1000 ease-out`} 
                     style={{
                       animation: 'organic-pulse 6s cubic-bezier(0.45, 0, 0.55, 1) infinite',
@@ -305,40 +311,51 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                 </div>
 
                 {/* Card Stack - All 3 cards positioned with 3D transforms */}
-                <div className="relative w-full h-full flex items-center justify-center" style={{transformStyle: 'preserve-3d'}}>
+                <div className="relative w-full h-full flex items-center justify-center" style={{transformStyle: typeof window !== 'undefined' && window.innerWidth >= 1024 ? 'preserve-3d' : 'flat'}}>
                   {cards.map((card, index) => {
                     const offset = index - activeCard;
                     const isActive = index === activeCard;
                     const isPrev = offset === -1 || (activeCard === 0 && index === cards.length - 1);
                     const isNext = offset === 1 || (activeCard === cards.length - 1 && index === 0);
+                    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
                     
                     let transform = 'translateX(0) translateZ(0) rotateY(0deg) scale(1)';
                     let opacity = 1;
                     let zIndex = 30;
                     let filter = 'blur(0px)';
                     
-                    if (isPrev) {
-                      transform = 'translateX(-320px) translateZ(-200px) rotateY(25deg) scale(0.85)';
-                      opacity = 0.3;
-                      zIndex = 10;
-                      filter = 'blur(2px)';
-                    } else if (isNext) {
-                      transform = 'translateX(320px) translateZ(-200px) rotateY(-25deg) scale(0.85)';
-                      opacity = 0.3;
-                      zIndex = 10;
-                      filter = 'blur(2px)';
-                    } else if (!isActive) {
-                      transform = 'translateX(0) translateZ(-400px) rotateY(0deg) scale(0.7)';
-                      opacity = 0;
-                      zIndex = 0;
-                      filter = 'blur(5px)';
+                    // Desktop: full 3D carousel
+                    if (!isMobile) {
+                      if (isPrev) {
+                        transform = 'translateX(-320px) translateZ(-200px) rotateY(25deg) scale(0.85)';
+                        opacity = 0.3;
+                        zIndex = 10;
+                        filter = 'blur(2px)';
+                      } else if (isNext) {
+                        transform = 'translateX(320px) translateZ(-200px) rotateY(-25deg) scale(0.85)';
+                        opacity = 0.3;
+                        zIndex = 10;
+                        filter = 'blur(2px)';
+                      } else if (!isActive) {
+                        transform = 'translateX(0) translateZ(-400px) rotateY(0deg) scale(0.7)';
+                        opacity = 0;
+                        zIndex = 0;
+                        filter = 'blur(5px)';
+                      }
+                    } else {
+                      // Mobile: only show active card, hide others
+                      if (!isActive) {
+                        opacity = 0;
+                        zIndex = 0;
+                        transform = 'scale(0)';
+                      }
                     }
 
                     return (
                       <div
                         key={card.id}
                         ref={isActive ? activeCardRef : null}
-                        className="absolute w-96 h-[540px] rounded-3xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 cursor-pointer group"
+                        className="absolute w-[90%] max-w-[380px] lg:w-96 h-[520px] lg:h-[540px] rounded-3xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 cursor-pointer group"
                         onClick={() => {
                           handleUserInteraction();
                           setActiveCard(index);
@@ -351,20 +368,23 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                           );
                         }}
                         style={{
-                          transform: isActive && !userInteracted 
-                            ? `translateX(0) translateZ(0) rotateX(${autoTilt.x}deg) rotateY(${autoTilt.y}deg) scale(1.01)` 
-                            : transform,
+                          transform: isMobile 
+                            ? transform  // Mobile: static, no auto-tilt
+                            : (isActive && !userInteracted 
+                                ? `translateX(0) translateZ(0) rotateX(${autoTilt.x}deg) rotateY(${autoTilt.y}deg) scale(1.01)` 
+                                : transform),
                           opacity,
                           zIndex,
                           filter,
-                          transformStyle: 'preserve-3d',
-                          transition: 'all 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          transformStyle: isMobile ? 'flat' : 'preserve-3d',
+                          transition: isMobile ? 'opacity 0.3s ease' : 'all 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
                           boxShadow: isActive 
                             ? '0 40px 80px -20px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)' 
                             : '0 20px 40px -10px rgba(0,0,0,0.2)'
                         }}
                         onMouseMove={(e) => {
                           if (!isActive) return;
+                          if (isMobile) return; // Disable on mobile
                           handleUserInteraction();
                           const rect = e.currentTarget.getBoundingClientRect();
                           const x = e.clientX - rect.left;
@@ -377,6 +397,7 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                         }}
                         onMouseLeave={(e) => {
                           if (!isActive) return;
+                          if (isMobile) return; // Disable on mobile
                           e.currentTarget.style.transform = 'translateX(0) translateZ(0) rotateX(0deg) rotateY(0deg) scale(1)';
                         }}
                       >
@@ -390,23 +411,23 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                             }}>
                             <div>
                               <div className="text-sm font-medium opacity-90 tracking-wide">{card.title}</div>
-                              <div className={`text-6xl font-black mt-2 tracking-tight transition-all duration-500 ${
-                                !userInteracted && isActive ? 'scale-105' : ''
+                              <div className={`text-6xl font-black mt-2 tracking-tight ${!isMobile ? 'transition-all duration-500' : ''} ${
+                                !isMobile && !userInteracted && isActive ? 'scale-105' : ''
                               }`}
                                 style={{
-                                  animation: isActive ? 'number-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+                                  animation: !isMobile && isActive ? 'number-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
                                   textShadow: '0 4px 12px rgba(0,0,0,0.2)'
                                 }}
-                                onMouseEnter={handleUserInteraction}
+                                onMouseEnter={!isMobile ? handleUserInteraction : undefined}
                               >{card.score}</div>
                             </div>
-                            <div className={`w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center transition-all duration-500 ${
-                              !userInteracted && isActive ? 'scale-110 rotate-12' : 'group-hover:scale-110 group-hover:rotate-12'
+                            <div className={`w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center ${!isMobile ? 'transition-all duration-500' : ''} ${
+                              !isMobile && !userInteracted && isActive ? 'scale-110 rotate-12' : (!isMobile ? 'group-hover:scale-110 group-hover:rotate-12' : '')
                             }`}
                               style={{
-                                animation: isActive ? 'icon-float 3s ease-in-out infinite' : 'none'
+                                animation: !isMobile && isActive ? 'icon-float 3s ease-in-out infinite' : 'none'
                               }}
-                              onMouseEnter={handleUserInteraction}
+                              onMouseEnter={!isMobile ? handleUserInteraction : undefined}
                             >
                               {card.icon}
                             </div>
@@ -416,25 +437,25 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                         {/* Stats Grid with stagger animation */}
                         <div className="p-6 space-y-4">
                           {card.stats.map((stat, i) => {
-                            const isAutoHovered = !userInteracted && isActive && i === autoHoveredStat;
+                            const isAutoHovered = !isMobile && !userInteracted && isActive && i === autoHoveredStat;
                             return (
                               <div key={i} 
-                                className={`flex items-center justify-between p-4 rounded-xl group/stat transition-all duration-300 ${
+                                className={`flex items-center justify-between p-4 rounded-xl group/stat ${!isMobile ? 'transition-all duration-300' : ''} ${
                                   isAutoHovered 
                                     ? 'bg-gray-100 dark:bg-gray-750 scale-[1.02] shadow-lg' 
-                                    : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 hover:scale-[1.02] hover:shadow-lg'
+                                    : `bg-gray-50 dark:bg-gray-800 ${!isMobile ? 'hover:bg-gray-100 dark:hover:bg-gray-750 hover:scale-[1.02] hover:shadow-lg' : ''}`
                                 }`}
                                 style={{
-                                  animation: isActive ? `slide-in-stat 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.1}s both` : 'none',
-                                  transform: isActive ? 'translateZ(10px)' : 'translateZ(0)'
+                                  animation: !isMobile && isActive ? `slide-in-stat 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.1}s both` : 'none',
+                                  transform: !isMobile && isActive ? 'translateZ(10px)' : 'translateZ(0)'
                                 }}
-                                onMouseEnter={handleUserInteraction}
+                                onMouseEnter={!isMobile ? handleUserInteraction : undefined}
                               >
-                                <span className={`text-gray-700 dark:text-gray-300 font-medium transition-transform duration-300 ${
-                                  isAutoHovered ? 'translate-x-1' : 'group-hover/stat:translate-x-1'
+                                <span className={`text-gray-700 dark:text-gray-300 font-medium ${!isMobile ? 'transition-transform duration-300' : ''} ${
+                                  isAutoHovered ? 'translate-x-1' : (!isMobile ? 'group-hover/stat:translate-x-1' : '')
                                 }`}>{stat.label}</span>
-                                <span className={`text-xl font-black bg-gradient-to-r ${card.gradient} ${card.darkGradient} bg-clip-text text-transparent transition-transform duration-300 ${
-                                  isAutoHovered ? 'scale-110' : 'group-hover/stat:scale-110'
+                                <span className={`text-xl font-black bg-gradient-to-r ${card.gradient} ${card.darkGradient} bg-clip-text text-transparent ${!isMobile ? 'transition-transform duration-300' : ''} ${
+                                  isAutoHovered ? 'scale-110' : (!isMobile ? 'group-hover/stat:scale-110' : '')
                                 }`}>
                                   {stat.value}
                                 </span>
@@ -444,30 +465,30 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                         </div>
 
                         {/* Progress Bar with liquid animation */}
-                        <div className="px-6 pb-6" onMouseEnter={handleUserInteraction}>
+                        <div className="px-6 pb-6" onMouseEnter={!isMobile ? handleUserInteraction : undefined}>
                           <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center justify-between">
                             <span>Overall Progress</span>
-                            <span className={`text-xs font-bold bg-gradient-to-r ${card.gradient} ${card.darkGradient} bg-clip-text text-transparent transition-all duration-500 ${
-                              !userInteracted && isActive ? 'scale-110' : ''
+                            <span className={`text-xs font-bold bg-gradient-to-r ${card.gradient} ${card.darkGradient} bg-clip-text text-transparent ${!isMobile ? 'transition-all duration-500' : ''} ${
+                              !isMobile && !userInteracted && isActive ? 'scale-110' : ''
                             }`}
                               style={{
-                                animation: isActive ? 'counter-up 1s ease-out 0.5s both' : 'none'
+                                animation: !isMobile && isActive ? 'counter-up 1s ease-out 0.5s both' : 'none'
                               }}>
                               {card.progress}%
                             </span>
                           </div>
-                          <div className={`h-3 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative transition-all duration-500 ${
-                            !userInteracted && isActive ? 'scale-y-110' : ''
+                          <div className={`h-3 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative ${!isMobile ? 'transition-all duration-500' : ''} ${
+                            !isMobile && !userInteracted && isActive ? 'scale-y-110' : ''
                           }`}>
                             <div 
                               className={`h-full bg-gradient-to-r ${card.gradient} ${card.darkGradient} rounded-full relative`}
                               style={{
-                                width: isActive ? `${card.progress}%` : '0%',
-                                transition: 'width 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.3s',
+                                width: isActive ? `${card.progress}%` : (isMobile ? `${card.progress}%` : '0%'),
+                                transition: isMobile ? 'none' : 'width 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.3s',
                               }}>
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent" 
                                 style={{
-                                  animation: isActive ? 'progress-shine 2s ease-in-out infinite' : 'none'
+                                  animation: !isMobile && isActive ? 'progress-shine 2s ease-in-out infinite' : 'none'
                                 }}></div>
                             </div>
                           </div>
@@ -483,8 +504,8 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                           </div>
                         )}
 
-                        {/* Ambient light effect on active card */}
-                        {isActive && (
+                        {/* Ambient light effect on active card (Desktop only) */}
+                        {!isMobile && isActive && (
                           <div className="absolute inset-0 pointer-events-none">
                             <div className={`absolute top-0 left-0 w-32 h-32 bg-gradient-to-br ${card.gradient}/20 blur-2xl rounded-full`}
                               style={{animation: 'ambient-light-1 4s ease-in-out infinite'}}></div>
@@ -497,8 +518,8 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                   })}
                 </div>
 
-                {/* Auto-play indicator */}
-                <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-gradient-to-r ${cards[activeCard].gradient} backdrop-blur-sm border border-white/20 shadow-2xl transition-all duration-1000 ${
+                {/* Auto-play indicator (Desktop only) */}
+                <div className={`hidden lg:block absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-gradient-to-r ${cards[activeCard].gradient} backdrop-blur-sm border border-white/20 shadow-2xl transition-all duration-1000 ${
                   !userInteracted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
                 }`}>
                   <div className="flex items-center gap-2 text-white text-sm font-medium">
@@ -507,8 +528,32 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                   </div>
                 </div>
 
-                {/* Enhanced Navigation Controls */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-6 z-40">
+                {/* Mobile Simple Dots */}
+                <div className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-40">
+                  {cards.map((card, index) => (
+                    <button
+                      key={card.id}
+                      onClick={() => {
+                        handleUserInteraction();
+                        setActiveCard(index);
+                        setParticlePositions(
+                          [...Array(12)].map(() => ({
+                            x: Math.random() * 100,
+                            y: Math.random() * 100
+                          }))
+                        );
+                      }}
+                      className={`rounded-full transition-all duration-300 ${
+                        index === activeCard 
+                          ? `w-8 h-2 bg-gradient-to-r ${card.gradient}` 
+                          : 'w-2 h-2 bg-gray-400 dark:bg-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Enhanced Navigation Controls (Desktop only) */}
+                <div className="hidden lg:flex absolute bottom-0 left-1/2 -translate-x-1/2 items-center gap-6 z-40">
                   {/* Previous Button */}
                   <button
                     onClick={prevCard}
@@ -561,8 +606,8 @@ const Homepage = ({ onGetStarted, onLogin }) => {
                   </button>
                 </div>
 
-                {/* Organic Floating Particles - Move only on card switch */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {/* Organic Floating Particles - Move only on card switch (Desktop only) */}
+                <div className="hidden lg:block absolute inset-0 pointer-events-none overflow-hidden">
                   {particlePositions.map((pos, i) => {
                     const size = 4 + (i % 3) * 2;
                     const depth = (i % 5) * 20 - 50;
@@ -809,9 +854,9 @@ const Homepage = ({ onGetStarted, onLogin }) => {
 
 
       {/* Unified Background Container - From Social Proof to End */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden overflow-x-hidden">
         {/* Background Effects - Applied to entire lower section */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-100/60 via-indigo-100/40 to-purple-100/60 dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-purple-950/20"></div>
           
           {/* Main Floating Orbs */}

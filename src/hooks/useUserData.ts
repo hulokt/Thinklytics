@@ -95,36 +95,7 @@ export function useUserData<K extends DataType>(
       }
 
       const parsedData = result || getDefaultData(dataType)
-
-      
-      // For questions, also check localStorage backup for any missing data
-      if (dataType === 'sat_master_log_questions' && Array.isArray(parsedData)) {
-        try {
-          // Check both regular backup and incremental backup
-          const backupData = JSON.parse(localStorage.getItem('satlog:questions_backup') || '[]');
-          const incrementalBackup = JSON.parse(localStorage.getItem(`satlog:questions_incremental_${user?.id}`) || '[]');
-          
-          const totalBackup = [...backupData, ...incrementalBackup];
-          
-          if (totalBackup.length > 0) {
-    
-            // Merge backup data with database data
-            const mergedData = [...parsedData];
-            totalBackup.forEach(backupQuestion => {
-              if (!mergedData.find(q => q.id === backupQuestion.id)) {
-                mergedData.push(backupQuestion);
-              }
-            });
-            setData(mergedData);
-          } else {
-            setData(parsedData);
-          }
-        } catch (backupError) {
-          setData(parsedData);
-        }
-      } else {
-        setData(parsedData);
-      }
+      setData(parsedData)
       
       dbLogSuccess('useUserData.loadData', logId, { count: Array.isArray(parsedData) ? parsedData.length : Object.keys(parsedData || {}).length })
       retryCountRef.current = 0 // Reset retry count on success
@@ -268,14 +239,6 @@ export function useUserData<K extends DataType>(
       }
       setError(`Failed to save ${dataType}: ${err.message}`)
       dbLogError('useUserData.upsertData', 'n/a', err)
-
-      // For questions, try to save to localStorage as backup
-      if (dataType === 'sat_master_log_questions' && Array.isArray(newData)) {
-        try {
-          localStorage.setItem('satlog:questions_backup', JSON.stringify(newData));
-          console.log('Saved questions to localStorage backup due to database error');
-        } catch {}
-      }
       
       return false
     } finally {
@@ -307,16 +270,6 @@ export function useUserData<K extends DataType>(
       // FALLBACK: Use the regular upsert with only new questions for now
       // This avoids the database timeout by saving incrementally
       
-      // First, try to save just the new questions to backup storage
-      const backupKey = `satlog:questions_incremental_${userId}`;
-      try {
-        const existingBackup = JSON.parse(localStorage.getItem(backupKey) || '[]');
-        const updatedBackup = [...existingBackup, ...newQuestions];
-        localStorage.setItem(backupKey, JSON.stringify(updatedBackup));
-      } catch (backupError) {
-        // Backup failed silently
-      }
-      
       // Try to save the full updated data with a shorter timeout
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Save operation timed out')), 15000); // Shorter timeout
@@ -338,11 +291,6 @@ export function useUserData<K extends DataType>(
 
       dbLogSuccess('useUserData.appendQuestions', logId, { resultType: typeof result })
       closeCircuitBreaker()
-      
-      // Clear backup on successful save
-      try {
-        localStorage.removeItem(backupKey);
-      } catch {}
       
       return true
       

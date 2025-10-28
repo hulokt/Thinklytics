@@ -74,6 +74,8 @@ const QuestionLogger = ({
   listTitle: listTitleOverride,
   searchTerm = '',
   onSearchChange = null,
+  hideSearchTips = false,
+  enableCopyId = false,
 }) => {
   // Ensure questions is always an array
   const questionsArray = Array.isArray(questions) ? questions : [];
@@ -599,25 +601,45 @@ const QuestionLogger = ({
     // Start with the complete list as received
     let filtered = [...questions];
 
+    // Use external searchTerm if provided, otherwise use internal searchQuery
+    const effectiveSearchTerm = searchTerm || searchQuery;
+
     // If the user has NOT typed "hidden", exclude hidden questions from the list
-    const searchLower = searchQuery.trim().toLowerCase();
+    const searchLower = effectiveSearchTerm.trim().toLowerCase();
     if (!searchLower.includes('hidden')) {
       filtered = filtered.filter(q => !q.hidden);
     }
 
     // Textual search across multiple fields (and "hidden" keyword for toggling)
     if (searchLower) {
-      filtered = filtered.filter(question => {
-        const searchableText = [
-          question.section,
-          question.domain,
-          question.questionType,
-          question.questionText,
-          question.explanation,
-          question.hidden ? 'hidden' : ''
-        ].join(' ').toLowerCase();
-        return searchableText.includes(searchLower);
-      });
+      // Check for multiple ID search (comma or space separated)
+      // If the search query looks like an ID (alphanumeric with possible separators), treat as ID search
+      const cleanQuery = effectiveSearchTerm.trim().replace(/[,\s]/g, '');
+      if (/^[a-zA-Z0-9\-]+$/.test(cleanQuery) && effectiveSearchTerm.trim().length >= 3) {
+        const ids = effectiveSearchTerm.trim().split(/[,\s]+/).filter(id => id.trim());
+        if (ids.length > 0) {
+          filtered = filtered.filter(question => 
+            ids.some(id => {
+              const questionId = question.id ? question.id.toLowerCase() : '';
+              const searchId = id.trim().toLowerCase();
+              return questionId.includes(searchId);
+            })
+          );
+        }
+      } else {
+        // Regular text search
+        filtered = filtered.filter(question => {
+          const searchableText = [
+            question.section,
+            question.domain,
+            question.questionType,
+            question.questionText,
+            question.explanation,
+            question.hidden ? 'hidden' : ''
+          ].join(' ').toLowerCase();
+          return searchableText.includes(searchLower);
+        });
+      }
     }
 
     // Helper to safely obtain a sortable timestamp
@@ -640,7 +662,7 @@ const QuestionLogger = ({
       // Otherwise keep original relative order
       return 0;
     });
-  }, [questions, searchQuery]);
+  }, [questions, searchQuery, searchTerm]);
 
   // Prepare questions for AnimatedList - use useMemo for performance and currentTime dependency
   const questionItems = useMemo(() => {
@@ -660,17 +682,47 @@ const QuestionLogger = ({
         ? ` • ${formatRelativeTime(question.createdAt || question.lastUpdated)}` 
         : '';
       
-      return `${question.section} | ${passagePreview}${hiddenIndicator}${timeStamp}`;
+      return {
+        text: `${question.section} | ${passagePreview}${hiddenIndicator}${timeStamp}`,
+        question: question
+      };
     });
   }, [filteredQuestions, currentTime]);
 
-  const handleQuestionSelect = (questionText, index) => {
+  const handleCopyId = (questionId, event) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(questionId).then(() => {
+      // Show a brief notification
+      const notification = document.createElement('div');
+      notification.textContent = 'ID copied to clipboard!';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy ID:', err);
+    });
+  };
+
+  const handleQuestionSelect = (item, index) => {
     if (isImportMode) {
       setShowImportWarning(true);
       return;
     }
     
-    const selectedQuestion = filteredQuestions[index];
+    const selectedQuestion = item.question || filteredQuestions[index];
     
     if (bulkSelectionMode) {
       // In bulk selection mode, toggle selection instead of editing
@@ -679,6 +731,27 @@ const QuestionLogger = ({
       // Normal mode - edit the question
       handleEdit(selectedQuestion, index);
     }
+  };
+
+  // Custom render function for question items with copy ID button
+  const renderQuestionItem = (item, index, { isSelected, isHovered, isBulkSelected, className }) => {
+    const question = item.question;
+    return (
+      <div className={`item ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''} ${isBulkSelected ? 'bulk-selected' : ''} ${className} flex items-center justify-between group`}>
+        <p className="item-text flex-1">{item.text}</p>
+        {enableCopyId && (
+          <button
+            onClick={(e) => handleCopyId(question.id, e)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Copy Question ID"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        )}
+      </div>
+    );
   };
 
   // Bulk selection handlers
@@ -2991,11 +3064,13 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                         </button>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      <span className="font-medium">Search tips:</span> 
-                      • Type any keyword, even with typos • Use "con:a" to find questions ending with "con:a" • 
-                      Searches across all fields: section, domain, question text, choices, explanations
-                    </div>
+                    {!hideSearchTips && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">Search tips:</span> 
+                        • Type any keyword, even with typos • Use "con:a" to find questions ending with "con:a" • 
+                        Searches across all fields: section, domain, question text, choices, explanations
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3041,6 +3116,7 @@ Reading and Writing,Standard English Conventions,Boundaries`}
                         .map((question, index) => selectedQuestions.has(question.id) ? index : -1)
                         .filter(index => index !== -1)
                     ) : new Set()}
+                    renderItem={renderQuestionItem}
                   />
                   {isImportMode && (
                     <div className="absolute inset-0 bg-white/90 dark:bg-gray-900/90 flex items-center justify-center rounded-lg z-10 border-2 border-yellow-300 dark:border-yellow-600">

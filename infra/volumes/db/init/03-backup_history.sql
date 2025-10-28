@@ -640,3 +640,25 @@ $$;
 grant execute on function public.snapshot_entire_backups_table_simple() to authenticated;
 
 
+-- Delete a backup row from history by id (used by Admin UI "Delete backup")
+create or replace function public.delete_backup_from_history(p_backup_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer := 0;
+begin
+  if p_backup_id is null then
+    raise exception 'p_backup_id cannot be null';
+  end if;
+
+  delete from public.backup_history where id = p_backup_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count > 0;
+end;
+$$;
+
+grant execute on function public.delete_backup_from_history(uuid) to authenticated;
+

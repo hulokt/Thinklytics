@@ -1,23 +1,16 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useInView } from 'framer-motion';
 import '../styles/AnimatedList.css';
 
-const AnimatedItem = ({ children, delay = 0, index, onMouseEnter, onClick }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { amount: 0.5, triggerOnce: false });
+const ListItem = ({ children, index, onMouseEnter, onClick }) => {
   return (
-    <motion.div
-      ref={ref}
+    <div
       data-index={index}
       onMouseEnter={onMouseEnter}
       onClick={onClick}
-      initial={{ scale: 0.7, opacity: 0 }}
-      animate={inView ? { scale: 1, opacity: 1 } : { scale: 0.7, opacity: 0 }}
-      transition={{ duration: 0.2, delay }}
-      style={{ marginBottom: '1rem', cursor: 'pointer' }}
+      className="mb-3 cursor-pointer transform transition-transform duration-75 ease-out hover:scale-[1.01] will-change-transform"
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
@@ -32,6 +25,7 @@ const AnimatedList = ({
   initialSelectedIndex = -1,
   selectedItems = new Set(), // New prop for selection state
   disabled = false, // New prop to disable interactions
+  renderItem = null, // New prop for custom item rendering
 }) => {
   const listRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex);
@@ -137,7 +131,7 @@ const AnimatedList = ({
     <div className={`scroll-list-container ${className}`}>
       <div
         ref={listRef}
-        className={`scroll-list ${!displayScrollbar ? 'no-scrollbar' : ''}`}
+        className={`scroll-list overflow-x-hidden ${!displayScrollbar ? 'no-scrollbar' : ''}`}
         onScroll={handleScroll}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -151,9 +145,8 @@ const AnimatedList = ({
         {itemsToShow.map((item, index) => {
           const isSelected = selectedItems.has(index);
           return (
-            <AnimatedItem
+            <ListItem
               key={index}
-              delay={0.1}
               index={index}
               onMouseEnter={() => !disabled && setHoveredIndex(index)}
               onClick={() => {
@@ -164,10 +157,19 @@ const AnimatedList = ({
                 }
               }}
             >
-              <div className={`item ${selectedIndex === index ? 'selected' : ''} ${hoveredIndex === index ? 'hovered' : ''} ${isSelected ? 'bulk-selected' : ''} ${itemClassName}`}>
-                <p className="item-text">{item}</p>
-              </div>
-            </AnimatedItem>
+              {renderItem ? (
+                renderItem(item, index, {
+                  isSelected: selectedIndex === index,
+                  isHovered: hoveredIndex === index,
+                  isBulkSelected: isSelected,
+                  className: itemClassName
+                })
+              ) : (
+                <div className={`item ${selectedIndex === index ? 'selected' : ''} ${hoveredIndex === index ? 'hovered' : ''} ${isSelected ? 'bulk-selected' : ''} ${itemClassName}`}>
+                  <p className="item-text">{item}</p>
+                </div>
+              )}
+                          </ListItem>
           );
         })}
         

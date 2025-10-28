@@ -7,10 +7,11 @@ import { awardPoints, handleHighScore } from '../lib/userPoints';
 import PointsAnimation from './PointsAnimation';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
+import { formatPassageText } from '../lib/quizFormatting.jsx';
 
 // Import sound files
-import selectChoiceSound from '../assets/selectedChoiceSound.wav';
-import correctChoiceSound from '../assets/correctChoiceSound.wav';
+import onclickV2 from '../assets/onclickV2.mp3';
+import correctChoicev2 from '../assets/correctChoicev2.wav';
 import wrongChoiceSound from '../assets/wrongChoiceSound.wav';
 
 const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = null }) => {
@@ -130,8 +131,8 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
 
   // Initialize audio elements
   useEffect(() => {
-    selectAudioRef.current = new Audio(selectChoiceSound);
-    correctAudioRef.current = new Audio(correctChoiceSound);
+    selectAudioRef.current = new Audio(onclickV2);
+    correctAudioRef.current = new Audio(correctChoicev2);
     wrongAudioRef.current = new Audio(wrongChoiceSound);
     
     // Set volume for all sounds
@@ -343,6 +344,15 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper function to clean answer choices that start with letter prefixes
+  const cleanAnswerChoice = (choice) => {
+    if (!choice || typeof choice !== 'string') return choice;
+    
+    // Remove common letter prefixes like "A)", "b)", "c)", "d)" from the beginning of choices
+    const cleaned = choice.replace(/^[A-Da-d]\)\s*/, '');
+    return cleaned;
+  };
+
   // Helper function to normalize question format
   const normalizeQuestion = (question) => {
     // Handle legacy questions that only have questionText (no separate passage)
@@ -353,7 +363,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
           ...question,
           passageText: question.questionText,
           questionText: 'Which choice completes the text with the most logical and precise word or phrase?',
-          options: question.options || Object.values(question.answerChoices || {}),
+          options: (question.options || Object.values(question.answerChoices || {})).map(cleanAnswerChoice),
           correctAnswer: question.answerChoices ? question.answerChoices[question.correctAnswer] : question.correctAnswer
         };
       }
@@ -363,10 +373,19 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     if (question.answerChoices && !question.options) {
       return {
         ...question,
-        options: Object.values(question.answerChoices),
+        options: Object.values(question.answerChoices).map(cleanAnswerChoice),
         correctAnswer: question.answerChoices[question.correctAnswer] || question.correctAnswer
       };
     }
+    
+    // Clean existing options if they exist
+    if (question.options) {
+      return {
+        ...question,
+        options: question.options.map(cleanAnswerChoice)
+      };
+    }
+    
     return question;
   };
 
@@ -387,255 +406,9 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     return question.correctAnswer;
   };
 
-  // Helper function to format passage text for different question types
-  const formatPassageText = (text, questionType) => {
-    if (!text) {
-      return text;
-    }
 
-    // Rhetorical Synthesis formatting
-    if (questionType === 'Rhetorical Synthesis') {
-      let formattedText = text;
 
-      // Handle any sentence ending with colon - insert break after colon
-      const colonIndex = formattedText.indexOf(':');
-      if (colonIndex !== -1) {
-        const beforeColon = formattedText.substring(0, colonIndex + 1);
-        const afterColon = formattedText.substring(colonIndex + 1).trim();
-        
-        // Split the text after colon into sentences
-        const afterColonSentences = afterColon.split(/(?<=[.!?])\s+/);
-        
-        // Process each sentence after the colon
-        const formattedAfterColonSentences = afterColonSentences.map(sentence => {
-          let processedSentence = sentence.trim();
-          
-          // Check if this looks like a bullet point or note
-          const isBulletPoint = /^[•\-\*]\s/.test(processedSentence) || 
-                               /^\d+\.\s/.test(processedSentence) ||
-                               /^[A-Z]\.\s/.test(processedSentence) ||
-                               /^\([a-z]\)\s/.test(processedSentence) ||
-                               /^[a-z]\)\s/.test(processedSentence);
-          
-          // Add bullet point if it doesn't already have one
-          if (!isBulletPoint && processedSentence.length > 0) {
-            processedSentence = '• ' + processedSentence;
-          }
-          
-          return processedSentence;
-        });
-        
-        // Join the formatted sentences and add line breaks
-        const formattedAfterColon = formattedAfterColonSentences.join('\n');
-        
-        formattedText = beforeColon + '\n' + formattedAfterColon;
-        
-        // Convert line breaks to JSX line breaks and return early
-        return formattedText.split('\n').map((line, index) => (
-          <React.Fragment key={index}>
-            {line}
-            {index < formattedText.split('\n').length - 1 && <br />}
-          </React.Fragment>
-        ));
-      }
-
-      // If no colon, apply general rhetorical synthesis formatting
-      // First, protect common abbreviations and acronyms that contain periods
-      const protectedPatterns = [
-        /e\.g\./g,      // e.g.
-        /i\.e\./g,      // i.e.
-        /vs\./g,        // vs.
-        /etc\./g,       // etc.
-        /Mr\./g,        // Mr.
-        /Mrs\./g,       // Mrs.
-        /Dr\./g,        // Dr.
-        /Prof\./g,      // Prof.
-        /U\.S\./g,      // U.S.
-        /U\.K\./g,      // U.K.
-        /A\.M\./g,      // A.M.
-        /P\.M\./g,      // P.M.
-        /B\.C\./g,      // B.C.
-        /A\.D\./g,      // A.D.
-        /Ph\.D\./g,     // Ph.D.
-        /M\.A\./g,      // M.A.
-        /B\.A\./g,      // B.A.
-        /M\.S\./g,      // M.S.
-        /B\.S\./g,      // B.S.
-        /Jr\./g,        // Jr.
-        /Sr\./g,        // Sr.
-        /Inc\./g,       // Inc.
-        /Corp\./g,      // Corp.
-        /Ltd\./g,       // Ltd.
-        /Co\./g,        // Co.
-        /St\./g,        // St.
-        /Ave\./g,       // Ave.
-        /Blvd\./g,      // Blvd.
-        /Rd\./g,        // Rd.
-        /Ct\./g,        // Ct.
-        /Pl\./g,        // Pl.
-        /Ln\./g,        // Ln.
-        /P\.O\./g,      // P.O.
-        /R\.S\.V\.P\./g, // R.S.V.P.
-        /C\.E\.O\./g,   // C.E.O.
-        /C\.F\.O\./g,   // C.F.O.
-        /C\.T\.O\./g,   // C.T.O.
-        /V\.P\./g,      // V.P.
-        /D\.C\./g,      // D.C.
-        /L\.A\./g,      // L.A.
-        /N\.Y\./g,      // N.Y.
-        /D\.I\.Y\./g,   // D.I.Y.
-        /F\.Y\.I\./g,   // F.Y.I.
-        /A\.S\.A\.P\./g, // A.S.A.P.
-        /R\.I\.P\./g,   // R.I.P.
-        /P\.S\./g,      // P.S.
-        /P\.P\.S\./g,   // P.P.S.
-        /A\.K\.A\./g,   // A.K.A.
-        /B\.Y\.O\.B\./g, // B.Y.O.B.
-        /R\.S\.V\.P\./g, // R.S.V.P.
-        /T\.B\.D\./g,   // T.B.D.
-        /T\.B\.A\./g,   // T.B.A.
-        /E\.T\.A\./g,   // E.T.A.
-        /Q\.&A\./g,     // Q.&A.
-        /Q\.&A/g,       // Q.&A
-      ];
-
-      // Replace protected patterns with placeholders
-      const placeholders = [];
-      let placeholderIndex = 0;
       
-      protectedPatterns.forEach(pattern => {
-        formattedText = formattedText.replace(pattern, (match) => {
-          const placeholder = `__PROTECTED_${placeholderIndex}__`;
-          placeholders.push({ placeholder, original: match });
-          placeholderIndex++;
-          return placeholder;
-        });
-      });
-
-      // Split by sentence endings (period, exclamation mark, question mark)
-      const sentences = formattedText.split(/(?<=[.!?])\s+/);
-
-      // Process each sentence
-      const formattedSentences = sentences.map(sentence => {
-        let processedSentence = sentence.trim();
-        
-        // Check if this looks like a bullet point or note
-        const isBulletPoint = /^[•\-\*]\s/.test(processedSentence) || 
-                             /^\d+\.\s/.test(processedSentence) ||
-                             /^[A-Z]\.\s/.test(processedSentence) ||
-                             /^\([a-z]\)\s/.test(processedSentence) ||
-                             /^[a-z]\)\s/.test(processedSentence);
-        
-        // Add bullet point if it doesn't already have one
-        if (!isBulletPoint && processedSentence.length > 0) {
-          processedSentence = '• ' + processedSentence;
-        }
-        
-        // Always add line break for each sentence
-        processedSentence = '\n' + processedSentence;
-        
-        return processedSentence;
-      });
-
-      // Join sentences back together
-      formattedText = formattedSentences.join(' ');
-
-      // Restore protected patterns
-      placeholders.forEach(({ placeholder, original }) => {
-        formattedText = formattedText.replace(placeholder, original);
-      });
-
-      // Convert line breaks to JSX line breaks
-      return formattedText.split('\n').map((line, index) => (
-        <React.Fragment key={index}>
-          {line}
-          {index < formattedText.split('\n').length - 1 && <br />}
-        </React.Fragment>
-      ));
-    }
-
-    // Cross-Text Connections formatting
-    if (questionType === 'Cross-Text Connections') {
-      let formattedText = text;
-      
-      // Check if there are intro sections (Text 1 is... and Text 2 is...)
-      const hasIntro = /Text 1\s+is/i.test(formattedText) && /Text 2\s+is/i.test(formattedText);
-      
-      if (hasIntro) {
-        // For intro sections, only format the SECOND occurrences (actual text sections)
-        // First, find and mark the second occurrences
-        let text1Count = 0;
-        let text2Count = 0;
-        
-        formattedText = formattedText.replace(/Text 1/g, (match) => {
-          text1Count++;
-          if (text1Count === 2) {
-            return '\n\n<strong>Text 1</strong>\n';
-          }
-          return match; // Keep first occurrence as normal text
-        });
-        
-        formattedText = formattedText.replace(/Text 2/g, (match) => {
-          text2Count++;
-          if (text2Count === 2) {
-            return '\n\n<strong>Text 2</strong>\n';
-          }
-          return match; // Keep first occurrence as normal text
-        });
-      } else {
-        // No intro sections, handle as direct text
-        formattedText = formattedText.replace(/Text 1/g, '<strong>Text 1</strong>\n');
-        formattedText = formattedText.replace(/Text 2/g, '\n\n<strong>Text 2</strong>\n');
-      }
-      
-      // Split by line breaks and convert to JSX
-      const lines = formattedText.split('\n');
-      return lines.map((line, index) => (
-        <React.Fragment key={index}>
-          <span dangerouslySetInnerHTML={{ __html: line }} />
-          {index < lines.length - 1 && <br />}
-        </React.Fragment>
-      ));
-    }
-
-    // Text Structure and Purpose formatting
-    if (questionType === 'Text Structure and Purpose') {
-      let formattedText = text;
-      
-      // Check if the question text contains "underlined"
-      const questionText = currentQuestion?.questionText || '';
-      const hasUnderlinedKeyword = /underlined/i.test(questionText);
-      
-      if (hasUnderlinedKeyword) {
-        // Replace three quotes with underline tags
-        formattedText = formattedText.replace(/"""([^"]*)"""/g, '<u>$1</u>');
-        
-        // Replace double quotes with underline tags
-        formattedText = formattedText.replace(/"([^"]*)"/g, '<u>$1</u>');
-        
-        // Replace three forward slashes with underline tags
-        formattedText = formattedText.replace(/\/\/\/([^\/]*)\/\//g, '<u>$1</u>');
-        
-        // Replace three backslashes with underline tags
-        formattedText = formattedText.replace(/\\\\([^\\]*)\\\\/g, '<u>$1</u>');
-        
-        // Replace three dashes with underline tags
-        formattedText = formattedText.replace(/---([^-]*)---/g, '<u>$1</u>');
-      }
-      
-      // Split by line breaks and convert to JSX
-      const lines = formattedText.split('\n');
-      return lines.map((line, index) => (
-        <React.Fragment key={index}>
-          <span dangerouslySetInnerHTML={{ __html: line }} />
-          {index < lines.length - 1 && <br />}
-        </React.Fragment>
-      ));
-    }
-
-    // Default: return original text for other question types
-    return text;
-  };
 
 
 
@@ -735,11 +508,6 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
   const handleAnswerSelect = (answer) => {
     if (!currentQuestion) return;
     
-    // Prevent changing answer if question has been checked
-    if (checkedQuestions.has(currentQuestion.id)) {
-      return;
-    }
-
     // Play select choice sound
     playSound(selectAudioRef);
 
@@ -773,9 +541,33 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
     
     // Check if answer is correct and play appropriate sound
     const correctAnswerLetter = getCorrectAnswerLetter(currentQuestion);
-    const isCorrect = userAnswer === currentQuestion.correctAnswer || 
-                     (currentQuestion.answerChoices && 
-                      currentQuestion.answerChoices[userAnswer] === currentQuestion.correctAnswer);
+    
+    // Determine if the user's answer is correct
+    let isCorrect = false;
+    
+    // Check if userAnswer matches the correct answer directly
+    if (userAnswer === currentQuestion.correctAnswer) {
+      isCorrect = true;
+    }
+    // Check if userAnswer is a letter and matches the correct letter
+    else if (['A', 'B', 'C', 'D'].includes(userAnswer) && userAnswer === correctAnswerLetter) {
+      isCorrect = true;
+    }
+    // Check if userAnswer is the text of the correct choice
+    else if (currentQuestion.answerChoices && currentQuestion.answerChoices[userAnswer] === currentQuestion.correctAnswer) {
+      isCorrect = true;
+    }
+    // Check if userAnswer matches the text of the correct choice
+    else if (currentQuestion.answerChoices && currentQuestion.answerChoices[correctAnswerLetter] === userAnswer) {
+      isCorrect = true;
+    }
+    // Additional check for options array
+    else if (currentQuestion.options) {
+      const correctIndex = ['A', 'B', 'C', 'D'].indexOf(correctAnswerLetter);
+      if (correctIndex !== -1 && currentQuestion.options[correctIndex] === userAnswer) {
+        isCorrect = true;
+      }
+    }
     
     if (isCorrect) {
       playSound(correctAudioRef);
@@ -1446,8 +1238,24 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
         /* Mobile-only height adjustment */
         @media (max-width: 767px) {
           .quiz-page-container {
+            max-height: 100vh !important;
+            height: 100vh !important;
+          }
+        }
+        
+        /* Safari-specific height fixes */
+        @supports (-webkit-touch-callout: none) {
+          .quiz-page-container {
             max-height: 90vh !important;
             height: 90vh !important;
+          }
+          
+          /* Additional Safari mobile fixes */
+          @media (max-width: 767px) {
+            .quiz-page-container {
+              max-height: 90vh !important;
+              height: 90vh !important;
+            }
           }
         }
         
@@ -2116,12 +1924,12 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                 />
               )}
               {currentQuestion.passageText && (
-                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {formatPassageText(currentQuestion.passageText, currentQuestion.questionType)}
                 </p>
               )}
               {!currentQuestion.passageText && !currentQuestion.passageImage && (
-                <p className="quiz-content-text text-sm sm:text-base text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                <p className="quiz-content-text text-base sm:text-base font-medium sm:font-normal text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
                   {currentQuestion.questionText}
                 </p>
               )}
@@ -2141,6 +1949,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <div className="flex-1">
               <div className="space-y-2 sm:space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const cleanedOption = cleanAnswerChoice(option);
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
@@ -2179,7 +1988,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.5rem', height: '1.5rem', marginRight: '0.5rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="quiz-content-text text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-sm sm:text-base" style={{ flex: 1, minWidth: 0 }}>{cleanedOption}</span>
                       </div>
                       
                       {eliminationMode && (
@@ -2317,6 +2126,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
             <div className="flex-1 overflow-y-auto">
               <div className="space-y-3 mt-2" style={{ overflow: 'visible' }}>
                 {(currentQuestion.options || Object.values(currentQuestion.answerChoices || {})).map((option, index) => {
+                  const cleanedOption = cleanAnswerChoice(option);
                   const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isEliminated = eliminationMode && eliminatedOptions[currentQuestion.id]?.includes(option);
@@ -2355,7 +2165,7 @@ const QuizPage = ({ questions, onBack, isResuming = false, initialQuizData = nul
                         }}
                       >
                         <span className="option-letter" style={{ width: '1.75rem', height: '1.75rem', marginRight: '0.75rem', flexShrink: 0 }}>{optionLetter}</span>
-                        <span className="quiz-content-text text-base" style={{ flex: 1, minWidth: 0 }}>{option}</span>
+                        <span className="quiz-content-text text-base" style={{ flex: 1, minWidth: 0 }}>{cleanedOption}</span>
                       </div>
                       
                       {eliminationMode && (

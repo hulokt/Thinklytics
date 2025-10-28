@@ -8,7 +8,9 @@ import {
   TrendingUp as IconTrendingUp,
   User as IconUser,
   LogOut as IconLogout,
-  Star as IconStar
+  Star as IconStar,
+  Shield,
+  Database
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -17,6 +19,7 @@ import DarkModeToggle from './ui/DarkModeToggle';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { Sun, Moon } from 'lucide-react';
 import { Calendar as CalendarIcon } from 'lucide-react';
+
 import logoImage from "/logo.png";
 
 export function SidebarLayout({ children, currentPage, onPageChange, onLogout, onAccountClick, onProfileClick, onHomeClick }) {
@@ -30,6 +33,10 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
   const [userData, setUserData] = useState({ name: 'User', email: '' });
   const { user } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  
+  // Simple admin check based on user role
+  const isAdmin = user?.user_metadata?.role === 'admin' || user?.user_metadata?.isAdmin === true;
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -130,6 +137,23 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
         <IconFileX className="h-5 w-5 shrink-0 text-gray-300 transition-colors duration-300" />
       ),
     },
+    // Admin-only links
+    ...(isAdmin ? [
+      {
+        label: "Admin Logger",
+        href: "/admin",
+        icon: (
+          <Shield className="h-5 w-5 shrink-0 text-purple-300 transition-colors duration-300" />
+        ),
+      },
+      {
+        label: "Backup System",
+        href: "/backups",
+        icon: (
+          <Database className="h-5 w-5 shrink-0 text-purple-300 transition-colors duration-300" />
+        ),
+      },
+    ] : []),
   ];
   
   return (
@@ -143,16 +167,15 @@ export function SidebarLayout({ children, currentPage, onPageChange, onLogout, o
         <Sidebar open={open} setOpen={setOpen}>
           <SidebarBody className="justify-between gap-10 bg-[#030a14] border-r border-gray-700 transition-colors duration-300">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-              {(() => {
-                if (open) {
-                  return <Logo onHomeClick={onHomeClick} closeSidebar={() => {
-                      if (window.innerWidth < 768) setOpen(false);
-                  }} />;
-                  return <LogoIcon onHomeClick={onHomeClick} closeSidebar={() => {
-                      if (window.innerWidth < 768) setOpen(false);
-                  }} />;
-                }
-              })()}
+              {open ? (
+                <Logo onHomeClick={onHomeClick} closeSidebar={() => {
+                  if (window.innerWidth < 768) setOpen(false);
+                }} />
+              ) : (
+                <LogoIcon onHomeClick={onHomeClick} closeSidebar={() => {
+                  if (window.innerWidth < 768) setOpen(false);
+                }} />
+              )}
               <div className="mt-8 flex flex-col gap-2">
                 {links.map((link, idx) => (
                   <button
@@ -343,9 +366,9 @@ export const LogoIcon = ({ onHomeClick, closeSidebar }) => {
 // Main content area - allow scrolling at all breakpoints
 const Dashboard = ({ children }) => {
   return (
-    <div className="flex flex-1 h-screen min-h-screen overflow-hidden sm:h-screen sm:min-h-screen sm:overflow-auto">
-      <div className="flex h-auto min-h-screen w-full flex-1 flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-y-auto sm:h-screen sm:min-h-screen sm:overflow-auto">
-        <div className="flex-1 h-auto min-h-0 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 overflow-y-auto sm:h-full sm:overflow-auto">
+    <div className="flex flex-1 h-full overflow-hidden">
+      <div className="flex h-full w-full flex-1 flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
+        <div className="flex-1 h-full bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900 overflow-hidden">
           {children}
         </div>
       </div>

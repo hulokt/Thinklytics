@@ -9,6 +9,9 @@ import PointsAnimation from './PointsAnimation';
 import { useLocation } from 'react-router-dom';
 import ImageModal from './ImageModal';
 import { useSoundSettings } from '../contexts/SoundSettingsContext';
+import { formatPassageText } from '../lib/quizFormatting.jsx';
+import { getQuestionTypeOptionsByDomain, SAT_SECTIONS } from '../data';
+
 
 
 // Import sound files
@@ -38,8 +41,55 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [saveAudio, setSaveAudio] = useState(null);
   const [imageModal, setImageModal] = useState({ isOpen: false, imageSrc: '', imageAlt: '' });
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    status: 'all', // all, flagged, incorrect, correct
+    domain: 'all',
+    questionType: 'all',
+    score: 'all', // all, high (80+), medium (60-79), low (0-59)
+    dateRange: 'all' // all, today, week, month
+  });
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Quiz edit filter state
+  const [quizFilters, setQuizFilters] = useState({
+    status: 'all', // all, correct, incorrect, flagged
+    domain: 'all',
+    questionType: 'all',
+    difficulty: 'all'
+  });
+  const [showQuizFilters, setShowQuizFilters] = useState(false);
+
   const celebrationCheckedRef = useRef(false);
   const celebrationSessionRef = useRef(null);
+
+  const handleCopyId = (questionId, event) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(questionId).then(() => {
+      // Show a brief notification
+      const notification = document.createElement('div');
+      notification.textContent = 'ID copied to clipboard!';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy ID:', err);
+    });
+  };
 
   // Get location to check for celebration state
   const location = useLocation();
@@ -432,6 +482,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
     setSelectedQuestionIndex(0);
   };
 
+
+
   const handleDeleteQuiz = (quiz) => {
     setShowDeleteConfirm(quiz);
   };
@@ -593,6 +645,109 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
   };
 
   const cancelResetNumbers = () => setShowResetConfirm(false);
+
+  // Helper function to clean answer choices that start with letter prefixes
+  const cleanAnswerChoice = (choice) => {
+    if (!choice || typeof choice !== 'string') return choice;
+    
+    // Remove common letter prefixes like "A)", "b)", "c)", "d)" from the beginning of choices
+    const cleaned = choice.replace(/^[A-Da-d]\)\s*/, '');
+    return cleaned;
+  };
+
+  // Helper function to get specific tips for question types
+  const getTipsForQuestionType = (questionType) => {
+    const type = questionType.toLowerCase();
+    
+    if (type.includes('multiple choice') || type.includes('mcq')) {
+      return ['Read all options before selecting', 'Eliminate obviously wrong answers', 'Look for keywords in the question'];
+    } else if (type.includes('true/false') || type.includes('boolean')) {
+      return ['Look for absolute words like "always" or "never"', 'Consider exceptions to statements', 'Read the entire statement carefully'];
+    } else if (type.includes('fill in the blank') || type.includes('completion')) {
+      return ['Pay attention to grammar and context', 'Look for clues in surrounding text', 'Consider the logical flow'];
+    } else if (type.includes('matching')) {
+      return ['Start with items you know for sure', 'Cross out used matches', 'Look for patterns or relationships'];
+    } else if (type.includes('short answer') || type.includes('essay')) {
+      return ['Plan your response before writing', 'Include key terms and concepts', 'Support your answer with evidence'];
+    } else if (type.includes('problem solving') || type.includes('calculation')) {
+      return ['Show your work step by step', 'Check your calculations', 'Verify your answer makes sense'];
+    } else if (type.includes('reading comprehension') || type.includes('passage')) {
+      return ['Read the passage first, then the questions', 'Look for evidence in the text', 'Don\'t rely on outside knowledge'];
+    } else if (type.includes('vocabulary') || type.includes('word meaning')) {
+      return ['Use context clues from surrounding text', 'Look for word roots and prefixes', 'Consider the tone of the passage'];
+    } else if (type.includes('grammar') || type.includes('syntax')) {
+      return ['Read the sentence aloud', 'Check subject-verb agreement', 'Look for parallel structure'];
+    } else if (type.includes('data interpretation') || type.includes('graph') || type.includes('chart')) {
+      return ['Read the title and labels carefully', 'Look for trends and patterns', 'Check the scale and units'];
+    } else {
+      return ['Read the question carefully', 'Look for key words and phrases', 'Eliminate obviously wrong answers', 'Double-check your work'];
+    }
+  };
+
+  // Helper function to get a random DSAT tip for a question type
+  const getDSATTip = (questionType) => {
+    const type = questionType.toLowerCase();
+    
+    // Map question types to DSAT categories
+    let dsatCategory = '';
+    if (type.includes('central ideas') || type.includes('main idea') || type.includes('details')) {
+      dsatCategory = 'Central Ideas and Details';
+    } else if (type.includes('inference') || type.includes('infer')) {
+      dsatCategory = 'Inferences';
+    } else if (type.includes('evidence') || type.includes('command')) {
+      dsatCategory = 'Command of Evidence';
+    } else if (type.includes('vocabulary') || type.includes('word') || type.includes('context')) {
+      dsatCategory = 'Words in Context';
+    } else if (type.includes('structure') || type.includes('purpose') || type.includes('text structure')) {
+      dsatCategory = 'Text Structure and Purpose';
+    } else if (type.includes('cross') || type.includes('connection') || type.includes('compare')) {
+      dsatCategory = 'Cross-Text Connections';
+    } else if (type.includes('rhetorical') || type.includes('synthesis')) {
+      dsatCategory = 'Rhetorical Synthesis';
+    } else if (type.includes('transition')) {
+      dsatCategory = 'Transitions';
+    } else if (type.includes('boundary') || type.includes('punctuation')) {
+      dsatCategory = 'Boundaries';
+    } else if (type.includes('form') || type.includes('sense')) {
+      dsatCategory = 'Form, Structure, and Sense';
+    } else {
+      dsatCategory = 'Central Ideas and Details'; // Default
+    }
+    
+    // Return a random tip number (1-15) for the category
+    const tipNumber = Math.floor(Math.random() * 15) + 1;
+    return `${dsatCategory} Tip ${tipNumber}`;
+  };
+
+  // Helper function to get the actual DSAT tip content
+  const getDSATTipContent = (questionType) => {
+    const type = questionType.toLowerCase();
+    
+    // Map question types to DSAT categories and return actual tip content
+    if (type.includes('central ideas') || type.includes('main idea') || type.includes('details')) {
+      return "If your accuracy is under 80% on Central Ideas and Details, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Central Ideas and Details questions.";
+    } else if (type.includes('inference') || type.includes('infer')) {
+      return "If your accuracy is under 80% on Inferences, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Inferences questions.";
+    } else if (type.includes('evidence') || type.includes('command')) {
+      return "If your accuracy is under 80% on Command of Evidence, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Command of Evidence questions.";
+    } else if (type.includes('vocabulary') || type.includes('word') || type.includes('context')) {
+      return "If your accuracy is under 80% on Words in Context, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Words in Context questions.";
+    } else if (type.includes('structure') || type.includes('purpose') || type.includes('text structure')) {
+      return "If your accuracy is under 80% on Text Structure and Purpose, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Text Structure and Purpose questions.";
+    } else if (type.includes('cross') || type.includes('connection') || type.includes('compare')) {
+      return "If your accuracy is under 80% on Cross-Text Connections, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Cross-Text Connections questions.";
+    } else if (type.includes('rhetorical') || type.includes('synthesis')) {
+      return "If your accuracy is under 80% on Rhetorical Synthesis, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Rhetorical Synthesis questions.";
+    } else if (type.includes('transition')) {
+      return "If your accuracy is under 80% on Transitions, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Transitions questions.";
+    } else if (type.includes('boundary') || type.includes('punctuation')) {
+      return "If your accuracy is under 80% on Boundaries, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Boundaries questions.";
+    } else if (type.includes('form') || type.includes('sense')) {
+      return "If your accuracy is under 80% on Form, Structure, and Sense, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Form, Structure, and Sense questions.";
+    } else {
+      return "If your accuracy is under 80% on Central Ideas and Details, it usually means you are missing an important skill in reading or answering. Think about what the question is really asking. Slow down and break the passage into small parts. Underline or note key words that match the question type. Always check if your answer choice is too narrow, too broad, or not directly supported by the passage. A helpful trick is to make a quick prediction before looking at the choices. This way, you won't get tricked by answers that sound right but don't fully match. With steady practice and focus on the main idea, you will improve your accuracy in Central Ideas and Details questions.";
+    }
+  };
 
   // Helper function to get the correct answer letter for a question
   const getCorrectAnswerLetter = (question) => {
@@ -784,9 +939,18 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
 
   const formatTime = (seconds) => {
     if (!seconds && seconds !== 0) return 'N/A';
-    const mins = Math.floor(seconds / 60);
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   // Get quiz display number - fix the "a" issue
@@ -951,35 +1115,425 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                 </div>
               </div>
 
-              {/* Statistics - EXACT copy from view page but with real-time updates */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{newScore}%</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Score</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{correctCount}</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Correct</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600">
-                    {updatedQuestions.length - correctCount}
+              {/* Modern Analytics Overview */}
+              <div className="mb-8">
+                {/* Key Metrics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                  {/* Overall Score Card */}
+                  <div className="group relative overflow-hidden bg-white dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-700/30 dark:to-gray-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Overall Score</h3>
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p className="text-4xl font-black text-gray-900 dark:text-white">{newScore}</p>
+                        <span className="text-xl font-bold text-gray-600 dark:text-gray-300">%</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Your total quiz performance score</p>
+                      <div className="mt-4 w-full bg-gray-200/60 dark:bg-gray-600/40 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${newScore}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Incorrect</div>
+                  
+                  {/* Correct Answers Card */}
+                  <div className="group relative overflow-hidden bg-white dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-700/30 dark:to-gray-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Correct Answers</h3>
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p className="text-4xl font-black text-gray-900 dark:text-white">{correctCount}</p>
+                        <span className="text-lg font-semibold text-gray-600 dark:text-gray-300">correct</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Questions answered correctly</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200/60 dark:bg-gray-600/40 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${(correctCount / updatedQuestions.length) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                          {Math.round((correctCount / updatedQuestions.length) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Incorrect Answers Card */}
+                  <div className="group relative overflow-hidden bg-white dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-700/30 dark:to-gray-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Incorrect Answers</h3>
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p className="text-4xl font-black text-gray-900 dark:text-white">{updatedQuestions.length - correctCount}</p>
+                        <span className="text-lg font-semibold text-gray-600 dark:text-gray-300">incorrect</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Questions that need review</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200/60 dark:bg-gray-600/40 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-red-500 to-rose-600 h-2 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${((updatedQuestions.length - correctCount) / updatedQuestions.length) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                          {Math.round(((updatedQuestions.length - correctCount) / updatedQuestions.length) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Time Spent Card */}
+                  <div className="group relative overflow-hidden bg-white dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-700/30 dark:to-gray-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Time Spent</h3>
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p className="text-4xl font-black text-gray-900 dark:text-white">{formatTime(editingQuiz.timeSpent)}</p>
+                      </div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total time taken for quiz</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200/60 dark:bg-gray-600/40 rounded-full h-2">
+                          <div className="bg-gradient-to-r from-purple-500 to-violet-600 h-2 rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-ping"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Domain & Question Type Accuracy Breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {/* Domain Accuracy Breakdown */}
+                  <div className="bg-white dark:bg-gray-700/50 rounded-xl p-6 border border-gray-200 dark:border-gray-600 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Domain Accuracy</h3>
+                    <div className="space-y-3">
+                      {(() => {
+                        const domainStats = {};
+                        updatedQuestions.forEach(question => {
+                          // Use domain field if available, otherwise try to extract from section or use a mapping
+                          let domain = question.domain;
+                          if (!domain) {
+                            // Try to extract domain from section or use section as fallback
+                            const section = question.section || '';
+                            if (section.toLowerCase().includes('math')) {
+                              domain = 'Mathematics';
+                            } else if (section.toLowerCase().includes('reading') || section.toLowerCase().includes('english')) {
+                              domain = 'Reading & Writing';
+                            } else if (section.toLowerCase().includes('science')) {
+                              domain = 'Science';
+                            } else if (section.toLowerCase().includes('history') || section.toLowerCase().includes('social')) {
+                              domain = 'History & Social Studies';
+                            } else {
+                              domain = section || 'Other';
+                            }
+                          }
+                          
+                          if (!domainStats[domain]) {
+                            domainStats[domain] = { correct: 0, total: 0 };
+                          }
+                          domainStats[domain].total++;
+                          if (question.isCorrect) domainStats[domain].correct++;
+                        });
+
+                        return Object.entries(domainStats).map(([domain, stats]) => {
+                          const accuracy = Math.round((stats.correct / stats.total) * 100);
+                          return (
+                            <div key={domain} className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-medium text-gray-900 dark:text-white">{domain}</span>
+                                  <span className={`px-2 py-1 rounded text-sm font-medium ${
+                                    accuracy >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                                    accuracy >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                                    'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                  }`}>
+                                    {accuracy}%
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                  {stats.correct} correct out of {stats.total} questions
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      accuracy >= 80 ? 'bg-green-500' :
+                                      accuracy >= 60 ? 'bg-yellow-500' :
+                                      'bg-red-500'
+                                    }`}
+                                    style={{ width: `${accuracy}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Question Type Accuracy Breakdown */}
+                  <div className="bg-white dark:bg-gray-700/50 rounded-xl p-6 border border-gray-200 dark:border-gray-600 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Question Type Accuracy</h3>
+                    <div className="space-y-3">
+                      {(() => {
+                        const typeStats = {};
+                        updatedQuestions.forEach(question => {
+                          const type = question.questionType || 'Unknown';
+                          if (!typeStats[type]) {
+                            typeStats[type] = { correct: 0, total: 0 };
+                          }
+                          typeStats[type].total++;
+                          if (question.isCorrect) typeStats[type].correct++;
+                        });
+
+                        return Object.entries(typeStats).map(([type, stats]) => {
+                          const accuracy = Math.round((stats.correct / stats.total) * 100);
+                          return (
+                            <div key={type} className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-medium text-gray-900 dark:text-white">{type}</span>
+                                  <span className={`px-2 py-1 rounded text-sm font-medium ${
+                                    accuracy >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                                    accuracy >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                                    'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                  }`}>
+                                    {accuracy}%
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                  {stats.correct} correct out of {stats.total} questions
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      accuracy >= 80 ? 'bg-green-500' :
+                                      accuracy >= 60 ? 'bg-yellow-500' :
+                                      'bg-red-500'
+                                    }`}
+                                    style={{ width: `${accuracy}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+
               </div>
 
-              {editingQuiz.timeSpent !== undefined && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg p-4 mb-6 text-center transition-colors duration-300">
-                  <p className="text-blue-800 dark:text-blue-300 text-sm transition-colors duration-300">
-                    This quiz took you <strong>{formatTime(editingQuiz.timeSpent)}</strong>
-                  </p>
+              {/* Modern Filter Section for Quiz Questions */}
+              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 sm:p-6 mb-6 shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Filter Questions</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Focus on specific question types or performance</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowQuizFilters(!showQuizFilters)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                    </svg>
+                    {showQuizFilters ? 'Hide Filters' : 'Show Filters'}
+                  </button>
                 </div>
-              )}
+
+                {showQuizFilters && (
+                  <div className="space-y-6">
+                    {/* Filter Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Status Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Question Status</label>
+                        <select
+                          value={quizFilters.status}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Questions</option>
+                          <option value="correct">Correct Answers</option>
+                          <option value="incorrect">Incorrect Answers</option>
+                          <option value="flagged">Flagged Questions</option>
+                        </select>
+                      </div>
+
+                      {/* Domain Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Domain</label>
+                        <select
+                          value={quizFilters.domain}
+                          onChange={(e) => setQuizFilters(prev => ({ 
+                            ...prev, 
+                            domain: e.target.value,
+                            questionType: 'all' // Reset question type when domain changes
+                          }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Domains</option>
+                          {(() => {
+                            const uniqueDomains = [...new Set(updatedQuestions.map(q => q.domain).filter(Boolean))];
+                            return uniqueDomains.map(domain => (
+                              <option key={domain} value={domain}>{domain}</option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+
+                      {/* Question Type Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Question Type</label>
+                        <select
+                          value={quizFilters.questionType}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, questionType: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Types</option>
+                          {(() => {
+                            // If a specific domain is selected, show only types for that domain
+                            if (quizFilters.domain !== 'all') {
+                              // Determine section based on domain
+                              const isMathDomain = ['Algebra', 'Advanced Math', 'Problem Solving and Data Analysis', 'Geometry and Trigonometry'].includes(quizFilters.domain);
+                              const section = isMathDomain ? SAT_SECTIONS.MATH : SAT_SECTIONS.READING_WRITING;
+                              
+                              // Get domain-specific question types
+                              const domainTypes = getQuestionTypeOptionsByDomain(section, quizFilters.domain);
+                              
+                              // Filter to only show types that exist in the current quiz
+                              const availableTypes = domainTypes.filter(type => 
+                                updatedQuestions.some(q => q.questionType === type)
+                              );
+                              
+                              return availableTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ));
+                            } else {
+                              // If no domain is selected, show all types that exist in the quiz
+                              const uniqueTypes = [...new Set(updatedQuestions.map(q => q.questionType).filter(Boolean))];
+                              return uniqueTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ));
+                            }
+                          })()}
+                        </select>
+                      </div>
+
+                      {/* Difficulty Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Difficulty</label>
+                        <select
+                          value={quizFilters.difficulty}
+                          onChange={(e) => setQuizFilters(prev => ({ ...prev, difficulty: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white"
+                        >
+                          <option value="all">All Difficulties</option>
+                          {(() => {
+                            const uniqueDifficulties = [...new Set(updatedQuestions.map(q => q.difficulty).filter(Boolean))];
+                            return uniqueDifficulties.map(difficulty => (
+                              <option key={difficulty} value={difficulty}>{difficulty}</option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Filter Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Showing {(() => {
+                            const filteredQuestions = updatedQuestions.filter(q => {
+                              if (quizFilters.status !== 'all') {
+                                if (quizFilters.status === 'correct' && !q.isCorrect) return false;
+                                if (quizFilters.status === 'incorrect' && q.isCorrect) return false;
+                                if (quizFilters.status === 'flagged' && !editingQuiz.flaggedQuestions?.includes(q.id)) return false;
+                              }
+                              if (quizFilters.domain !== 'all' && q.domain !== quizFilters.domain) return false;
+                              if (quizFilters.questionType !== 'all' && q.questionType !== quizFilters.questionType) return false;
+                              if (quizFilters.difficulty !== 'all' && q.difficulty !== quizFilters.difficulty) return false;
+                              return true;
+                            });
+                            return filteredQuestions.length;
+                          })()} of {updatedQuestions.length} questions
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setQuizFilters({
+                          status: 'all',
+                          domain: 'all',
+                          questionType: 'all',
+                          difficulty: 'all'
+                        })}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300"
+                      >
+                        Clear All Filters
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Questions - EXACT copy from view page but with clickable options */}
               <div className="space-y-4">
-                {editingQuiz.questions.map((question, index) => {
+                {(() => {
+                  // Apply filters to questions
+                  const filteredQuestions = updatedQuestions.filter(q => {
+                    if (quizFilters.status !== 'all') {
+                      if (quizFilters.status === 'correct' && !q.isCorrect) return false;
+                      if (quizFilters.status === 'incorrect' && q.isCorrect) return false;
+                      if (quizFilters.status === 'flagged' && !editingQuiz.flaggedQuestions?.includes(q.id)) return false;
+                    }
+                    if (quizFilters.domain !== 'all' && q.domain !== quizFilters.domain) return false;
+                    if (quizFilters.questionType !== 'all' && q.questionType !== quizFilters.questionType) return false;
+                    if (quizFilters.difficulty !== 'all' && q.difficulty !== quizFilters.difficulty) return false;
+                    return true;
+                  });
+
+                  return filteredQuestions.map((question, index) => {
                   // Get current answer, converting from text to letter format if needed
                   let currentAnswer = editingAnswers[question.id];
                   
@@ -1006,10 +1560,21 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                   }
                   
                   return (
-                    <div key={question.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 transition-colors duration-300">
+                    <div key={question.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 transition-colors duration-300 group">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
                         <div className="flex flex-col gap-2">
-                          <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-gray-900 dark:text-white font-medium transition-colors duration-300">Question {index + 1}</h4>
+                            <button
+                              onClick={(e) => handleCopyId(question.id, e)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              title="Copy Question ID"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
                           {/* Question Type Badge */}
                           {question.questionType && (
                             <div className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm">
@@ -1038,7 +1603,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       )}
                       {question.passageText && (
                         <p className="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">
-                          {question.passageText}
+                          {formatPassageText(question.passageText, question.questionType)}
                         </p>
                       )}
                       <p className="text-gray-900 dark:text-white mb-3 transition-colors duration-300">{question.questionText}</p>
@@ -1046,6 +1611,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       <div className="space-y-2 mb-3">
                         {['A', 'B', 'C', 'D'].map((choice, optionIndex) => {
                           const answerText = question.answerChoices ? question.answerChoices[choice] : (question.options && question.options[optionIndex]);
+                          const cleanedAnswerText = cleanAnswerChoice(answerText);
                           const correctLetter = getCorrectAnswerLetter(question);
                           const isCorrectAnswer = choice === correctLetter;
                           const isUserAnswer = choice === currentAnswer;
@@ -1084,7 +1650,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                                     onChange={() => handleAnswerChange(question.id, choice)}
                                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                   />
-                                  <span><strong>{choice}:</strong> {answerText}</span>
+                                  <span><strong>{choice}:</strong> {cleanedAnswerText}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {isUserAnswer && (
@@ -1124,7 +1690,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                       )}
                     </div>
                   );
-                })}
+                });
+              })()}
               </div>
             </div>
           </div>
@@ -1332,6 +1899,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
             </div>
           ) : (
             <div className="space-y-4 sm:space-y-6">
+
+
               {/* In Progress Quizzes Section */}
               {inProgressQuizzesGrouped.length > 0 && (
                 <div>
@@ -1459,7 +2028,7 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
                                       onClick={() => handleEditQuiz(quiz)}
                                       className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex-1 sm:flex-none"
                                     >
-                                      Edit
+                                      View
                                     </button>
                                     <button
                                       onClick={() => handleDeleteQuiz(quiz)}
@@ -1500,6 +2069,8 @@ const QuizHistory = ({ onBack, onResumeQuiz }) => {
         imageAlt={imageModal.imageAlt}
         onClose={handleCloseImageModal}
       />
+
+
 
               {/* Celebration Animation */}
         {showCelebration && <CelebrationAnimation />}

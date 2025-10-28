@@ -4,6 +4,15 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 import Fuse from 'fuse.js/dist/fuse.esm.js';
 
 const QuestionBank = () => {
+  // Helper function to clean answer choices that start with letter prefixes
+  const cleanAnswerChoice = (choice) => {
+    if (!choice || typeof choice !== 'string') return choice;
+    
+    // Remove common letter prefixes like "A)", "b)", "c)", "d)" from the beginning of choices
+    const cleaned = choice.replace(/^[A-Da-d]\)\s*/, '');
+    return cleaned;
+  };
+
   const { data: catalog, loading } = useGlobalCatalogQuestions();
   const { isDarkMode } = useDarkMode();
   const [search, setSearch] = useState('');
@@ -112,7 +121,7 @@ const QuestionBank = () => {
                   {['A','B','C','D'].map(letter => (
                     q.answerChoices?.[letter] ? (
                       <div key={letter} className="px-2 py-1 border rounded dark:border-gray-600">
-                        <span className="font-semibold mr-1">{letter}.</span> {q.answerChoices[letter]}
+                        <span className="font-semibold mr-1">{letter}.</span> {cleanAnswerChoice(q.answerChoices[letter])}
                       </div>
                     ) : null
                   ))}

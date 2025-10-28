@@ -1,25 +1,21 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useInView } from 'framer-motion';
 import { formatRelativeTime } from '../lib/utils';
 import '../styles/AnimatedList.css';
 
-const AnimatedQuestionItem = ({ children, delay = 0, index, onMouseEnter, onClick }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { amount: 0.5, triggerOnce: false });
-  
+const QuestionListItem = ({ children, index, onMouseEnter, onClick }) => {
   return (
-    <motion.div
-      ref={ref}
+    <div
       data-index={index}
       onMouseEnter={onMouseEnter}
       onClick={onClick}
-      initial={{ scale: 0.7, opacity: 0 }}
-      animate={inView ? { scale: 1, opacity: 1 } : { scale: 0.7, opacity: 0 }}
-      transition={{ duration: 0.2, delay }}
-      style={{ marginBottom: '1rem', cursor: 'pointer' }}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
+      className="mb-3 cursor-pointer transition-colors duration-75 ease-out"
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
@@ -33,6 +29,7 @@ const AnimatedQuestionList = ({
   enableArrowNavigation = true,
   className = '',
   displayScrollbar = true,
+  onCopyId = null,
 }) => {
   const listRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -89,15 +86,7 @@ const AnimatedQuestionList = ({
   const questionsToShow = isMobile ? questions.slice(0, visibleCount) : questions;
   const hasMoreQuestions = isMobile && visibleCount < questions.length;
   
-  // Debug: Check for duplicate IDs
-  useEffect(() => {
-    const ids = questionsToShow.map(q => q.id);
-    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-    if (duplicates.length > 0) {
-      console.warn('🚨 Found duplicate question IDs:', duplicates);
-      console.warn('🚨 Questions with duplicate IDs:', questionsToShow.filter(q => duplicates.includes(q.id)));
-    }
-  }, [questionsToShow]);
+
 
   useEffect(() => {
     if (!enableArrowNavigation) return;
@@ -154,19 +143,7 @@ const AnimatedQuestionList = ({
       isMathQuestion ? true : (question.domain && question.questionType)
     );
 
-    // Debug logging for problematic questions
-    if (!hasValidData) {
-      console.warn('🚨 Rendering question with missing data:', { 
-        question: {
-          id: question?.id,
-          section: question?.section,
-          domain: question?.domain,
-          questionType: question?.questionType,
-          isMathQuestion
-        }, 
-        index 
-      });
-    }
+
     
     const isSelected = selectedQuestions.includes(question.id);
     const status = getQuestionStatus ? getQuestionStatus(question.id) : null;
@@ -174,29 +151,24 @@ const AnimatedQuestionList = ({
 
     // Skip rendering if question has missing required data
     if (!hasValidData) {
-      console.warn('🚨 Skipping question with missing data:', { 
-        question: {
-          id: question?.id,
-          section: question?.section,
-          domain: question?.domain,
-          questionType: question?.questionType,
-          isMathQuestion
-        }, 
-        index 
-      });
       return null;
     }
     
     return (
-      <AnimatedQuestionItem
+      <QuestionListItem
         key={`${question.id}-${index}`}
-        delay={0.1}
         index={index}
         onMouseEnter={() => setSelectedIndex(index)}
-        onClick={() => onQuestionToggle && onQuestionToggle(question.id)}
+        onClick={(e) => {
+          // Don't trigger if clicking on the checkbox
+          if (e.target.type === 'checkbox') {
+            return;
+          }
+          onQuestionToggle && onQuestionToggle(question.id);
+        }}
       >
         <div className={`
-          p-2 rounded-md border transition-all duration-200 cursor-pointer
+          p-2 rounded-md border transition-colors duration-75 ease-out cursor-pointer group will-change-transform
           ${selectedIndex === index 
             ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 shadow-sm' 
             : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
@@ -208,7 +180,11 @@ const AnimatedQuestionList = ({
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={() => onQuestionToggle && onQuestionToggle(question.id)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onQuestionToggle && onQuestionToggle(question.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
                 className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
               {/* Question Number */}
@@ -219,13 +195,24 @@ const AnimatedQuestionList = ({
               }`}>
                 {index + 1}
               </span>
-              <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 flex-1 min-w-0 transition-colors duration-300">
+              <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 flex-1 min-w-0 transition-colors duration-75 ease-out">
                 <span className="font-medium truncate text-xs">{question.section}</span>
                 {flagged && <span className="text-yellow-500 text-xs">🚩</span>}
               </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <span className={`text-xs px-2 py-0.5 rounded font-medium w-16 text-center transition-colors duration-300 ${
+              {onCopyId && (
+                <button
+                  onClick={(e) => onCopyId(question.id, e)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  title="Copy Question ID"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              )}
+              <span className={`text-xs px-2 py-0.5 rounded font-medium w-16 text-center transition-colors duration-75 ease-out ${
                 question.difficulty === 'Easy' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                 question.difficulty === 'Medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
                 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
@@ -236,7 +223,7 @@ const AnimatedQuestionList = ({
           </div>
           
           <div className="pl-5">
-                          <p className="text-gray-800 dark:text-gray-200 text-xs leading-tight line-clamp-2 mb-1 transition-colors duration-300">
+                          <p className="text-gray-800 dark:text-gray-200 text-xs leading-tight line-clamp-2 mb-1 transition-colors duration-150">
                 {(() => {
                   if (!question.passageText || question.passageText.trim().length === 0) {
                     return 'No passage text';
@@ -281,7 +268,7 @@ const AnimatedQuestionList = ({
             </div>
           </div>
         </div>
-      </AnimatedQuestionItem>
+              </QuestionListItem>
     );
   };
 
@@ -289,7 +276,7 @@ const AnimatedQuestionList = ({
     <div className={`relative w-full h-full ${className}`}>
       <div
         ref={listRef}
-        className={`h-full overflow-y-auto p-2 ${!displayScrollbar ? 'scrollbar-hide' : ''}`}
+        className={`h-full overflow-y-auto overflow-x-hidden p-2 ${!displayScrollbar ? 'scrollbar-hide' : ''}`}
         onScroll={handleScroll}
         style={{
           scrollbarWidth: displayScrollbar ? 'thin' : 'none'

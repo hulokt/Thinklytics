@@ -69,9 +69,13 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
 
 
+
+
   const applyFilters = () => {
 
     let filtered = [...questions];
+
+
 
     // Only exclude hidden questions from quiz builder
     filtered = filtered.filter(q => !q.hidden);
@@ -143,6 +147,27 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
       const normalized = searchQuery.trim().toLowerCase();
 
+      // Check for multiple ID search (comma or space separated)
+      // If the search query looks like an ID (alphanumeric with possible separators), treat as ID search
+      const cleanQuery = searchQuery.trim().replace(/[,\s]/g, '');
+      if (/^[a-zA-Z0-9\-]+$/.test(cleanQuery) && searchQuery.trim().length >= 3) {
+        const ids = searchQuery.trim().split(/[,\s]+/).filter(id => id.trim());
+        if (ids.length > 0) {
+          filtered = filtered.filter(question => 
+            ids.some(id => {
+              const questionId = question.id ? question.id.toLowerCase() : '';
+              const searchId = id.trim().toLowerCase();
+              return questionId.includes(searchId);
+            })
+          );
+          
+          // If we found results with ID search, skip all other search logic
+          if (filtered.length > 0) {
+            setFilteredQuestions(filtered);
+            return;
+          }
+        }
+      }
       // Special syntax for "con:" - find all questions with "con:" anywhere
       if (normalized === 'con:') {
         filtered = filtered.filter(question => {
@@ -293,6 +318,33 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
     setIsSearchActive(query.trim().length > 0);
   };
 
+  const handleCopyId = (questionId, event) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(questionId).then(() => {
+      // Show a brief notification
+      const notification = document.createElement('div');
+      notification.textContent = 'ID copied to clipboard!';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy ID:', err);
+    });
+  };
+
   const handleFilterChange = (field, value) => {
     setFilters(prev => {
       const newFilters = { ...prev, [field]: value };
@@ -318,7 +370,13 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const handleSelectAll = () => {
-    setSelectedQuestions(filteredQuestions.map(q => q.id));
+    // Add unselected questions to the existing selection, preserving order
+    const currentlySelectedIds = new Set(selectedQuestions);
+    const newSelectedIds = filteredQuestions
+      .filter(q => !currentlySelectedIds.has(q.id))
+      .map(q => q.id);
+    
+    setSelectedQuestions(prev => [...prev, ...newSelectedIds]);
   };
 
   const handleDeselectAll = () => {
@@ -326,7 +384,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const handleStartQuiz = () => {
-    const selectedQuestionData = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selectedQuestionData = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     onStartQuiz(selectedQuestionData);
   };
 
@@ -341,7 +402,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
 
   const handleSaveToCalendar = async () => {
     try {
-      const selectedQuestionData = questions.filter(q => selectedQuestions.includes(q.id));
+      // Preserve the order in which questions were selected
+      const selectedQuestionData = selectedQuestions.map(questionId => 
+        questions.find(q => q.id === questionId)
+      ).filter(Boolean); // Remove any undefined entries
       
       if (selectedQuestionData.length === 0) {
         return;
@@ -557,7 +621,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   // Modern Export as PDF function for selected questions
   // Copy selected questions as CSV to clipboard
   const copySelectedQuestionsAsCSV = async () => {
-    const selected = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selected = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     
     // Filter out hidden questions from export
     const exportableQuestions = selected.filter(q => !q.hidden);
@@ -676,7 +743,10 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
   };
 
   const exportSelectedQuestionsAsPDF = async () => {
-    const selected = questions.filter(q => selectedQuestions.includes(q.id));
+    // Preserve the order in which questions were selected
+    const selected = selectedQuestions.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean); // Remove any undefined entries
     
     // Filter out hidden questions from export
     const exportableQuestions = selected.filter(q => !q.hidden);
@@ -1115,6 +1185,8 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
             </div>
           </div>
 
+
+
           {/* Questions List - Dynamic Height */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex-1 lg:overflow-hidden transition-colors duration-300">
             <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 transition-colors duration-300">
@@ -1144,6 +1216,7 @@ const QuestionSelector = ({ questions, onStartQuiz, onResumeQuiz, inProgressQuiz
                     showGradients={true}
                     enableArrowNavigation={true}
                     displayScrollbar={true}
+                    onCopyId={handleCopyId}
                   />
                 </div>
               )}

@@ -292,29 +292,6 @@ const AnalyticsPage = ({ questions }) => {
     
     // Debug: Log the final question type stats
 
-    // Find most struggling areas (max 3 each) - only for domains/types with 2+ wrong answers
-    const strugglingDomains = Object.entries(domainStats)
-      .filter(([_, stats]) => stats.wrong >= 2) // Only consider domains with at least 2 wrong answers
-      .map(([domain, stats]) => ({
-        domain,
-        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0,
-        attempted: stats.attempted,
-        wrong: stats.wrong
-      }))
-      .sort((a, b) => b.incorrectPercentage - a.incorrectPercentage || b.wrong - a.wrong) // Sort by highest incorrect percentage first
-      .slice(0, 3);
-
-    const strugglingTypes = Object.entries(questionTypeStats)
-      .filter(([_, stats]) => stats.wrong >= 2) // Only consider types with at least 2 wrong answers
-      .map(([type, stats]) => ({
-        type,
-        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0,
-        attempted: stats.attempted,
-        wrong: stats.wrong
-      }))
-      .sort((a, b) => b.incorrectPercentage - a.incorrectPercentage || b.wrong - a.wrong) // Sort by highest incorrect percentage first
-      .slice(0, 3);
-
     // Performance over time (last 10 completed quizzes) - only show real data
     const recentQuizzes = completedQuizzesArray
       .sort((a, b) => new Date(a.date || a.lastUpdated) - new Date(b.date || b.lastUpdated))
@@ -369,18 +346,24 @@ const AnalyticsPage = ({ questions }) => {
       const origin = (question.origin || '').toString().trim().toLowerCase();
       const isCatalog = origin === 'catalog';
       let includeInWrongOnly = false;
+      
       if (!isCatalog) {
-        includeInWrongOnly = true; // user wrong log
-      } else if (questionAnswersObjFiltered[question.id]) {
-        const answers = questionAnswersObjFiltered[question.id];
-        const completedAnswers = answers.filter(answer => {
-          return completedQuizzesArray.some(quiz =>
-            quiz.id === answer.quizId &&
-            ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
-             quiz.status === 'completed')
-          );
-        });
-        includeInWrongOnly = completedAnswers.some(a => a.isCorrect === false);
+        includeInWrongOnly = true; // user wrong log - include all
+      } else {
+        // For catalog questions, include ALL that were answered incorrectly
+        // Check if this catalog question has any incorrect answers in completed quizzes
+        if (questionAnswersObjFiltered[question.id]) {
+          const answers = questionAnswersObjFiltered[question.id];
+          const completedAnswers = answers.filter(answer => {
+            return completedQuizzesArray.some(quiz =>
+              quiz.id === answer.quizId &&
+              ((quiz.score !== undefined && quiz.score !== null && quiz.endTime !== undefined && quiz.endTime !== null) ||
+               quiz.status === 'completed')
+            );
+          });
+          includeInWrongOnly = completedAnswers.some(a => a.isCorrect === false);
+        }
+        // If no answers found for catalog question, don't include it (only include if it was actually answered incorrectly)
       }
 
       if (!includeInWrongOnly) return;
@@ -433,6 +416,30 @@ const AnalyticsPage = ({ questions }) => {
         }
       }
     });
+
+    // Find most struggling areas (max 3 each) - only for domains/types with 2+ wrong answers
+    // Use wrong-only stats for struggling areas since they should focus on areas where you're getting wrong answers
+    const strugglingDomains = Object.entries(wrongOnlyDomainStats)
+      .filter(([_, stats]) => stats.wrong >= 2) // Only consider domains with at least 2 wrong answers
+      .map(([domain, stats]) => ({
+        domain,
+        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0,
+        attempted: stats.attempted,
+        wrong: stats.wrong
+      }))
+      .sort((a, b) => b.incorrectPercentage - a.incorrectPercentage || b.wrong - a.wrong) // Sort by highest incorrect percentage first
+      .slice(0, 3);
+
+    const strugglingTypes = Object.entries(wrongOnlyQuestionTypeStats)
+      .filter(([_, stats]) => stats.wrong >= 2) // Only consider types with at least 2 wrong answers
+      .map(([type, stats]) => ({
+        type,
+        incorrectPercentage: stats.attempted > 0 ? Math.round((stats.wrong / stats.attempted) * 100) : 0,
+        attempted: stats.attempted,
+        wrong: stats.wrong
+      }))
+      .sort((a, b) => b.incorrectPercentage - a.incorrectPercentage || b.wrong - a.wrong) // Sort by highest incorrect percentage first
+      .slice(0, 3);
 
     // Analytics generated
 
@@ -1101,56 +1108,6 @@ const AnalyticsPage = ({ questions }) => {
   const domainOccurrenceDataRW = createOccurrenceData(domainStatsRW);
   const questionTypeOccurrenceDataMath = createOccurrenceData(questionTypeStatsMath);
   const questionTypeOccurrenceDataRW = createOccurrenceData(questionTypeStatsRW);
-
-  const domainOccurrenceData = {
-    labels: Object.keys(analytics.domainStats).slice(0, 8),
-    datasets: [
-      {
-        label: 'Total Questions',
-        data: Object.values(analytics.domainStats).slice(0, 8).map(stat => stat.total),
-        backgroundColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].bg),
-        borderColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].border),
-        borderWidth: 2,
-        borderRadius: 8,
-        borderSkipped: false,
-        hoverBackgroundColor: Object.values(analytics.domainStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].hover),
-      },
-      {
-        label: 'Attempted Questions',
-        data: Object.values(analytics.domainStats).slice(0, 8).map(stat => stat.attempted || 0),
-        backgroundColor: 'rgba(255, 193, 7, 0.7)',
-        borderColor: 'rgba(255, 193, 7, 1)',
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-    ],
-  };
-
-  const questionTypeOccurrenceData = {
-    labels: Object.keys(analytics.questionTypeStats).slice(0, 8),
-    datasets: [
-      {
-        label: 'Total Questions',
-        data: Object.values(analytics.questionTypeStats).slice(0, 8).map(stat => stat.total),
-        backgroundColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].bg),
-        borderColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].border),
-        borderWidth: 2,
-        borderRadius: 8,
-        borderSkipped: false,
-        hoverBackgroundColor: Object.values(analytics.questionTypeStats).slice(0, 8).map((_, index) => colorPalette[index % colorPalette.length].hover),
-      },
-      {
-        label: 'Attempted Questions',
-        data: Object.values(analytics.questionTypeStats).slice(0, 8).map(stat => stat.attempted || 0),
-        backgroundColor: 'rgba(168, 85, 247, 0.7)',
-        borderColor: 'rgba(168, 85, 247, 1)',
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-    ],
-  };
 
   const chartOptions = {
     responsive: true,

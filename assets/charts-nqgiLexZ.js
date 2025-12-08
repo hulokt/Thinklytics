@@ -1,4 +1,4 @@
-import{r as t,R as e}from"./react-vendor-Bmnvhqav.js";
+import{r as t,R as e}from"./react-vendor-DBYudawg.js";
 /*!
  * @kurkle/color v0.3.4
  * https://github.com/kurkle/color#readme

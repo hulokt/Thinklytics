@@ -8,7 +8,7 @@
   "theme_color": "#3B82F6",
   "icons": [
     {
-      "src": "./Tfavicon.png",
+      "src": "./branding/Tfavicon.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"

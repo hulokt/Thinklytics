@@ -2,13 +2,66 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="./branding/Tfavicon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./branding/Tfavicon.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./branding/Tfavicon.png" />
-    <link rel="apple-touch-icon" href="./branding/Tfavicon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/branding/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/branding/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/branding/apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Thinklytics is an AI-powered SAT prep platform that helps students log mistakes, practice smarter, track progress and improve their score with clear analytics."
+    />
+    <link rel="canonical" href="https://thinklytics.org/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://thinklytics.org/" />
+    <meta property="og:title" content="Thinklytics | AI-powered SAT prep analytics" />
+    <meta
+      property="og:description"
+      content="Thinklytics is an AI-powered SAT prep platform that helps students log mistakes, practice smarter, track progress and improve their score with clear analytics."
+    />
+    <meta property="og:image" content="https://thinklytics.org/images/anlyEx-960.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Thinklytics | AI-powered SAT prep analytics" />
+    <meta
+      name="twitter:description"
+      content="Thinklytics is an AI-powered SAT prep platform that helps students log mistakes, practice smarter, track progress and improve their score with clear analytics."
+    />
+    <meta name="twitter:image" content="https://thinklytics.org/images/anlyEx-960.webp" />
+    <meta name="theme-color" content="#FAF7EF" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="https://fonts.gstatic.com/s/fraunces/v38/6NU78FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0KxC9TeP2Xz5c.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2"
+      crossorigin
+    />
+    <style>
+      @font-face {
+        font-family: "Fraunces";
+        font-style: normal;
+        font-weight: 300 600;
+        font-display: swap;
+        src: url("https://fonts.gstatic.com/s/fraunces/v38/6NU78FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0KxC9TeP2Xz5c.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400 600;
+        font-display: swap;
+        src: url("https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+    </style>
     <script>
       // Decode GitHub Pages SPA query format "?/<path>&..." back to a real path
       // When 404.html redirects, it creates URLs like: https://thinklytics.org/?/questions
@@ -28,21 +81,24 @@
       })();
     </script>
     <link
-      rel="stylesheet"
+      rel="preload"
       as="style"
-      onload="this.rel='stylesheet'"
+      onload="this.onload=null;this.rel='stylesheet'"
       href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght,ital@9..144,300..600,0;9..144,300..600,1&amp;family=Noto+Sans:wght@400;500;700"
     />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-    <title>Thinklytics</title>
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght,ital@9..144,300..600,0;9..144,300..600,1&amp;family=Noto+Sans:wght@400;500;700"
+      />
+    </noscript>
+    <title>Thinklytics | AI-powered SAT prep analytics</title>
     
-    <script type="module" crossorigin src="/assets/index-BmiNrzJq.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BN7GuhNs.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-libs-BF8Q1Lda.js">
-    <link rel="modulepreload" crossorigin href="/assets/supabase-CbwcJcYQ.js">
-    <link rel="modulepreload" crossorigin href="/assets/pdf-utils-CaUYb38t.js">
-    <link rel="modulepreload" crossorigin href="/assets/data-libs-DQyM0wFE.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-DNmTXb__.css">
+    <script type="module" crossorigin src="/assets/index-eAbf_Vid.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-DxjSyDKT.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-Crrf4pUc.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-icons-C2X3qME6.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-ZmOkGV4a.css">
   </head>
   <body>
     <div id="root"></div>
